@@ -1,0 +1,51 @@
+#!/usr/bin/env zsh
+# -*- mode: sh; sh-indentation: 4; indent-tabs-mode: nil; sh-basic-offset: 4;-*-
+# Copyright (c) 2018 Sebastian Gniazdowski
+#
+# Returns a greedy match of the given pattern ($2)
+# in the given string ($1).
+#
+# $1 - the string to match in
+# $2 - the pattern to match in the string
+
+filter() {
+    eval "${SNIP_EMULATE_OPTIONS_ZERO:-false}"||\
+        0=${${${(M)${0::=${(%):-%x}}:#/*}:-$PWD/$0}:A}
+    source $0:h:h/share/preamble.inc.zsh --fun
+
+    integer EC
+    local txt Q
+    local -A Opts;local -a opts subopts;local -a out
+    int/nc::parse-opts "-cat p -print t: -timeout: \
+            T=subopts -no-trim=subopts s=subopts -1space=subopts" \
+                Opts opts "$@"||\
+        {iqerr incorrect options given to {cmd}filter{%}; return 7}
+    set -- "$reply[@]"
+    # Cascade options to short ones
+    int/nc::opt-cascade Opts --timeout -t -p --print
+    (($+Opts[-t]))||Opts[-t]=1
+
+    # Text comes from stdin? If no args…
+    int/nc::reset
+     while IFS=$'\n' read -r -t $Opts[-t] txt <&0;do
+        (($+Opts[--cat]))&&REPLY=$txt||int/nc::prune-esc $subopts $txt;EC=$?
+        out+=("$REPLY")
+        (($+Opts[-p]))&&print -r -- $REPLY
+        ((EC))&&iqwarn -e couldn\'t filter string: {q}$txt{/q}…
+    done < <(
+            if ((!$#));then
+                while IFS=$'\n' read -r -t $Opts[-t] txt <&0; do
+                    builtin print -r -- $txt
+                done
+            else
+                builtin printf %s\\n "$@"
+            fi
+    )
+
+    reply=("$out[@]")
+    REPLY=${(pj:\n:)reply}
+    (($#reply))
+
+    return
+}
+filter "$@"

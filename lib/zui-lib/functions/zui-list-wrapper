@@ -1,0 +1,140 @@
+#!/usr/bin/env zsh
+builtin emulate -LR zsh
+setopt extendedglob warncreateglobal
+
+local _zui_wrapper_has_terminfo=0
+
+zmodload zsh/curses
+zmodload zsh/terminfo 2>/dev/null && _zui_wrapper_has_terminfo=1
+
+trap "-zui_wrapper_on_exit" EXIT
+
+local term_height=${LINES:-$(tput lines)} term_width=${COLUMNS:-$(tput cols)}
+ZUI[term_sread_ts]="$EPOCHSECONDS"
+
+# Reason for this function is that on some systems
+# smcup and rmcup are not knowing why left empty
+-zui_wrapper_alternate_screen() {
+    if [ "$_zui_wrapper_has_terminfo" = "1" ]; then
+        [[ "$1" = "1" && -n "$terminfo[smcup]" ]] && return
+        [[ "$1" = "0" && -n "$terminfo[rmcup]" ]] && return
+    else
+        [[ "$1" = "1" && -n `tput 2>/dev/null smcup` ]] && return
+        [[ "$1" = "0" && -n `tput 2>/dev/null rmcup` ]] && return
+    fi
+
+    case "$TERM" in
+        *rxvt*)
+            [ "$1" = "1" ] && echo -n $'\x1b7\x1b[?47h'
+            [ "$1" = "0" ] && echo -n $'\x1b[2J\x1b[?47l\x1b8'
+            ;;
+        *)
+            [ "$1" = "1" ] && echo -n $'\x1b[?1049h'
+            [ "$1" = "0" ] && echo -n $'\x1b[?1049l'
+            # just to remember two other that work: $'\x1b7\x1b[r\x1b[?47h', $'\x1b[?47l\x1b8'
+            ;;
+    esac
+}
+
+# Cleanup before any exit
+-zui_wrapper_on_exit() {
+    # -zui_wrapper_end
+    -zui_wrapper_alternate_screen 0
+    -zui_list_cursor_visibility "plain" 1
+}
+
+-zui_wrapper_init_windows() {
+    integer create=0
+
+    if [[ "$1" = 1 || -z "${zcurses_windows[(r)main]}" || -z "${zcurses_windows[(r)status]}" ]]; then
+        create=1
+        zcurses delwin main 2>/dev/null
+        zcurses delwin status 2>/dev/null
+    fi
+
+    # Resize?
+    (( $1 )) && {
+        #zcurses 2>/dev/null resize_term "${ZUI[term_height]}" "${ZUI[term_width]}" endwin
+        zcurses end
+        zcurses refresh
+
+        if [[ -n "$2" && -n "$3" && -n "$4" && -n "$5" ]]; then
+            integer __main_height=$(( ZUI[term_height] - ZUI[status_size] ))
+            : ${(P)2::=$__main_height}
+            : ${(P)3::=${ZUI[term_width]}}
+            : ${(P)4::=${ZUI[status_size]}}
+            : ${(P)5::=${ZUI[term_width]}}
+        fi
+    }
+
+    (( create )) && {
+        zcurses refresh stdscr
+        zcurses addwin main $(( term_height - ZUI[status_size] )) "$term_width" 0 0
+        zcurses addwin status "${ZUI[status_size]}" "$term_width" $(( term_height - ZUI[status_size] )) 0
+    }
+}
+
+-zui_wrapper_end() {
+    zcurses delwin main 2>/dev/null
+    zcurses delwin status 2>/dev/null
+    zcurses end
+}
+
+-zui_wrapper_recreate_windows() {
+    integer force="$1"
+    shift
+
+    if [[ "$force" = "1" || -z "$EPOCHSECONDS" || $(( EPOCHSECONDS - ZUI[term_sread_ts] )) -gt "5" ]]; then
+        term_height=$(tput lines)
+        term_width=$(tput cols)
+        ZUI[term_sread_ts]="$EPOCHSECONDS"
+    fi
+
+    if [[ "${ZUI[term_height]}" -ne "$term_height" || "${ZUI[term_width]}" -ne "$term_width" ]]; then
+        integer resize=0
+        (( ZUI[term_height] != 0 )) && resize=1
+
+        ZUI[term_height]="$term_height"
+        ZUI[term_width]="$term_width"
+        # Load window size
+        -zui_glib_load_config s:status_size "4" 1 'ZUI[status_size]'
+        -zui_wrapper_init_windows "$resize" "$@"
+        return 0
+    fi
+
+    return 1
+}
+
+# Standard functions library
+[[ "${ZUI[glib_sourced]}" != "1" ]] && source "${ZUI_REPO_DIR}/lib/glib.lzui"
+[[ "${ZUI[syslib_sourced]}" != "1" ]] && source "${ZUI_REPO_DIR}/lib/syslib.lzui"
+[[ "${ZUI[utillib_sourced]}" != "1" ]] && source "${ZUI_REPO_DIR}/lib/utillib.lzui"
+
+# Configuration
+-zui_glib_load_config s:select_mode "no-restart" 2 'ZUI[select_mode]'   # quit, restart or callback
+-zui_glib_load_config s:text_mode "all" 2 'ZUI[text_mode]'
+-zui_glib_load_config b:text_select 1 2 'ZUI[text_select]'
+
+ZUI[term_width]=0
+ZUI[term_height]=0
+
+-zui_wrapper_alternate_screen 1
+zcurses init
+-zui_wrapper_recreate_windows 0
+
+-zui_util_get_time
+zui-list "main" $(( term_height-ZUI[status_size] )) $term_width "status" "${ZUI[status_size]}" "$term_width" " Welcome to ${ZUI[app_name]} $REPLY " "$@"
+
+if [[ "$REPLY" != "-1" && "$REPLY" = -(#c0,1)[0-9]## ]]; then
+    local answer="${reply[REPLY]}"
+    ZUILIST_WRAPPER_LINE="$answer"
+    if [[ "${ZUI[text_mode]}" = (all|nohyp) ]] || -zui_glib_has_any_hyperlinks "$answer"; then
+        local -a segments
+        segments=( "${(z@)answer}" )
+        [[ "${ZUI[CURRENT_SEGMENT]}" -gt "${#segments}" ]] && ZUI[CURRENT_SEGMENT]="${#segments}"
+        ZUILIST_WRAPPER_BIT="${segments[${ZUI[CURRENT_SEGMENT]}]}"
+    fi
+else
+    ZUILIST_WRAPPER_BIT="" ZUILIST_WRAPPER_LINE=""
+fi
+# vim:ft=zsh

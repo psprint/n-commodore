@@ -1,0 +1,84 @@
+#!/usr/bin/env zsh
+# This function will execute the given code FROM ZLE CONTEXT(!).
+#
+# It has an optional delay first argument:
+# · @sleep:<seconds with fractions>.
+#
+# If given, then the code will wait in background before being
+# executed, for the specified amount of time.
+# The limit of the code length is 25 lines and can be easily
+# extended by changing the "repeat 25" line
+#
+# Usage:
+# nc::exec-hop-back "echo Hello world"
+# nc::exec-hop-back "BUFFER[-1]=''"
+# nc::exec-hop-back  @sleep:5.5 "BUFFER='The time has passed, sorry for replacing your command line ;)'"
+
+int/nc::exec-hop-back() {
+    eval "${SNIP_EMULATE_OPTIONS_ZERO:-false}"||\
+        0=${${${(M)${0::=${(%):-%x}}:#/*}:-$PWD/$0}:A}
+
+    local QMESSAGE_SCRIPT="(){emulate -L zsh -o promptsubst;\
+POSTDISPLAY=$'\n'%TXT%;zle -R;\
+IFS= read -s -r -k1 </dev/tty;\
+[[ \$REPLY[1] == [\$'\n\r'] ]]&&{zle .send-break;((1));}||\
+{BUFFER[CURSOR-1,CURSOR]+=\$REPLY[1];CURSOR+=1;};}"
+
+    tmp/nc::send-hop() {
+        integer EC THEFD
+        exec {THEFD} < <(
+            #setopt errexit
+            # The expansion is: if there is @sleep:[0-9]… pfx, then use what
+            # after it, otherwise substitute 0
+            float t=${${(M)@:#@sleep:*}#@sleep:}
+            builtin set -- ${@:#@sleep:*}
+            LANG=C command sleep $((0.010+${t:-0}))
+            builtin printf %s\\n "$@"
+        )
+        EC=$?
+        REPLY=$THEFD
+        builtin zle -w -F "$THEFD" nc::exec-widget
+        EC+=$?
+        return EC
+    }
+
+    [[ "$1" = <-> && $# -eq 1 ]] && {
+        local FD=$1 READ_SOURCE_TEXT
+        int/nc::read-all -f -u$FD
+        READ_SOURCE_TEXT=$REPLY
+        ((NC[notify-zle]))&&builtin zle -I
+        builtin zle -F $FD; exec {FD}<&-
+        [[ $READ_SOURCE_TEXT == WRONGSTR ]]&&return 18
+        builtin eval $READ_SOURCE_TEXT
+        return 0
+    }
+
+    # Input/options
+    local -A Opts;local -a opts
+    int/nc::parse-opts "i -zle-nt m -msg" Opts opts "$@"||return 7
+    builtin set -- "$reply[@]"
+    int/nc::opt-cascade Opts -i --zle-nt --msg -m
+
+    # Set up global, persistent flags
+    NC[notify-zle]=$+Opts[-i]
+    # Get @sleep:<-> special argument
+    local TSTR=${(M)@:#@sleep:*}
+    builtin set -- "${@:#@sleep:*}"
+
+    # Send a message (show under prompt)?
+    (($+Opts[--msg]))&&set -- "${QMESSAGE_SCRIPT/\%TXT\%/${(qqq):-"$*"}}"
+
+    # Create widgets
+    builtin zle -D nc::exec-widget NCIO
+    builtin zle -N nc::exec-widget int/nc::exec-hop-back||\
+            iqwarn couldn\'t set up the recurring code snippet to run\
+                (zle error: {int}$?{txt})
+
+    # Final set up
+    tmp/nc::send-hop $TSTR "$@"||\
+        {iqerr cannot set zle recurring function;return 3;}
+
+}
+int/nc::exec-hop-back "$@"
+
+# vim;ft=zsh:sts=4:sw=4:et

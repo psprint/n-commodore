@@ -1,0 +1,220 @@
+#!/usr/bin/env zsh
+# -*- mode: sh; sh-indentation: 4; indent-tabs-mode: nil; sh-basic-offset: 4; -*-
+
+# Copyright (c) 2023 Sebastian Gniazdowski
+
+# Run as script? Or as a function? Supports both ways.
+
+iqopen()
+{
+# Preamble – emulate & 0=…
+eval "${SNIP_EMULATE_OPTIONS_ZERO:-false}"||\
+    0=${${${(M)${0::=${(%):-%x}}:#/*}:-$PWD/$0}:A}
+source $0:h:h/share/preamble.inc.zsh --script --fun
+
+local -A Opts;local -a opts
+int/nc::init-sm-con Opts opts "$@"||{print QE>>/tmp/reply;return 13}
+set -- "$reply[@]"
+eval "$REPLY"
+ZUI[SEARCH_BUFFER]=$*
+
+iqw(){
+    -zui_glib_msg "$@"
+}
+
+iqopen_preview_file(){
+    ((ZUI[gen_B_idx]=1-ZUI[gen_B_idx]))
+    ZUI[VIEW_CHANGE]=1
+    if ((ZUI[gen_B_idx]%2));then
+        ZUI[CURRENT_IDX_MAIN_BKP]=$ZUI[CURRENT_IDX]
+        #ZUI[CURRENT_IDX]=$ZUI[CURRENT_IDX_PVIEW_BKP]
+    else
+        ZUI[CURRENT_IDX_PVIEW_BKP]=$ZUI[CURRENT_IDX]
+        #ZUI[CURRENT_IDX]=$ZUI[CURRENT_IDX_MAIN_BKP]
+    fi
+    ZUI[PREV_CURRENT_IDX]=$ZUI[CURRENT_IDX]
+    generator_B
+    #__last_element=$#__list
+}
+
+separ() {
+    REPLY="$ZUI[YELLOW]${(l:COLUMNS*3::—:):-}$ZUI[FMT_END]";
+}
+
+if ((!$+Opts[--refresh])); then
+    ok/qnstr $PWD&&local APP=$REPLY
+    -zui_glib_cleanup deserialize:"iqopen_$APP"
+    -zui_glib_init app:"iqopen_$APP" app_name:"°Open° Console"
+    emulate -L zsh -o extendedglob -o typesetsilent -o warncreateglobal -o combiningchars -o rcquotes
+     -zui_glib_init2 # after emulate
+    ZUI[gen_B_idx]=0
+
+    # Needed for immediate output from coprocesses (disables buffering).
+    ((${+commands[stdbuf]}))&& \
+        local -a stdbuf1=( stdbuf -o0 -i0 ) stdbuf2=( stdbuf -o0 -i0 )
+    ((${+commands[gstdbuf]}))&& \
+        local -a stdbuf1=( gstdbuf -o0 -i0 ) stdbuf2=( gstdbuf -o0 -i0 )
+
+    ZUI[COLORING_MATCH_MULTIPLE]=1
+    ZUI[COLORING_COLOR]=$ZUI[BOLD]$ZUI[YELLOW]
+    ZUI[START_IN_QUERY]=1
+
+    -zui_glib_store_default_app_config b:instant_search 1
+    -zui_glib_store_default_app_config s:select_mode "quit"   # Quit event loop on text-selection
+    -zui_glib_store_default_app_config b:text_select 1        # Allow selection of text
+    -zui_glib_store_default_app_config s:timeout 25
+    -zui_glib_store_default_app_config s:mark "white MAGENTA reverse"
+    -zui_glib_store_default_app_config s:text_mode off
+    -zui_glib_store_default_app_config b:top_anchors 0
+    local -a qitems
+fi
+
+zui::bindkey F2 {iqopen_preview_file}
+#    zui::bindkey F3 "{print q:$ZUI[mark]}"
+zui::bindkey F9 '{print current:$ZUI[CURRENT_IDX], PVIEW:$ZUI[CURRENT_IDX_PVIEW_BKP], main:$ZUI[CURRENT_IDX_MAIN_BKP] qpath:$ZUI[QPATH];}'
+zui::bindkey F10 '{builtin source $NC_CON_DIR/iqopen --refresh||\
+                    iqw -r "Reload finished with error: " $?;}'
+
+generator_A() {
+    local mod="$1" ice="$2"
+
+    local -a group1
+    reply=()
+
+    # First Group
+    : -zui_glib_rc_button "button17" "·New feature·" \
+        'reply=( ",all," ); new_feature'
+    group1=( $reply ) reply=()
+
+    # Content
+    reply=( "$group1[@]" )
+
+    # Non-selectable lines  Hops to jump with [ and ]   Local anchors
+    reply2=( )              reply3=( 3 )                reply4=( )
+
+}
+
+generator_B(){
+    local -a gener=(generator_B_tree generator_B_preview)
+    $gener[1+(ZUI[gen_B_idx]%2)]
+    (($3))||{-zui_glib_fly_array_refresh 1;}
+}
+
+generator_B_preview() {
+    local QPATH QTXT
+    ((ZUI[CURRENT_IDX]>0))&&\
+        {QPATH=$__list[ZUI[CURRENT_IDX]];ZUI[QPATH]=$QPATH;}||\
+        QPATH=$ZUI[QPATH]
+    ZUI[COLORING_PATTERN]="·[^·]##·"
+    reply=() qitems=()
+    if [[ -n $QPATH ]];then
+        QTXT="Contents of file: ·$QPATH·"\
+" located at: ·${${${(M)QPATH##/*}:+$QPATH:h}:-$PWD}/·"
+        qitems=("${(@f)$(<$QPATH)}")
+    else
+        QTXT="!NO FILE SELECTED, PRESS F2 TO SHOW FILE TREE!"
+    fi
+    -zui_glib_special_text $QTXT
+    separ
+    typeset -ga -U ZUILIST_NONSELECTABLE_ELEMENTS=(2 1)
+    qitems=("$reply[1]" "$REPLY" "$qitems[@]")
+}
+
+generator_B_tree() {
+    ZUI[COLORING_PATTERN]="(((([^\/—])(#c2,))(#e))|·[^·]##·)"
+    ZUI[QIDX]=0
+    reply=()
+    -zui_glib_special_text "Showing files in: ·$PWD/·"
+    separ
+    qitems=(**/*~*~(N.,@))
+    typeset -ga -U ZUILIST_NONSELECTABLE_ELEMENTS=(2 1)
+    qitems=("$reply[1]" "$REPLY" "$qitems[@]")
+}
+
+# Read & publish configure/make output
+-zui-standard-timeout-callback() {
+    ((ZUI[VIEW_CHANGE]))||return 0
+    integer IN=ZUI[PREV_CURRENT_IDX]
+
+     # Preview
+    if ((ZUI[gen_B_idx]%2));then
+        ((ZUI[PREV_CURRENT_IDX]==ZUI[CURRENT_IDX_MAIN_BKP]))&&\
+            ZUI[PREV_CURRENT_IDX]=$ZUI[CURRENT_IDX_PVIEW_BKP]
+    # Tree
+    else
+        ((ZUI[PREV_CURRENT_IDX]==ZUI[CURRENT_IDX_PVIEW_BKP]))&&\
+            ZUI[PREV_CURRENT_IDX]=$ZUI[CURRENT_IDX_MAIN_BKP]
+    fi
+    if ((IN!=ZUI[PREV_CURRENT_IDX]));then
+        ZUI[CURRENT_IDX]=$ZUI[PREV_CURRENT_IDX]
+        -zui_list_verify_vars
+        ZUI[redraw]=1
+    fi
+    ZUI[VIEW_CHANGE]=0
+    return 0
+}
+
+if (($+Opts[--refresh])); then
+    iqw "Reload went OK, status normal"
+    return 0
+fi
+
+## Start application ##
+-zui_glib_msg "" "@@@ " "Welcome to " "NC System " "open console!" " @@@";
+integer EC
+generator_B 1 1 1
+while (( 1 )); do
+    builtin print -n $terminfo[smcup]$termcap[ti]
+    zui-event-loop a:qitems
+    builtin print -n $terminfo[rmcup]$termcap[te]
+    [[ -z $REPLY ]]&&break
+    local QFILE= REPLY_SAVE=$REPLY; integer QIDX=0
+    if [[ -z $ZUI[SEARCH_BUFFER] ]];then
+         if ((ZUI[gen_B_idx]%2));then
+            QFILE=$ZUI[QPATH]
+            QIDX=ZUI[USER_CURRENT_IDX]
+        elif [[ $REPLY_SAVE != *(·|–|—)* ]];then
+            QFILE=$REPLY_SAVE
+        fi
+    else
+        repeat 1; do typeset +U -ga __slist=("$__qlist[@]");done
+        if -zui_sys_get_match_line 'QIDX'; then
+            iqw "Opening " $QFILE " scrolled to line: " "#$QIDX"
+             if ((ZUI[gen_B_idx]%2));then
+                QFILE=$ZUI[QPATH]
+            elif [[ $REPLY_SAVE != *(·|–|—)* ]];then
+                QFILE=$REPLY_SAVE
+                QIDX=0
+            fi
+        fi
+    fi
+    if [[ -n $QFILE ]];then
+        if ! int/nc::get-editor;then
+            EC+=$?
+            -zui_glib_msg "" "" "" 'ERROR: Couldn''t find editor, tried '\
+                "\$VISUAL (=$VISUAL) " then "" " \$EDITOR (=$EDITOR)"
+            ZUI[IN_QUERY]=0
+        else
+            (
+                # Run the editor in $REPLY, first cd-ing into project's directory
+                int/nc::run-command -C $PWD \
+                    "$REPLY" ${${QIDX:#0}:++$QIDX} -- $QFILE
+            )
+        fi
+        EC+=$?
+
+    fi
+    ZUI[VIEW_CHANGE]=1
+    zcurses clear main redraw
+    zcurses clear status redraw
+done
+
+-zui_glib_cleanup serialize
+builtin print -n $terminfo[rmcup]$termcap[te]
+return 0
+
+}
+
+iqopen "$@"
+
+# vim:ft=zsh:tw=80:sw=4:sts=4:et:foldmarker=[[[,]]]

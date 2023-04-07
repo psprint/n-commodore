@@ -1,0 +1,57 @@
+#!/usr/bin/env zsh
+# Copyright (c) 2023 Sebastian Gniazdowski
+#
+# tags – Ctags generation subcommand
+#
+
+tags() {
+    # Preamble – emulate & 0=…
+    eval "${SNIP_EMULATE_OPTIONS_ZERO:-false}"||\
+        0=${${${(M)${0::=${(%):-%x}}:#/*}:-$PWD/$0}:A}
+    source $0:h:h/share/preamble.inc.zsh --fun
+
+    local -A Opts; local -a opts
+    int/nc::parse-opts "z -zsh c -c V -vim v -verbose" Opts opts "$@"||\
+         {iqerr incorrect options given to {cmd}tags{%}; return 7}
+    set -- "$reply[@]"
+
+    # Cascade options to short ones
+    int/nc::opt-cascade Opts --zsh -z --c -c --vim -V
+
+    ((!$+Opts[-V]))&&local eopt=-e
+    # Info texts
+    local TXT="{note}Generating {tag}${${eopt:+TAGS}:-tags}{%} index for"
+    command rm -f TAGS tags
+    integer EC=$?
+    local -a exc=(--exclude='*.orig' --exclude='*.rej')
+    # C programming language
+    if (($+Opts[-c]));then
+        local -a qcmd=(command ctags -a -R $eopt $exc --totals
+                      --languages=C --langmap=C:.h.c
+                      --c-kinds=+px --extras=+r
+                      --extras=-{anonymous})
+        iqmsg -h "$TXT {type}C{%}…"
+        int/nc::get-prj-dir||REPLY=$PWD
+        int/nc::run-command -C $REPLY -- "$qcmd[@]"
+    fi
+
+    # default – Zsh script
+    if ((!$+Opts[-c]||$+Opts[-z]));then
+        local -a qcmd=(command ctags -a -R  $eopt -G $exc --totals
+                    --options=$NCDIR/share/zsh.ctags
+                    --languages=zsh,zsh3,make)
+        iqmsg -h "$TXT {type}Zsh{%} and {type}Make{%}…"
+        local QDIR
+        int/nc::get-prj-dir&&QDIR=$REPLY||QDIR=$PWD
+        int/nc::run-command -C $QDIR -- "$qcmd[@]"
+    fi
+    EC+=$?
+    ((!EC))&&iqmsg -h Successfully created {path}${QDIR/$PWD/.}/TAGS{%} index||\
+            iqmsg -h Problems creating {path}${QDIR/$PWD/.}/TAGS{%} index
+
+    ((EC))&&iqerr problems during {tag}TAGS{%} generation (code:{num}$EC{%})…
+    return EC
+
+}
+
+tags "$@"

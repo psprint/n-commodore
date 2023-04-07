@@ -1,0 +1,53 @@
+#!/usr/bin/env zsh
+
+# Copyright (c) 2023 Sebastian Gniazdowski
+int/nc::run-command() {
+    eval "${SNIP_EMULATE_OPTIONS_ZERO:-false}"||\
+        0=${${${(M)${0::=${(%):-%x}}:#/*}:-$PWD/$0}:A}
+
+    # Input/options
+    local -A Opts;local -a opts
+    int/nc::parse-opts "s -sub i -in-c o -get-out e -eval C: -dir: \
+                        v -verbose p -pattern E -save-err \
+                        0 -stdin: 1 -stdout: 2 -stderr: -ex" \
+        Opts opts "$@"||return 7
+    set -- "$reply[@]"
+    int/nc::opt-cascade Opts --in-c -i --get-out -o \
+                                -C --dir -v --verbose \
+                                -p --pattern -E --save-err \
+                                -0 --stdin \
+                                -1 --stdout -2 --stderr \
+                                -s --sub
+    int/nc::reset
+
+    local TARGET_DIR=${Opts[-C]:-$PWD} qcmd=("$@")
+    integer EC
+    (($+Opts[-i]))&&qcmd=(command zsh -c "${${(qqq)qcmd[@]}[*]}")
+    (($+Opts[-e]))&&qcmd=(builtin eval "$qcmd[@]")
+
+    # Current directory
+    trap "builtin cd -q -- ${(qq)PWD}" EXIT
+    trap "return 3" INT TERM QUIT
+    if ! builtin cd -q -- $TARGET_DIR;then
+        iqerr no such directory {path}$TARGET_DIR{%}, exiting NO-OP…
+        return 1
+    fi
+
+    [[ $Opts[-0] == 1 ]]&&Opts[-0]=$NCNUL
+    [[ $Opts[-1] == 1 ]]&&Opts[-1]=$NCNUL
+    [[ $Opts[-2] == 1 ]]&&Opts[-2]=$NCNUL
+    (($+Opts[-v]))&&iqnotice -- Running: {cmd}${(qq)qcmd[@]}{%}…
+    int/nc::run-cmd-compact ${Opts[-p]:+-p} ${Opts[-s]:+-s} \
+                ${Opts[-E]:+-E} ${Opts[--ex]+--ex} \
+                ${=Opts[-1]:+-\1 $Opts[-1]} \
+                ${=Opts[-2]:+-2 $Opts[-2]} \
+                ${=Opts[-0]:+-0 $Opts[-0]} \
+                ${Opts[-s]:+-s} ${Opts[-o]:+-o} -- \
+                    "$qcmd[@]"
+    EC=$?
+    local QREPLY=$REPLY qout=("$reply[@]")
+    ((EC))&&{iqwarn command didn\'t run cleanly (returned: {num}$EC{%});}
+    REPLY=$QREPLY reply=("$qout[@]")
+    return EC
+}
+# vim:ft=zsh

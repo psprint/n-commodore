@@ -1,0 +1,31 @@
+#!/usr/bin/env zsh
+# Copyright (c) 2023 Sebastian Gniazdowski
+#
+# ok/nstr – zs…quote…braces
+#
+
+ok/qnstr() {
+
+    eval "${SNIP_EMULATE_OPTIONS_ZERO:-false}"||\
+        0=${${${(M)${0::=${(%):-%x}}:#/*}:-$PWD/$0}:A}
+
+    integer EC;[[ -f $0 ]];EC+=$?
+
+    # Options and arguments
+    local -A Opts; local -a opts
+    int/nc::parse-opts "o -ch: -to:" Opts opts "$@"||\
+        {iqerr incorrect options given to subcommand; return EC+17;}
+    set -- "$reply[@]"
+    int/nc::opt-cascade Opts
+    EC+=$?
+    int/nc::reset
+    local CH=${Opts[--ch]:-'[^[:IDENT:]]'} QT=${Opts[--to]:-_}
+
+    REPLY=${*//$~CH/$QT}
+    (($+Opts[-o]))&&print -r -- $REPLY
+
+    [[ $REPLY != _# ]]
+    return $?+EC
+}
+ok/qnstr "$@"
+# vim:ft=zsh

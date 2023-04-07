@@ -1,0 +1,217 @@
+#!/usr/bin/env zsh
+# -*- mode: sh; sh-indentation: 4; indent-tabs-mode: nil; sh-basic-offset: 4; -*-
+
+# Copyright (c) 2021 Sebastian Gniazdowski
+
+# Run as script? Or as a function? Supports both ways.
+
+iqcon()
+{
+# Preamble – emulate & 0=…
+eval "${SNIP_EMULATE_OPTIONS_ZERO:-false}"||\
+    0=${${${(M)${0::=${(%):-%x}}:#/*}:-$PWD/$0}:A}
+source $0:h:h/share/preamble.inc.zsh --script
+
+int/nc::init-sm-con "$@"
+eval "$REPLY"
+
+
+# Dependency: load the local copy of zdharma/zui TUI library/plugin (only if needed).
+
+togg_ascr()
+{
+    #if [[ $1 == select ]]; then
+        (( ZUI[autscr]=!ZUI[autscr] ))
+        ZUI[autscr_color]=$toggle_colors[ZUI[autscr]+1]
+    #fi
+
+}
+
+cpstax()
+{
+    # Bunch of tweaked syntaxes
+    sudo cp ~/.config/mc/syntax/{sh,c,cxx,perl,python,syntax,slang,ini,diff,makefile,markdown,js,css,html}.syntax \
+                /usr/local/share/mc/syntax
+}
+
+separ()
+{
+    if (( $#coproc_output )); then
+        coproc_output+=( "$ZUI[BOLD]$ZUI[YELLOW]${(l:COLUMNS*3::—:):-}$ZUI[FMT_END]" )
+    fi
+}
+
+run_make()
+{
+    ( command $stdbuf1 make -j4 all; sleep 1 ) |& $stdbuf2 egrep --line-buffered -v '(resetting jobserver mode|Nothing to be done|Entering directory|jobserver)' | cat
+}
+
+run_make_install()
+{
+    ( command $stdbuf1 make -j4 install; sleep 1 ) |& $stdbuf2 egrep --line-buffered -v '(resetting jobserver mode|Nothing to be done|Entering directory|jobserver)'
+}
+
+run_gen() {
+    local AUTOGEN=$NCDIR/smart-consoles/autoconf.zsh
+    [[ ! -f $AUTOGEN ]]&&{print Couldn\'t find autoconf.zsh…;return;}
+    [[ ! -s $AUTOGEN ]]&&{print autoconf.zsh is empty file…;return;}
+    [[ ! -x $AUTOGEN ]]&&{print autoconf.zsh – no +x chmod…;return;}
+    $AUTOGEN $PWD 2>&1
+}
+
+zmodload zsh/zselect
+
+if [[ $1 != --refresh ]]; then
+    -zui_glib_cleanup deserialize:"iqcon"
+    -zui_glib_init app:"iqcon" app_name:"Build Console"
+    emulate -LR zsh -o extendedglob -o typesetsilent -o warncreateglobal -o combining_chars
+    -zui_glib_init2 # after emulate -LR
+
+
+    # Needed for immediate output from coprocesses (disables buffering).
+    ((${+commands[stdbuf]}))&& \
+        local -a stdbuf1=( stdbuf -o0 -i0 ) stdbuf2=( stdbuf -o0 -i0 )
+    ((${+commands[gstdbuf]}))&& \
+        local -a stdbuf1=( gstdbuf -o0 -i0 ) stdbuf2=( gstdbuf -o0 -i0 )
+
+    ZUI[COLORING_PATTERN]="((#s)[a-zA-Z0-9_.-]##:[0-9]##:[0-9]##: (error:|warning:)|(error:|warning:))" ZUI[COLORING_MATCH_MULTIPLE]=1
+    ZUI[COLORING_COLOR]=$ZUI[BOLD]$ZUI[YELLOW]       
+    ZUI[START_IN_QUERY]=0
+
+    -zui_glib_store_default_app_config s:select_mode "quit"   # Quit event loop on text-selection
+    -zui_glib_store_default_app_config b:text_select 1        # Allow selection of text
+    -zui_glib_store_default_app_config s:timeout 50
+    -zui_glib_store_default_app_config s:mark "white MAGENTA reverse"
+    -zui_glib_store_default_app_config s:text_mode off
+
+    local -a coproc_output GEN2_HOPS
+    local cstarted=0 mstarted=0 astarted=0 istarted=0  # denote if configure/make is running
+    zui::bindkey F9 "{print dbg:}"
+fi
+
+generator_A() {
+    local mod="$1" ice="$2"
+
+    local -a group1 group2 group3
+    reply=()
+
+    # First Group
+    -zui_glib_rc_button "button1" "${ZUI[MAGENTA]}Run autogen${ZUI[FMT_END]}" \
+        'internal=1; ZUI[redraw]=1; separ; coproc run_gen; astarted=1'
+    -zui_glib_rc_button "button3" "${ZUI[MAGENTA]}Read CFLAGS${ZUI[FMT_END]}" \
+        'internal=1; get_cflags'
+    -zui_glib_rc_button "button5" "${ZUI[MAGENTA]}Install${ZUI[FMT_END]}" \
+        'internal=1; ZUI[redraw]=1; separ; coproc 2>&1 run_make_install; istarted=1'
+    # -zui_glib_rc_button "button5" "${ZUI[MAGENTA]}Copy syntax files${ZUI[FMT_END]}" 'internal=1; cpstax && -zui_glib_msg "Syntax files" " copied"'
+    -zui_glib_rc_button "button17" "${ZUI[YELLOW]}Reload console${ZUI[FMT_END]}" \
+        'reply=( ",all," ); builtin source $NC_CON_DIR/iqcon --refresh && -zui_glib_msg "Console " "source " reloaded'
+    group1=( $reply ) reply=()
+
+    # Second Group
+    print $ZUI[autscr] ${(q)toggle_colors} >> /tmp/reply
+    -zui_glib_rc_button "button-1" "${ZUI[autscr_color]}Autoscroll${ZUI[FMT_END]}" \
+        "internal=1; togg_ascr; -zui_glib_fly_mod_regen $mod $ice"
+    group2=( $reply ) reply=()
+
+    -zui_glib_rc_button "buttonT1" "${ZUI[GREEN]}Run configure${ZUI[FMT_END]}" 'internal=1; ZUI[redraw]=1; separ; coproc 2>&1 ./configure ; cstarted=1'
+    -zui_glib_rc_button "buttonT3" "${ZUI[GREEN]}Run make${ZUI[FMT_END]}" 'internal=1; ZUI[redraw]=1; separ; coproc 2>&1 run_make; mstarted=1'
+    group3=( $reply )
+
+    # Content
+    reply=( "${group1[1]} ${group1[2]} ${group1[3]} ${group1[4]}  "
+            "${group2[1]}"
+            "${group3[1]} ${group3[2]}" )
+
+    # Non-selectable lines  Hops to jump with [ and ]   Local anchors
+    reply2=( )              reply3=( 3 )                reply4=( )
+
+}
+
+generator_B() {
+    reply=()
+    -zui_glib_special_text "Configure/Make output"
+    -zui_glib_button "button25" "${ZUI[MAGENTA]}(clear)${ZUI[FMT_END]}" 'internal=1; coproc_output=( ); -zui_glib_fly_mod_regen 2 1'
+    reply=( "${ZUI[YELLOW]}${reply[1]}${ZUI[FMT_END]} ${reply[2]}" "${coproc_output[@]}" )  reply2=( )  reply3=( 1 $GEN2_HOPS )  reply4=( )
+}
+
+# Read & publish configure/make output
+-zui-standard-timeout-callback() {
+    (( mstarted + cstarted + astarted + istarted == 0 )) && return
+
+    local line had_read=0 IFS=$'\n' limit=80
+    while zselect -t0 -r 0 && (( limit-- > 0 )); do
+        read -r line 2>/dev/null && { 
+            had_read=1
+            if [[ $line == (#b)(#b)(|$'\e'\[[[\;0-9A-Z]#[mK])(|$'\e'\[[[\;0-9A-Z]#[mK])([a-zA-Z0-9_.-]#/)#([a-zA-Z0-9_.-]##):([0-9]##):([0-9]##):*  ]]; then
+                #print "match: $line"
+                GEN2_HOPS+=( $(( $#coproc_output + 1 + 1 )) )
+            fi
+            
+            coproc_output+=( "${line//$'\e'\[38;5;<->m}" ); 
+        } || break
+    done <&p
+
+    if (( had_read )); then 
+        -zui_glib_fly_mod_regen 2 1
+    elif (( ZUI[had_read_prev] )); then
+        -zui_glib_fly_mod_regen 2 1
+    fi
+
+    ZUI[update_cnt]+=had_read
+    if ((ZUI[autscr]&&(had_read||!had_read&&ZUI[had_read_prev])));then
+        local loc=$mod2_ice1_global_index sz=$mod2_ice1_size
+        ZUI[CURRENT_IDX]=$(( loc + sz ))
+    fi
+
+    ZUI[had_read_prev]=$had_read
+
+    (( astarted != 0 && had_read == 0 && $#jobtexts == 0 )) && { ZUI[redraw]=1; astarted=0; -zui_glib_msg "Message: " "°autogen° " "ended"; }
+    (( cstarted != 0 && had_read == 0 && $#jobtexts == 0 )) && { ZUI[redraw]=1; cstarted=0; -zui_glib_msg "Message: " "°configure° " "ended"; }
+    (( mstarted != 0 && had_read == 0 )) && [[ "${jobtexts[*]}" != *run_make* ]] && { ZUI[redraw]=1; mstarted=0; -zui_glib_msg "Message: " "°make° " "ended"; }
+    (( istarted != 0 && had_read == 0 )) && [[ "${jobtexts[*]}" != *run_make_install* ]] && { ZUI[redraw]=1; istarted=0; -zui_glib_msg "Message: " "°make install° " "ended"; }
+    if [[ "${jobtexts[*]}" != *run_make(|_install)* && $mstarted != (0|2) ]]; then
+        ZUI[redraw]=1
+        mstarted=2
+    fi
+};
+
+get_cflags() {
+    if [[ ! -s Makefile ]];then
+        -zui_glib_msg "Couldn't find " "Makefile " "in " "$PWD"
+        return 1
+    fi
+    local CFLAGS=`grep '^CFLAGS[[:space:]]*=' Makefile`
+    -zui_glib_msg "Obtained: " "CFLAGS = ${CFLAGS#*=[[:space:]]##}"
+    return 1
+}
+
+typeset -ag toggle_colors=( $ZUI[BLUE] $ZUI[BG_YELLOW] )
+ZUI[autscr_color]=$toggle_colors[ZUI[autscr]+1]
+
+if [[ $1 == --refresh ]]; then
+    return
+fi
+
+## Start application ##
+-zui_glib_msg "" "@@@ " "Welcome to " "NC System " "build console!" " @@@";
+while (( 1 )); do
+    tput smcup
+    zui-event-loop 1:generator_A 1:generator_B
+    tput rmcup
+    [[ -z $REPLY ]]&&break
+    if [[ $REPLY == (#b)(|$'\e'\[[[\;0-9A-Z]#[mK])(|$'\e'\[[[\;0-9A-Z]#[mK])([a-zA-Z0-9_.-]#/)#([a-zA-Z0-9_.-]##):([0-9]##):([0-9]##):* ]]; then
+        mcedit +$match[5] **/$match[4](Y1)
+    fi
+    zcurses clear main redraw
+    zcurses clear status redraw
+done
+
+-zui_glib_cleanup serialize
+
+return 0
+
+}
+
+iqcon "$@"
+
+# vim:ft=zsh:tw=80:sw=4:sts=4:et:foldmarker=[[[,]]]

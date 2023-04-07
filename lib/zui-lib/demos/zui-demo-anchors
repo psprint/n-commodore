@@ -1,0 +1,51 @@
+# Started from Zle or from command line
+#
+# Shows all types of anchors: external/regenerating, internal,
+# internal/regenerating, pointing outside own module
+
+-zui_glib_cleanup deserialize:"zui-demo-anchors"
+-zui_glib_init app:"zui-demo-anchors" app_name:"ZUI Anchors"
+emulate -LR zsh -o extendedglob -o typesetsilent -o warncreateglobal
+-zui_glib_init2 # after emulate -LR
+
+-zui_glib_store_default_app_config b:border 1
+-zui_glib_store_default_app_config s:text_mode off
+
+local internal  # trick variable to make a handler no-restart
+
+# Generator for module 1
+demo_generator_A() {
+    local mod="$1" ice="$2"
+
+    reply=()
+    -zui_glib_anchor "aregen1" "3" "" ",mod1_ice1," "" "[${ZUI[MAGENTA]}third${ZUI[FMT_END]}]"
+    -zui_glib_anchor "anchor" "3+2" "" "" "" "[${ZUI[MAGENTA]}next${ZUI[FMT_END]}]"
+    -zui_glib_anchor "aregen2" "3+2" "" "" "" "[${ZUI[MAGENTA]}next${ZUI[FMT_END]}]" 'internal=1; -zui_glib_fly_mod_regen 2 1'
+
+    # Content
+    reply=(
+        "RESTART: Jump to ${reply[1]} line ${ZUI[CYAN]}and${ZUI[FMT_END]} regenerate"
+        "NO-RESTART: Jump to ${reply[2]} module, regenerate ${reply[3]} module ${ZUI[CYAN]}and${ZUI[FMT_END]} jump to it"
+        "Random number: $RANDOM"
+    )
+
+    # Non-selectable lines  Hops to jump with [ and ]   Local anchors (line numbers will be translated to global)
+    reply2=( 3 )            reply3=( 1 )                reply4=( aregen1 anchor aregen2 )
+}
+
+# Generator for module 1
+demo_generator_B() {
+    reply=( "First line of second module" "Random number: $RANDOM" )
+
+    # Non-selectable lines  Hops to jump with [ and ]   Local anchors
+    reply2=( 1 2 )          reply3=( 1 )                reply4=( )
+}
+
+## Start application ##
+zui-event-loop 1:demo_generator_A 1:demo_generator_B
+
+-zui_glib_cleanup serialize
+
+return 0
+
+# vim:ft=zsh

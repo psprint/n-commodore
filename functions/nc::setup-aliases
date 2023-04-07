@@ -1,0 +1,51 @@
+#!/usr/bin/env zsh
+
+nc::setup-aliases() {
+
+#
+# Copyright (c) 2023 Sebastian Gniazdowski
+#
+
+# Set options
+builtin emulate -L zsh -o extendedglob -o noshortloops \
+                        -o warncreateglobal -o typesetsilent \
+                        -o nopromptsubst
+
+# Possibly fix $0 with a new trick – use of a %x prompt expansion
+0=${${${(M)${0::=${(%):-%x}}:#/*}:-$PWD/$0}:A}
+
+# Input/options
+local -A Opts
+builtin zparseopts ${${(M)ZSH_VERSION:#(5.[8-9]|6.[0-9])}:+-F} \
+            -D -E -A Opts -- p: -path: || return 1
+(($+Opts[-p]))&&Opts[--path]=$Opts[-p]
+
+if [[ ! -d $NCAES && ! -d $Opts[--path] ]];then
+    print 'ZshSweep:' error: alias dir not set \(\$NCAES\)
+    return 1
+fi
+
+local DIR dirs=($Opts[--path](/N) $NCAES $NCAES/*(/N) $NCTXT(/N))
+for DIR ($dirs);do
+    # Set up aliases (global, suffix and the proper ones)
+    [[ -f $DIR/*[^~](#qNY1.,@) ]]&&for REPLY in $DIR/*[^~](N.,@);do
+        if [[ $REPLY != $NCTXT/* ]];then
+            REPLY="$REPLY:t=$(<$REPLY)"
+            local KEY=${(M)REPLY##[^=]##}
+            alias "${${REPLY#*=}%%:*}" \
+                "${(M)REPLY##[^=]##}=${REPLY#*:}"
+            NC[$KEY]=${REPLY#*:}
+            [[ $KEY == SNIP_* ]]&&typeset -gx $KEY="${REPLY#*:}"
+        else
+            local QVAL=$REPLY:t
+            NC[$QVAL]="$(<$REPLY)"
+            NC[$QVAL]=${(%)NC[$QVAL]}
+        fi
+    done
+done
+
+int/nc::reset
+
+}
+
+# vim:ft=zsh

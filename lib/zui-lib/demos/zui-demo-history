@@ -1,0 +1,38 @@
+# Started from Zle or from command line
+
+-zui_glib_cleanup deserialize:"zui-demo-history"
+-zui_glib_init app:"zui-demo-history" app_name:"ZUI History"
+emulate -LR zsh -o extendedglob -o typesetsilent -o warncreateglobal
+-zui_glib_init2 # after emulate -LR
+
+-zui_glib_store_default_app_config b:border 1
+-zui_glib_store_default_app_config s:select_mode "quit"   # Quit event loop on text-selection
+-zui_glib_store_default_app_config s:text_mode "off"      # Select whole lines
+-zui_glib_store_default_app_config b:text_select 1        # Allow selection of text
+-zui_glib_store_default_app_config s:status_size 2       # The size of the status window
+
+# Generator for module 1
+demo_generator_A() {
+    local mod="$1" ice="$2"
+
+    # Content, no hyper-links
+    reply=( "${ZUI[YELLOW]}ZUI${ZUI[FMT_END]} history example! Module $mod, instance $ice." )
+
+    # Non-selectable lines   Hops to jump with [ and ]   Local anchors   Spacing
+    reply2=( )               reply3=( 1 )                reply4=( )      reply5="$mod"
+}
+
+ZUI[COLORING_PATTERN]="(vim|emacs|git|make)" ZUI[COLORING_MATCH_MULTIPLE]=1
+ZUI[START_IN_QUERY]=1
+
+## Start application ##
+# a:u- is: array, unique elements
+zui-event-loop 1:demo_generator_A a:u-history 1:demo_generator_A
+
+print -zr -- "$REPLY"
+
+-zui_glib_cleanup serialize
+
+return 0
+
+# vim:ft=zsh

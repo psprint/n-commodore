@@ -1,0 +1,122 @@
+# Started from Zle or from command line
+
+-zui_glib_cleanup deserialize:"zui-demo-nmap"
+-zui_glib_init app:"zui-demo-nmap" app_name:"ZUI Nmap TUI"
+emulate -LR zsh -o extendedglob -o typesetsilent -o warncreateglobal
+-zui_glib_init2 # after emulate -LR
+
+-zui_glib_store_default_app_config s:timeout 300
+-zui_glib_store_default_app_config s:text_mode off
+
+local -a coproc_output opts hosts
+local internal nstarted=0  # denote if nmap is running
+
+local cfg_dir="$HOME/.config/nmap_zui"
+command mkdir -p $cfg_dir
+command touch $cfg_dir/opts.txt $cfg_dir/hosts.txt
+opts=( "${(@f)"$(<$cfg_dir/opts.txt)"}" )
+
+hosts=( "${(@f)"$(<$cfg_dir/hosts.txt)"}" )
+[[ -z "${hosts[1]}" ]] && { hosts[1]="127.0.0.1"; hosts[2]="192.168.0.*"; }
+
+demo_generator_A() {
+    local mod="$1" ice="$2"
+
+    reply=()
+    -zui_glib_rc_button "Abutton1" "${ZUI[MAGENTA]}Run nmap${ZUI[FMT_END]}" 'internal=1; run_sudo; report_options; run_nmap; ZUI[redraw]=1'
+    -zui_glib_rc_button "Abutton2" "${ZUI[MAGENTA]}Add set${ZUI[FMT_END]}" 'internal=1; opts+=( "" ); -zui_glib_fly_mod_regen 1 1'
+    -zui_glib_rc_button "Abutton3" "${ZUI[MAGENTA]}Remove set${ZUI[FMT_END]}" 'internal=1; opts[-1]=(); -zui_glib_fly_mod_regen 1 1'
+    -zui_glib_rc_button "Abutton4" "${ZUI[MAGENTA]}Save${ZUI[FMT_END]}" 'internal=1; print -rl -- ${opts[@]} > $cfg_dir/opts.txt; opts=( ${opts[@]} ); -zui_glib_fly_mod_regen 1 1'
+    -zui_glib_rc_button "Abutton5" "${ZUI[YELLOW]}Add ->${ZUI[FMT_END]}" 'internal=1; hosts+=( "${ZUI[my_host_data]}" ); print -rl -- "${hosts[@]}" > $cfg_dir/hosts.txt; -zui_glib_fly_mod_regen 1 1'
+    -zui_glib_rc_button "Abutton6" "${ZUI[YELLOW]}<- Delete${ZUI[FMT_END]}" 'internal=1; hosts[${ZUI[my_select_idx]}]=(); print -rl -- "${hosts[@]}" > $cfg_dir/hosts.txt; ZUI[my_select_idx]=1; -zui_glib_fly_mod_regen 1 1'
+
+    ZUI[my_host_width]=35
+    ZUI[my_host_idx]=1
+    (( ${+ZUI[my_host_data]} == 0 )) && ZUI[my_host_data]="<enter host>"
+    noglob -zui_glib_text_field "Atextfield1" ZUI[my_host_width] ZUI[my_host_idx] ZUI[my_host_data]
+
+    ZUI[my_select_width]=30
+    (( ${+ZUI[my_select_idx]} == 0 )) && ZUI[my_select_idx]=1
+    ZUI[my_select_data]=${(j,;,)hosts}
+    noglob -zui_glib_list_box "Alistbox1" ZUI[my_select_width] ZUI[my_select_idx] ZUI[my_select_data] "" "" "" 'ZUI[my_host_data]=${${(As,;,)ZUI[my_select_data]}[${ZUI[my_select_idx]}]}'
+    
+    integer size=${#opts} i
+    for (( i=1; i<=size; ++i )); do
+        ZUI[my_line_width_$i]=50
+        ZUI[my_line_idx_$i]=1
+        noglob -zui_glib_text_field "line_$i" ZUI[my_line_width_$i] ZUI[my_line_idx_$i] opts[$i] "" "" "" "set_opts $i"
+    done
+
+    # Content
+    reply=( "${reply[1]}" ""
+            "Host: ${reply[7]} ${reply[5]} Choose: ${reply[8]} ${reply[6]}"
+            ""
+            "${ZUI[RED]}Option-sets (edit to activate)${ZUI[FMT_END]} ${reply[2]} ${reply[3]} ${reply[4]}"
+            "${(@)reply[9,-1]}"
+    )
+
+    # Non-selectable lines  Hops to jump with [ and ]   Local anchors
+    reply2=( )              reply3=( 1 )                reply4=( )
+}
+
+demo_generator_B() {
+    reply=()
+    -zui_glib_button "Bbutton1" "${ZUI[MAGENTA]}(clear)${ZUI[FMT_END]}" 'internal=1; coproc_output=( ); -zui_glib_fly_mod_regen 2 1'
+    -zui_glib_button "Bbutton2" "${ZUI[MAGENTA]}Save${ZUI[FMT_END]}" 'internal=1; print -rl -- "${coproc_output[@]}" > ${~ZUI[my_path_data]}; -zui_glib_msg "Saved to: " ${~ZUI[my_path_data]}'
+
+    ZUI[my_path_width]=20
+    ZUI[my_path_idx]=1
+    (( ${+ZUI[my_path_data]} == 0 )) && ZUI[my_path_data]="~/scan.txt"
+    noglob -zui_glib_text_field "Atextfield1" ZUI[my_path_width] ZUI[my_path_idx] ZUI[my_path_data]
+
+    reply=( "${ZUI[YELLOW]}Nmap output${ZUI[FMT_END]} ${reply[1]} ${reply[3]} ${reply[2]}" "${coproc_output[@]}" )  reply2=( )  reply3=( 1 )  reply4=( )
+}
+
+# Read & publish configure/make output
+-zui-standard-timeout-callback() {
+    (( nstarted == 0 )) && return
+
+    local line had_read=0
+    repeat 20; do
+        read -r -p -t 0 line 2>/dev/null && { had_read=1; coproc_output+=( "$line" ); } || break
+    done
+
+    (( had_read == 1 )) && -zui_glib_fly_mod_regen 2 1
+    (( had_read == 0 )) && [[ "${jobtexts[*]}" != *nmap* ]] && { ZUI[redraw]=1; nstarted=0; -zui_glib_msg "Message: " "nmap ended"; }
+}
+
+run_sudo() {
+    zcurses end
+    sudo true
+    zcurses refresh
+}
+
+report_options() {
+    -zui_glib_msg "Using options: " ${ZUI[my_nmap_options]} " to scan host(s): " ${ZUI[my_host_data]}
+    if [[ "${#coproc_output}" -gt 0 ]]; then
+        coproc_output+=( "${ZUI[YELLOW]}"------------------------------------------------------------------------"${ZUI[FMT_END]}" )
+    fi
+}
+
+run_nmap() {
+    [[ -z "${ZUI[my_nmap_options]}" ]] && { -zui_glib_msg "No options selected, not running"; return; }
+    [[ -z "${ZUI[my_host_data]}" || "${ZUI[my_host_data]}" = "<enter"* ]] && { -zui_glib_msg "No host given, not running"; return; }
+
+    nstarted=1
+    coproc 2>&1 sudo nmap ${=ZUI[my_nmap_options]} ${ZUI[my_host_data]%%[[:space:]]##\#*}
+}
+
+set_opts() {
+    local index="$1"
+    ZUI[my_nmap_options]="${opts[index]%%[[:space:]]#\#*}"
+}
+
+ZUI[COLORING_PATTERN]="(PORT|STATE|SERVICE|VERSION|NetBIOS)" ZUI[COLORING_MATCH_MULTIPLE]=1
+## Start application ##
+zui-event-loop 1:demo_generator_A 1:demo_generator_B
+
+-zui_glib_cleanup serialize
+
+return 0
+
+# vim:ft=zsh:syntax=sh

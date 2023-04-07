@@ -1,0 +1,23 @@
+#!/usr/bin/env zsh
+
+palette() {
+    # Preamble – emulate & 0=…
+    eval "${SNIP_EMULATE_OPTIONS_ZERO:-false}"||\
+        0=${${${(M)${0::=${(%):-%x}}:#/*}:-$PWD/$0}:A}
+    source $0:h:h/share/preamble.inc.zsh --fun||return 3
+    local -a opts; local -A Opts
+    int/nc::parse-opts "O" Opts opts "$@"||return 7
+    local qe=7
+    (($+Opts[-O]))&&qe=
+    integer i
+    for i in {1..255}; do
+        if (( i > 139 )); then
+            builtin print -n $'\e'"[44;$qe;38;5;$i"m${(l:3::0:)i}$1$'\e[0m'" "
+        else
+            builtin print -n $'\e'"[47;$qe;38;5;$i"m${(l:3::0:)i}$1$'\e[0m'" "
+        fi
+    done
+    builtin print -P %f%b
+}
+
+palette "$@"

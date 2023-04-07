@@ -1,0 +1,27 @@
+#!/usr/bin/env zsh
+# Display cURL progress bar on a single line
+int/nc::single-line() {
+    eval "${SNIP_EMULATE_OPTIONS_ZERO:-false}"||\
+        0=${${${(M)${0::=${(%):-%x}}:#/*}:-$PWD/$0}:A}
+
+    local n=$'\n' r=$'\r' zero=$'\0' line
+
+    {
+      command perl -pe 'BEGIN { $|++; $/ = \1 }; tr/\r\n/\n\0/' \
+        || gstdbuf -o0 gtr '\r\n' '\n\0' \
+        || stdbuf -o0 tr '\r\n' '\n\0';
+      print
+    } 2>/dev/null | while IFS= read -r line;
+
+    do
+        if [[ $line == *$zero* ]];then
+            # cURL doesn't add a newline to progress bars
+            # print -nr -- "${r}${(l:COLUMNS:: :):-}${r}${line##*${zero}}"
+            builtin print -nr -- "${r}${(l:COLUMNS:: :):-}${r}${line%${zero}}"
+        else
+            builtin print -nr -- "${r}${(l:COLUMNS:: :):-}${r}${${line//[${r}${n}]/}%\%*}${${(M)line%\%}:+%}"
+        fi
+    done
+    print
+}
+# vim:ft=zsh

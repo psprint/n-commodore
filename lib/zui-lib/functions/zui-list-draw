@@ -1,0 +1,168 @@
+#!/usr/bin/env zsh
+builtin emulate -L zsh
+
+zmodload zsh/curses
+
+setopt typesetsilent extendedglob
+
+-zui_list_print_with_ansi() {
+    local win="$1" text="$2" out col bcol attr chunk Xout
+    integer text_offset="$3" max_text_len="$4" text_len=0 no_match=0 nochunk_text_len to_skip_from_chunk to_chop_off_from_chunk before_len
+
+    # 1 - non-escaped text, 2 - first number in the escaped text, with ;
+    # 3 - second number, 4 - text after whole escape text
+
+    while [[ -n "$text" && "$no_match" -eq 0 ]]; do
+        # Example: \e[0;31m
+        if [[ "$text" = (#b)([^$'\e']#)$'\e'\[([0-9](#c0,2))(#B)(\;|)(#b)([0-9](#c0,2))[mK](*) ]]; then
+            # Text for further processing
+            text="$match[4]"
+            # Text chunk to output now
+            out="$match[1]"
+            # Save color
+            col=-1
+            (( ${match[2]:-0} >= 30 && ${match[2]:-0} <= 39 )) && col="$match[2]"
+            (( ${match[3]:-0} >= 30 && ${match[3]:-0} <= 39 )) && col="$match[3]"
+            # Save background color
+            bcol=-1
+            (( ${match[2]:-0} >= 40 && ${match[2]:-0} <= 49 )) && bcol="$match[2]"
+            (( ${match[3]:-0} >= 40 && ${match[3]:-0} <= 49 )) && bcol="$match[3]"
+            # Save attribute
+            attr=-1
+            (( ${match[2]:--1} >= 0 && ${match[2]:--1} <= 27 )) && attr="$match[2]"
+            (( ${match[3]:--1} >= 0 && ${match[3]:--1} <= 27 )) && attr="$match[3]"
+        else
+            out="$text"
+            no_match=1
+        fi
+
+        if [ -n "$out" ]; then
+################ Expand tabs ################
+            chunk="$out"
+            before_len="$text_len"
+            Xout=""
+
+            while [ -n "$chunk" ]; do
+                [[ "$chunk" = (#b)([^$'\t']#)$'\t'(*) ]] && {
+                    (( all_text_len=((before_len+${#match[1]})/8+1)*8 ))
+
+                    Xout+="${(r:all_text_len-before_len:: :)match[1]}"
+
+                    before_len+=all_text_len-before_len
+                    chunk="$match[2]"
+                } || {
+                    Xout+="$chunk"
+                    break
+                }
+            done
+#############################################
+
+            # Input text length without the current chunk
+            nochunk_text_len=text_len
+            # Input text length up to current chunk
+            text_len+="$#Xout"
+
+            # Should start displaying with this chunk?
+            # I.e. stop skipping left part of the input text?
+            if (( text_len > text_offset )); then
+                to_skip_from_chunk=text_offset-nochunk_text_len
+
+                # LEFT - is chunk off the left skip boundary? +1 for 1-based index in string
+                (( to_skip_from_chunk > 0 )) && Xout="${Xout[to_skip_from_chunk+1,-1]}"
+
+                # RIGHT - is text off the screen?
+                if (( text_len-text_offset > max_text_len )); then
+                    to_chop_off_from_chunk=0+(text_len-text_offset)-max_text_len
+                    Xout="${Xout[1,-to_chop_off_from_chunk-1]}"
+                fi
+                
+                [ -n "$Xout" ] && zcurses string "$win" "$Xout"
+            fi
+        fi
+
+        if (( no_match == 0 )); then
+            # Color code dominates - simplification
+            # for performance
+            if (( col >= 30 && col <= 39 )); then
+                (( bcol >= 40 && bcol <= 49 )) && currentb="${__c[bcol-39]}"
+                current="${__c[col-29]}"
+                # col, bcol, attr are currently
+                # not possible at the same time,
+                # but this code supports that
+                [[ "$attr" = 1 ]] && zcurses attr "$win" "$current/$currentb" +bold || zcurses attr "$win" "$current/$currentb"
+            elif (( bcol >= 40 && bcol <= 49 )); then
+                currentb="${__c[bcol-39]}"
+                [[ "$attr" = 1 ]] && zcurses attr "$win" "$current/$currentb" +bold || zcurses attr "$win" "$current/$currentb"
+            elif [[ "$attr" -eq 0 ]]; then
+                zcurses attr "$win" "$wrk_bold" "${ZUI[colorpair]}"
+                current="$foreground"
+                currentb="$background"
+            elif [[ "$attr" = 1 ]]; then
+                zcurses attr "$win" +bold
+            fi
+
+            if [[ "$attr" != -1 ]]; then
+                # Bold, blink, reverse, underline
+                [[ "$attr" = "21" ]] && zcurses attr "$win" -bold || {
+                    [[ "$attr" = 5 || "$attr" = 6 ]] && zcurses attr "$win" +blink || {
+                        [[ "$attr" = "25" ]] && zcurses attr "$win" -blink || {
+                            [[ "$attr" = 7 ]] && zcurses attr "$win" +reverse || {
+                                [[ "$attr" = "27" ]] && zcurses attr "$win" -reverse || {
+                                    [[ "$attr" = 4 ]] && zcurses attr "$win" +underline || {
+                                        [[ "$attr" = "24" ]] && zcurses attr "$win" -underline
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            fi
+        fi
+    done
+}
+
+integer highlight="$1"
+integer page_height="$2"
+integer page_width="$3"
+integer y_offset="$4"
+integer x_offset="$5"
+integer text_offset="$6"
+local win="$7"
+local active_text="$8"
+shift 8
+integer max_text_len=page_width-x_offset
+
+[[ "$active_text" = "underline" || "$active_text" = "reverse" || "$active_text" = "blink" || "$active_text" = "standout" ]] || active_text=""
+
+integer i=1 max_idx=page_height end_idx=${#}
+(( end_idx > max_idx )) && end_idx=max_idx
+
+[[ "${ZUI[bold]}" = 1 ]] && local wrk_bold="+bold" || local wrk_bold="-bold"
+zcurses attr "$win" "$wrk_bold" "${ZUI[colorpair]}"
+zcurses clear "$win"
+
+local foreground="${ZUI[colorpair]%/*}" background="${ZUI[colorpair]#*/}"
+local current="$foreground" currentb="$background"
+
+local text
+for text; do
+    (( i > end_idx )) && break
+
+    zcurses move "$win" "$y_offset" "$x_offset"
+
+    if (( i == highlight )); then
+        [[ -n "$active_text" ]] && zcurses attr "$win" +"$active_text"
+        -zui_list_print_with_ansi "$win" "$text" "$text_offset" "$max_text_len"
+        [[ -n "$active_text" ]] && zcurses attr "$win" -"$active_text"
+    else
+        -zui_list_print_with_ansi "$win" "$text" "$text_offset" "$max_text_len"
+    fi
+    zcurses clear "$win" eol
+
+    y_offset+=1
+    i+=1
+done
+
+(( end_idx < max_idx )) && { zcurses move "$win" "$y_offset" "$x_offset"; zcurses clear "$win" eol; }
+zcurses attr "$win" "${ZUI[colorpair]}"
+# vim:ft=zsh

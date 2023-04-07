@@ -1,0 +1,139 @@
+#!/usr/bin/env zsh
+# Draws list-box drop-down list
+
+local __page_height="$1" __page_width="$2" __ypos="$3" __xpos="$4" __id="$5" __width_var="$6" __idx_var="$7" __opts_var="$8" __data2="$9" __data2="$10" __data3="$11"
+
+# Get maximum width
+local -a options
+options=( "${(@Ps:;:)__opts_var}" )
+# Remove color marks
+# [all] [fg] [bg] TEXT
+options=( "${options[@]//(#b)([$'\03'-$'\07'$'\013'-$'\014'$'\016'-$'\031'])([$'\03'-$'\07'$'\013'-$'\014'$'\016'-$'\017']|)([$'\020'-$'\030']|)([^${ZUI[FMT_END]}]#)${ZUI[FMT_END]}/$match[4]}" )
+
+# Compute window x-dimension and position
+local txt
+integer width=7 height=10 size="${#options}"
+for txt in "${options[@]}"; do
+    (( width = ${(m)#txt} > width ? ${(m)#txt} : width ))
+done
+
+if (( __ypos + size + 2 > __page_height + 1 )); then
+    if (( size + 2 > __page_height + 1 )); then
+        height=__page_height-2
+        (( height <= 0 )) && height=__page_height # paranoid
+        __ypos=3
+    else
+        height=size
+        (( __ypos = __page_height - size - 1 ))
+    fi
+else
+    (( __ypos+=1 ))
+    height=size
+fi
+
+if (( __xpos + width + 4 > __page_width )); then
+    # Basic protection, can be inaccurate
+    (( __xpos=__page_width - width - 4 ))
+fi
+
+zcurses delwin lbox 2>/dev/null
+zcurses addwin lbox $(( height + 2 )) $(( width + 4 )) "$__ypos" "$__xpos" || return 1
+zcurses bg lbox "${ZUI[colorpair]}"
+
+# Clear input buffer
+zcurses timeout lbox 0
+zcurses input lbox key keypad
+zcurses timeout lbox -1
+key=""
+keypad=""
+
+integer hidx __start __end return_val=0 initial_idx=${(P)__idx_var}
+
+__start=initial_idx-height/2
+if (( __start <= 0 )); then
+    __start=1
+    __end=size
+    if (( size > height )); then
+        __end=height
+    fi
+elif (( __start + height - 1 > size )); then
+    __start=size-height+1
+    __end=size
+else
+    __end=initial_idx+(height-height/2)-1
+fi
+
+while (( 1 )); do
+    # Draw list box
+    zcurses clear lbox
+
+    integer i count=1
+    hidx=${(P)__idx_var}
+    for (( i = __start; i <= __end; ++ i )); do
+        txt="${options[i]}"
+        zcurses move lbox "$count" 2
+
+        if (( i == hidx )); then
+            zcurses attr lbox +reverse
+            zcurses string lbox "$txt"
+            zcurses attr lbox -reverse
+        else
+            zcurses string lbox "$txt"
+        fi
+
+        (( ++ count ))
+    done
+
+    zcurses border lbox
+    zcurses refresh lbox
+
+    # Wait for input
+    local key keypad final_key
+    zcurses input "lbox" key keypad
+
+    # Get the special (i.e. "keypad") key or regular key
+    if [[ -n "$key" ]]; then
+        final_key="$key"
+    elif [[ -n "$keypad" ]]; then
+        final_key="$keypad"
+    fi
+
+    case "$final_key" in
+        (UP|k|BTAB)
+            hidx=${(P)__idx_var}
+            (( hidx = hidx > 1 ? hidx-1 : hidx ))
+            if (( hidx < __start )); then
+                __start=hidx
+                __end=__start+height-1
+            fi
+            : ${(P)__idx_var::=$hidx}
+            ;;
+        (DOWN|j|$'\t')
+            hidx=${(P)__idx_var}
+            (( hidx = hidx < ${#options} ? hidx+1 : hidx ))
+            if (( hidx > __end )); then
+                __end=hidx
+                __start=__end-height+1
+            fi
+            : ${(P)__idx_var::=$hidx}
+            ;;
+        ($'\E')
+            : ${(P)__idx_var::=$initial_idx}
+            return_val=1
+            break
+            ;;
+        ($'\n')
+            break
+            ;;
+        (??*)
+            ;;
+        (*)
+            ;;
+    esac
+done
+
+zcurses delwin lbox 2>/dev/null
+
+return $return_val
+
+# vim:ft=zsh

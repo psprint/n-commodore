@@ -1,0 +1,44 @@
+#compdef n-commodore
+
+setopt localoptions extendedglob warncreateglobal typesetsilent
+
+local curcontext="$curcontext" state ret=1
+
+_arguments -C \
+    '1: :->command'\
+    '2: :->command'\
+    '*: :->argument' && ret=0
+
+case $state in
+    command)
+        local -a q=(tags:"generate Ctags for current directory"
+                    con:"open smart console for current directory"
+                    qprint:"print contents of given variable (by name, not by value)"
+                    swap:"swap two files in their locations"
+                    gh-create:"create a repository at GitHub"
+                    gh-unscope:"get the username of the given repository at GitHub (wins the one with biggest # of forks)"
+                    gh-clone:"get the the given repository from GitHub, only via username/repository ID, with a graphical, colorful progress meter"
+                    clone:"get a given repo via full URL, with a graphical, colorful progress meter"
+                    prj-dir:"get the project by looking for a file (like .git, configure, e.g.) in uptree ((../)+{file})"
+                countdown:"a graphical countdown, waits for ARGUMENT seconds."
+                 hop:"deploy a block of code for execution in ZLE\
+ scope"
+                    fresh-in:"finds files changed in ARGUMENT-\
+minutes"
+                    filter:"filters out any color escape codes, reads stdin\
+ if no arguments"
+                    try-ng:"takes string and a pattern and returns the string. NON-GREEDY mode"
+                    tries-ng:"takes strings and a pattern and returns the strings each after pat applied. NON-GREEDY mode"
+                    try:"the same as try-ng, but greedy"
+                    tries:"the same as tries-ng, but greedy"
+                    x-tract:"extracts any archive, recognizes many types"
+                    palette:"shows the 256 color palette"
+        )
+         _describe -t features "available commands" q && ret=0
+        ;;
+
+    argument)
+        ;;
+esac
+
+return $ret

@@ -1,0 +1,32 @@
+#!/usr/bin/env zsh
+# Copyright (c) 2023 Sebastian Gniazdowski
+#
+# ok/qlocal
+#
+
+ok/qlocal() {
+    eval "${SNIP_EMULATE_OPTIONS_ZERO:-false}"||\
+        0=${${${(M)${0::=${(%):-%x}}:#/*}:-$PWD/$0}:A}
+
+    setopt localtraps
+    integer EC;[[ -f $0 ]];EC+=$?
+    local TEXT
+
+    # Options and arguments
+    local -A Opts; local -a opts tmoutop
+    int/nc::parse-opts "r -reply a -arrays m -match" Opts opts "$@"||\
+        {iqerr incorrect options given to {func}$0:t{%} fun; return EC+17;}
+    set -- "$reply[@]"
+    int/nc::opt-cascade Opts -r --reply -a --arrays -m --match
+    EC+=$?
+    integer QU
+    ((!$#||$+Opts[-r]))&&TEXT+="local -a reply=();local REPLY=;"
+    ((!$#||$+Opts[-m]))&&TEXT+="local -a match=() mbegin=() mend=();"\
+"local MATCH;integer MBEGIN MEND;"
+    (($+Opts[-a]))&&TEXT+="local -a match=() mbegin=() mend=() reply=();"
+
+    builtin trap "$TEXT" EXIT
+    EC+=$?
+    return EC
+}
+# vim:ft=zsh

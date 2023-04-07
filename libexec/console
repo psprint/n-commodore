@@ -1,0 +1,18 @@
+#!/usr/bin/env zsh
+
+console(){
+    # Preamble – emulate & 0=…
+    eval "${SNIP_EMULATE_OPTIONS_ZERO:-false}"||\
+        0=${${${(M)${0::=${(%):-%x}}:#/*}:-$PWD/$0}:A}
+    source $0:h:h/share/preamble.inc.zsh --fun
+
+    local -A Opts; local -a opts
+    int/nc::parse-opts "C: -dir: s -sort R -reverse" Opts opts "$@"||\
+        {iqerr incorrect options given to {cmd}${${@:#-*}[1]}{%}; return 7;}
+    set -- "$reply[@]"
+
+    [[ -x $NCDIR/smart-consoles/iq$1 ]]&&\
+        $NCDIR/smart-consoles/iq$1 $opts -- "${(@)@[2,-1]}"
+}
+
+console "$@"

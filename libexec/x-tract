@@ -1,0 +1,321 @@
+#!/usr/bin/env zsh
+
+x-tract() {
+    eval "${SNIP_EMULATE_OPTIONS_ZERO:-false}"||\
+        0=${${${(M)${0::=${(%):-%x}}:#/*}:-$PWD/$0}:A}
+    source $0:h:h/share/preamble.inc.zsh --fun
+
+    local -a opt_move opt_move2 opt_prune opt_auto opt_bkp opt_quiet
+    eval "local qfopt=$SNIP_F_OPT_FOR_ZP_OPTS_VERSION"
+    builtin zparseopts $qfopt \
+            -D -E -- -move=opt_move -move2=opt_move2 -prune=opt_prune \
+            -auto=opt_auto -bkp=opt_bkp q=opt_quiet -quiet=opt_quiet|| \
+        {iqerr "incorrect options given to" \
+                  "'{pre}x-tract{note}' (available are: {opt}--auto{note}," \
+                  "{opt}--move{note}, {opt}--move2{note}, {opt}--prune{note}," \
+                  "{opt}--bkp{note}, {opt}--quiet/-q{note})";return 1;}
+
+    local file="$1" ext="$2"
+    integer move=${${${(M)${#opt_move}:#0}:+0}:-1} \
+            move2=${${${(M)${#opt_move2}:#0}:+0}:-1} \
+            prune=${${${(M)${#opt_prune}:#0}:+0}:-1} \
+            auto=${${${(M)${#opt_auto}:#0}:+0}:-1} \
+            bkp=${${${(M)${#opt_bkp}:#0}:+0}:-1} \
+            quiet=${${${(M)${#opt_quiet}:#0}:+0}:-1}
+
+    if [[ -z $file && $auto -eq 0 ]] { 
+        iqwarn "argument needed (the file to {func}x-tract{txt}) or \
+            the {opt}--auto{txt} \
+            option.{nl}{note}Will assume that {opt}--auto{note} has been given and continue operating…"
+        LANG=C command sleep 1.3 NCIO
+        auto=1
+    }
+
+    if (( auto )) {
+        # First try known file extensions
+        local -a files
+        integer ret_val
+        files=( (#i)**/*.(zip|rar|7z|tgz|tbz|tbz2|tar.gz|tar.bz2|tar.7z|txz|tar.xz|gz|xz|tar|dmg|exe)~(*/*|.(_zinit|_backup|git|svn)(/*|))(-.DN) )
+        for file ( $files ) {
+            x-tract "$file" $opt_move $opt_move2 $opt_prune $opt_bkp \
+                $opt_quiet #${${(M)${#files}:#1}:+--bkp}
+            ret_val+=$?
+        }
+        # Second, try to find the archive via `file' tool
+        if (( !${#files} )) {
+            local -aU output infiles stage2_processed archives
+            infiles=( **/*~(._zinit|._backup|.git|.svn|.)(/*|)~*/*/*(-.DN) )
+            output=( ${(@f)"$(command file -- $infiles 2>&1)"} )
+            archives=( ${(M)output[@]:#(#i)(* |(#s))(zip|rar|xz|7-zip|gzip|bzip2|tar|exe|PE32) *} )
+            for file ( $archives ) {
+                local fname=${(M)file#(${(~j:|:)infiles}): } desc=${file#(${(~j:|:)infiles}): } type
+                fname=${fname%%??}
+                [[ -z $fname || -n ${stage2_processed[(r)$fname]} ]] && continue
+                type=${(L)desc/(#b)(#i)(* |(#s))(zip|rar|xz|7-zip|gzip|bzip2|tar|exe|PE32) */$match[2]}
+                if [[ $type = (zip|rar|xz|7-zip|gzip|bzip2|tar|exe|pe32) ]] {
+                    (( !quiet )) && \
+                        iqnotice -h "detected a {data}$type{%} archive in the file {file}$fname"
+                    x-tract "$fname" "$type" $opt_move $opt_move2 $opt_prune \
+                         $opt_bkp $opt_quiet #${${${#archives}:#1}:+--bkp}
+                    integer iret_val=$?
+                    ret_val+=iret_val
+
+                    (( iret_val )) && continue
+
+                    # Support nested tar.(bz2|gz|…) archives
+                    local infname=$fname
+                    [[ -f $fname.out ]] && fname=$fname.out
+                    files=( *.tar(ND) )
+                    if [[ -f $fname || -f ${fname:r} || -f $files[1] ]] {
+                        local -aU output2 archives2
+                        output2=( ${(@f)"$(command file -- "$fname"(N) "${fname:r}"(N) "$files[1]"(N) 2>&1)"} )
+                        archives2=( ${(M)output2[@]:#(#i)(* |(#s))(zip|rar|xz|7-zip|gzip|bzip2|tar|exe|PE32) *} )
+                        local file2
+                        for file2 ( $archives2 ) {
+                            fname=${file2%:*} desc=${file2##*:}
+                            local type2=${(L)desc/(#b)(#i)(* |(#s))(zip|rar|xz|7-zip|gzip|bzip2|tar|exe|PE32) */$match[2]}
+                            if [[ $type2 = (zip|rar|xz|7-#zip|gzip|bzip2|tar) ]] {
+                                # TODO: if multiple archives are really in the archive,
+                                # this might delete too soon… However, it's unusual case.
+                                [[ $fname != $infname && $prune -eq 1 ]] && command rm -f "$infname"
+                                (( !quiet )) && \
+                                    iqnotice -h "detected a {data}${type2}{txt} archive in the file {file}${fname}"
+                                x-tract "$fname" "$type2" $opt_move $opt_move2 \
+                                    $opt_prune \
+                                    $opt_bkp $opt_quiet \
+                                    #${${${#archives}:#1}:+--bkp}
+                                ret_val+=$?
+                                stage2_processed+=( $fname )
+                                if [[ $fname == *.out ]] {
+                                    [[ -f $fname ]] && command mv -f "$fname" "${fname%.out}"
+                                    stage2_processed+=( ${fname%.out} )
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        return ret_val
+    }
+
+    if [[ ! -e $file ]] {
+        iqerr "{txt}the file '{data}${file}{txt}' doesn't exist"
+        return 1
+    }
+
+    if (( bkp )) {
+        command mkdir -p ._backup
+        #command rm -rf ._backup/*(DN)
+        local -a q=(*~(._zinit|._backup|.git|.svn|.hg|$file)(/*|)(DN))
+        command mv -f $q ._backup
+        ((quiet))||iqnotice {note}moved \#{int}$#q%b{note} files to \
+                    {dir}._backup%b{note} directory located in current \
+                    {var}PWD
+    }
+
+    x-tract-exec() {
+        local file="$1" fun="$2" retval
+        (( !quiet )) && \
+            iqmsg -h "{note}Unpacking the files from: '{file}$file{note}'{…}"
+        $fun; retval=$?
+        if (( retval == 0 )) {
+            local -a files
+            files=( *~(._zinit|._backup|.git|.svn|.hg|$file)(/*|)(DN) )
+            (( ${#files} && prune )) && command rm -f "$file"
+        }
+        return retval
+    }
+
+    x-tract-check() { (( ${+commands[$1]} )) || \
+        iqerr "no command {data}$1{txt}, it is required to unpack {file}$2"
+    }
+
+    case "${${ext:+.$ext}:-$file}" in
+        ((#i)*.zip)
+            x-tract-sub() { x-tract-check unzip "$file" || return 1; command unzip -o "$file"; }
+            ;;
+        ((#i)*.rar)
+            x-tract-sub() { x-tract-check unrar "$file" || return 1; command unrar x "$file"; }
+            ;;
+        ((#i)*.tar.bz2|(#i)*.tbz|(#i)*.tbz2)
+            x-tract-sub() { x-tract-check bzip2 "$file" || return 1; command bzip2 -dc "$file" | command tar -xf -; }
+            ;;
+        ((#i)*.tar.gz|(#i)*.tgz)
+            x-tract-sub() { x-tract-check gzip "$file" || return 1; command gzip -dc "$file" | command tar -xf -; }
+            ;;
+        ((#i)*.tar.xz|(#i)*.txz)
+            x-tract-sub() { x-tract-check xz "$file" || return 1; command xz -dc "$file" | command tar -xf -; }
+            ;;
+        ((#i)*.tar.7z|(#i)*.t7z)
+            x-tract-sub() { x-tract-check 7z "$file" || return 1; command 7z x -so "$file" | command tar -xf -; }
+            ;;
+        ((#i)*.tar)
+            x-tract-sub() { x-tract-check tar "$file" || return 1; command tar -xf "$file"; }
+            ;;
+        ((#i)*.gz|(#i)*.gzip)
+            if [[ $file != (#i)*.gz ]] {
+                command mv $file $file.gz
+                file=$file.gz
+                integer zi_was_renamed=1
+            }
+            x-tract-sub() {
+                x-tract-check gunzip "$file" || return 1
+                int/nc::get-mtime-into "$file" 'NC[tmp]'
+                command gunzip "$file" |& command grep -E -v '.out$'
+                integer ret=$pipestatus[1]
+                command touch -t "$(strftime %Y%m%d%H%M.%S $NC[tmp])" "$file"
+                return ret
+            }
+            ;;
+        ((#i)*.bz2|(#i)*.bzip2)
+            # Rename file if its extension does not match "bz2". bunzip2 refuses
+            # to operate on files that are not named correctly.
+            # See https://github.com/zdharma-continuum/zinit/issues/105
+            if [[ $file != (#i)*.bz2 ]] {
+                command mv $file $file.bz2
+                file=$file.bz2
+            }
+            x-tract-sub() { x-tract-check bunzip2 "$file" || return 1
+                int/nc::get-mtime-into "$file" 'NC[tmp]'
+                command bunzip2 "$file" |& command grep -E -v '.out$'
+                integer ret=$pipestatus[1]
+                command touch -t "$(strftime %Y%m%d%H%M.%S $NC[tmp])" "$file"
+                return ret
+            }
+            ;;
+        ((#i)*.xz)
+            if [[ $file != (#i)*.xz ]] {
+                command mv $file $file.xz
+                file=$file.xz
+            }
+            x-tract-sub() { x-tract-check xz "$file" || return 1
+                int/nc::get-mtime-into "$file" 'NC[tmp]'
+                command xz -d "$file"
+                integer ret=$?
+                command touch -t "$(strftime %Y%m%d%H%M.%S $NC[tmp])" "$file"
+                return ret
+             }
+            ;;
+        ((#i)*.7z|(#i)*.7-zip)
+            x-tract-sub() { x-tract-check 7z "$file" || return 1; command 7z x "$file" >/dev/null;  }
+            ;;
+        ((#i)*.dmg)
+            x-tract-sub() {
+                local prog
+                for prog ( hdiutil cp ) { x-tract-check $prog "$file" || return 1; }
+
+                integer retval
+                local attached_vol="$( command hdiutil attach "$file" | \
+                           command tail -n1 | command cut -f 3 )"
+
+                command cp -Rf ${attached_vol:-${TMPDIR:-/tmp}/acb321GEF}/*(D) .
+                retval=$?
+                command hdiutil detach $attached_vol
+
+                if (( retval )) {
+                    iqerr "problem occurred when attempted to copy the files" \
+                            "from the mounted image: '{data}${file}{txt}'"
+                }
+                return $retval
+            }
+            ;;
+        ((#i)*.deb)
+            x-tract-sub() { x-tract-check dpkg-deb "$file" || return 1; command dpkg-deb -R "$file" .; }
+            ;;
+        ((#i)*.rpm)
+            x-tract-sub() { x-tract-check cpio "$file" || return 1; $NCDIR/share/rpm2cpio.zsh "$file" | command cpio -imd --no-absolute-filenames;}
+            ;;
+        ((#i)*.exe|(#i)*.pe32)
+            x-tract-sub() {
+                command chmod a+x -- ./$file
+                ./$file /S /D="`cygpath -w $PWD`"
+            }
+            ;;
+    esac
+
+    if [[ $(typeset -f + x-tract-sub) == "x-tract-sub" ]] {
+        x-tract-exec "$file" x-tract-sub || {
+            iqerr -n "x-traction of the archive: '{file}${file}{txt}' occurred problems (exited with: {int}$?{txt})"
+            local -a bfiles
+            bfiles=( ._backup/*(ND) )
+            if (( ${#bfiles} && bkp )) {
+                iqmsg "– restoring the previous files from dir: {dir}._backup/"
+                command mv -f ._backup/*(DN) . 2>/dev/null
+            } else {
+                builtin print
+            }
+            unfunction -- x-tract-sub x-tract-check NCIO
+            return 1
+        }
+    } else {
+        integer warning=1
+    }
+    unfunction -- x-tract-sub x-tract-check NCIO
+
+    local -a execs
+    execs=( **/*~(._zinit|.git|.svn|.hg|._backup)(/*|)(DN-.) )
+    if [[ ${#execs} -gt 0 && -n $execs ]] {
+        execs=( ${(@f)"$( file ${execs[@]} )"} )
+        execs=( "${(M)execs[@]:#[^(:]##:*executable*}" )
+        execs=( "${execs[@]/(#b)([^(:]##):*/${match[1]}}" )
+    }
+
+    builtin print -rl -- ${execs[@]} >! ${TMPDIR:-/tmp}/zinit-execs.$$.lst
+    if [[ ${#execs} -gt 0 ]] {
+        command chmod a+x "${execs[@]}"
+        if (( !quiet )) {
+            if (( ${#execs} == 1 )); then
+                    iqmsg -h Successfully x-tracted and assigned {opt}+x \
+                        {bin}chmod{%} rights to the file: {file}${execs[1]}
+            else
+                local sep="%b{note},%B{bin}"
+                if (( ${#execs} > 7 )) {
+                    iqmsg -h "{note}Successfully" \
+                        "x-tracted and marked executable the appropriate files" \
+                        "({bin}${(pj:$sep:)${(@)execs[1,5]:t}}$sep…{note})" \
+                        "contained" \
+                        "in '{file}$file{note}'. All the x-tracted" \
+                        "#{data}${#execs}{note} executables are" \
+                        "available in the {var}INSTALLED_EXECS{note}" \
+                        "array"
+                } else {
+                    iqmsg -h "{note}Successfully" \
+                        "x-tracted and marked executable" \
+                        "the appropriate #{data}${#execs}%b{note} files" \
+                        "({bin}${(pj:$sep:)${execs[@]:t}}%b{note}) contained" \
+                        "in '{file}$file{note}'"
+                }
+            fi
+        }
+    } elif (( warning )) {
+        iqerr "didn't recognize archive type of {file}${file}{txt} ${ext:+/ {data}${ext}{txt} } (no x-traction has been done)"
+    }
+
+    if (( move || move2 )) {
+        local -a files
+        files=( *~(._zinit|.git|._backup|.tmpattic)(/*|)(DN/) )
+        if (( ${#files} )) {
+            command mkdir -p .tmpattic
+            command mv -f *~(._zinit|.git|._backup|.tmpattic)(/*|)(D) .tmpattic
+            if (( !move2 )) {
+                iqnotice moving files from depth 2 ({path}./a/this-one{txt}) \
+                    to depth 1 (to {path}./this-one{txt})
+                command mv -f **/*~(*/*~*/*/*|*/*/*/*|^*/*|._zinit(|/*)|.git(|/*)|._backup(|/*))(DN) .
+            } else {
+                iqnotice moving files from depth 3 ({path}./a/b/this-one{txt}) \
+                    to depth 1 (to {path}./this-one{txt})
+                command mv -f **/*~(*/*~*/*/*/*|*/*/*/*/*|^*/*|._zinit(|/*)|.git(|/*)|._backup(|/*))(DN) .
+            }
+
+            command mv .tmpattic/$file . NCIO
+            command rm -rf .tmpattic
+        }
+        REPLY="${${execs[1]:h}:h}/${execs[1]:t}"
+    } else {
+        REPLY="${execs[1]}"
+    }
+    return 0
+}
+
+x-tract "$@"

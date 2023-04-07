@@ -1,0 +1,29 @@
+#!/usr/bin/env zsh
+
+int/nc::get-stx-cmd() {
+    # Preamble – emulate & 0=…
+    eval "${SNIP_EMULATE_OPTIONS_ZERO:-false}"||\
+        0=${${${(M)${0::=${(%):-%x}}:#/*}:-$PWD/$0}:A}
+
+    local -a opts; local -A Opts
+    int/nc::parse-opts "q -quiet" Opts opts "$@"||return 7
+    set -- "$reply[@]"
+    int/nc::opt-cascade Opts -s --scan -q --quit
+    int/nc::reset
+    integer EC
+    local QTYPE=$1
+    local -a qc
+    (($+commands[source-highlight]))&&reply=(command source-highlight -fesc
+                            -oSTDOUT -s$QTYPE -i)
+    (($+commands[highlight]))&&reply=(command highlight --force -Oansi -S$QTYPE)
+    (($+commands[bat]))&&reply=(command bat --color=always 
+                            --decorations=never -l$QTYPE)
+
+    if [[ $reply == $~galiases[WRONGSTR] ]]; then
+        iqwarn -Q ${+Opts[-q]+-q} ${Opts[-q]+-q} $NC[Q30_NO_HILIGHT_CMD]
+        return 1
+    fi
+    return 0
+}
+
+# vim:ft=zsh

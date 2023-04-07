@@ -1,0 +1,907 @@
+#!/usr/bin/env zsh
+builtin emulate -L zsh
+
+zmodload zsh/curses
+
+setopt typesetsilent extendedglob
+
+# Compute first to show index - exact page
+-zui_listin_compute_first_to_show_idx() {
+    from_what_idx_list_is_shown=0+((current_idx-1)/page_height)*page_height+1
+}
+
+# Conditional, fully robust page-to-show computation
+-zui_listin_compute_exact_page_if_needed() {
+    # Fallback: in case of any problems compute exact page
+    if [[ "$from_what_idx_list_is_shown" -lt "1" ||
+        "$from_what_idx_list_is_shown" -gt "$last_element" ]]
+    then
+        from_what_idx_list_is_shown=0+((current_idx-1)/page_height)*page_height+1
+    fi
+}
+
+# Compute first to show index - page is
+# scrolled to center to show given index
+-zui_listin_compute_first_to_show_idx_center() {
+    from_what_idx_list_is_shown=current_idx-page_height/2
+    -zui_listin_compute_exact_page_if_needed
+}
+
+# Calling this function means passing information
+# that we move up in the list (to lower index)
+# This means we can move page start as few as 3
+# elements up.
+-zui_listin_compute_first_to_show_idx_up_many() {
+    if [[ "$current_idx" -lt "$from_what_idx_list_is_shown" ||
+        "$current_idx" -gt "$((from_what_idx_list_is_shown + page_height -1))" ]]
+    then
+        from_what_idx_list_is_shown=from_what_idx_list_is_shown-3
+        -zui_listin_compute_exact_page_if_needed
+    fi
+}
+
+# Like above, but in opposite direction
+-zui_listin_compute_first_to_show_idx_down_many() {
+    if [[ "$current_idx" -lt "$from_what_idx_list_is_shown" ||
+        "$current_idx" -gt "$((from_what_idx_list_is_shown + page_height -1))" ]]
+    then
+        from_what_idx_list_is_shown=from_what_idx_list_is_shown+3
+        -zui_listin_compute_exact_page_if_needed
+    fi
+}
+
+# Searches for hyperlink in current line,
+# sets current_segment to first link found
+-zui_listin_search_for_hyperlink() {
+    local -a segments
+    segments=("${(Pz@)list_var_current}")
+
+    # Hide global $nseg
+    local nseg="${#segments}"
+
+    [[ "$current_segment" -gt "$nseg" ]] && current_segment="$nseg"
+    [[ "$current_segment" -le 0 ]] && current_segment="1"
+
+    integer left=current_segment right=current_segment
+
+    # Left
+    while ! -zui_glib_is_hyperlink "${segments[left]}" && ! -zui_glib_is_text_field "${segments[left]}" && ! -zui_glib_is_list_box "${segments[left]}"; do
+        ((-- left))
+        [[ "$left" -le 0 ]] && break
+    done
+
+    # Right
+    while ! -zui_glib_is_hyperlink "${segments[right]}" && ! -zui_glib_is_text_field "${segments[right]}" && ! -zui_glib_is_list_box "${segments[right]}"; do
+        ((++right))
+        [[ "$right" -gt "$nseg" ]] && break
+    done
+
+    # Choose smaller distance
+    if ((left >= 1 && right <= nseg && (current_segment - left) <= (right - current_segment))); then
+        current_segment=left
+    elif ((right <= nseg)); then
+        current_segment=right
+    elif ((left >= 1)); then
+        current_segment=left
+    fi
+}
+
+# Searches for link that is closest graphically to previous
+# current segment
+-zui_listin_search_for_hyperlink_graphical() {
+    [[ "$current_idx" = "$prev_idx" ]] && { -zui_listin_search_for_hyperlink; return $?; }
+
+    local -a segments prev_segments stri_segs stri_prev_segs
+    local line prev_line s ss
+
+    # Position and size of current segment in previous line
+    integer target_offset target_size
+    # Position of examined segment, if proper, then stored
+    # as *_left or *_right
+    integer try try_left=0 try_left_size=0 try_right=0
+    # Index of examined segment, if proper, then stored
+    # as *_left or *_right
+    integer candidate_idx=0 candidate_left=0 candidate_right=0
+
+    segments=("${(Pz@)list_var_current}")
+    prev_segments=("${(Pz@)list_var_prev}")
+
+    -zui_glib_strip_meta_data "${(P)list_var_current}"
+    line="$REPLY"
+    -zui_glib_strip_meta_data "${(P)list_var_prev}"
+    prev_line="$REPLY"
+
+    -zui_glib_strip_meta_data "${prev_segments[current_segment]}"
+    -zui_glib_strip_color_codes "$REPLY"
+    target_size="${#REPLY}"
+    REPLY="${REPLY//\[/\\[}"
+    REPLY="${REPLY//\]/\\]}"
+    target_offset="${prev_line[(i)$REPLY]}"
+
+    for s in "${segments[@]}"; do
+        candidate_idx+=1
+
+        if ! -zui_glib_is_any_hyperlink "$s"; then
+            continue
+        fi
+
+        -zui_glib_strip_meta_data "$s"
+        -zui_glib_strip_color_codes "$REPLY"
+        ss="$REPLY"
+        REPLY="${REPLY//\[/\\[}"
+        REPLY="${REPLY//\]/\\]}"
+        try="${line[(i)$REPLY]}"
+
+        if ((try <= target_offset)); then
+            candidate_left=candidate_idx
+            try_left=try
+            try_left_size=${#ss}
+        elif ((try > target_offset)); then
+            candidate_right=candidate_idx
+            try_right=try
+            break
+        fi
+    done
+
+    # Left (and possibly right) in middle of the examined button
+    if ((try_left != 0 && try_left + try_left_size >= target_offset)); then
+        if ((try_right != 0 && try_right < target_offset + target_size)); then
+            # Which does more pertrude
+            if ((target_offset + target_size - try_right > try_left + try_left_size - target_offset)); then
+                current_segment=candidate_right
+            else
+                current_segment=candidate_left
+            fi
+        else
+            current_segment=candidate_left
+        fi
+    # Right in middle of examined button
+    elif ((try_right != 0 && try_right < target_offset + target_size)); then
+        current_segment=candidate_right
+    # No in middle of the button, so distance to target button
+    # from right edge (left candidate) and left edge (right candidate)
+    elif ((try_left != 0 && try_right != 0 && target_offset - try_left - try_left_size < try_right - target_offset)); then
+        current_segment=candidate_left
+    # As above, opposite result
+    elif ((try_left != 0 && try_right != 0 && target_offset - try_left - try_left_size >= try_right - target_offset)); then
+        current_segment=candidate_right
+    # Single candidate - left
+    elif ((try_left != 0)); then
+        current_segment=candidate_left
+    # Single candidate - right
+    elif ((try_right != 0)); then
+        current_segment=candidate_right
+    else
+        # Fallback method
+        -zui_listin_search_for_hyperlink; return $?
+    fi
+
+    return 0
+}
+
+# Testable, searches for next (excluding current
+# one) hyperlink, returns 1 if not found, 0 if
+# found (this implies update of current_segment)
+#
+# $1 - direction: 0 - left, other - right
+-zui_listin_set_next_hyperlink() {
+    local -a segments
+    segments=("${(Pz@)list_var_current}")
+
+    # Hide global $nseg
+    local nseg="${#segments}"
+
+    [[ "$current_segment" -gt "$nseg" ]] && current_segment="$nseg"
+    [[ "$current_segment" -le 0 ]] && current_segment="1"
+
+    integer left=current_segment right=current_segment
+
+    # Left
+    [[ "$1" = "0" ]] && {
+        while ! -zui_glib_is_hyperlink "${segments[left]}" && ! -zui_glib_is_text_field "${segments[left]}" && ! -zui_glib_is_list_box "${segments[left]}" || ((left == current_segment)); do
+            ((-- left))
+            [[ "$left" -le 0 ]] && break
+        done
+
+        if ((left >= 1)); then
+            current_segment=left
+            return 0
+        fi
+    } || {
+        # Right
+        while ! -zui_glib_is_hyperlink "${segments[right]}" && ! -zui_glib_is_text_field "${segments[right]}" && ! -zui_glib_is_list_box "${segments[right]}" || ((right == current_segment)); do
+            ((++right))
+            [[ "$right" -gt "$nseg" ]] && break
+        done
+
+        if ((right <= nseg)); then
+            current_segment=right
+            return 0
+        fi
+    }
+
+    return 1
+}
+
+typeset -ga reply
+reply=(-1 '')
+integer current_idx="$1"
+integer current_segment="$2"
+integer from_what_idx_list_is_shown="$3"
+integer page_height="$4"
+integer page_width="$5"
+integer last_element="$6"
+integer nseg="$7"
+integer hscroll="$8"
+local key="$9"
+integer in_query="$10"
+local buffer="$11"
+integer uniq_mode="$12"
+integer disable_search="$13"
+local list_var_current="${14}[\$current_idx]"
+local list_var_prev="${14}[\$prev_idx]"
+integer prev_idx="$current_idx"
+local text special_cmd
+local -a wrk_reply
+
+# Trigger nearest hyperlink searching even
+# when ZUI[text_mode] yields no in_query
+integer search_for_hyperlink=0
+
+#
+# Listening for input
+#
+
+# CURRENT_TFIELD block
+if [[ -n "${ZUI[current_tfield]}" ]]; then
+    -zui_util_get_segment "${(P)list_var_current}" "$current_segment"
+    if -zui_glib_decode_text_field "$REPLY" wrk_reply; then
+        case "$key" in
+            ($'\n')
+                ZUI[current_tfield]=""
+                reply=($current_idx TFIELD_LEFT)
+                ;;
+            ($'\E')
+                : ${(P)wrk_reply[3]::=${ZUI[current_tfield_initial_sidx]}}
+                : ${(P)wrk_reply[4]::=${ZUI[current_tfield_initial_data]}}
+                ZUI[current_tfield]=""
+                reply=($current_idx TFIELD_CANCELLED)
+                ;;
+            (DOWN|NPAGE)
+                text="${(P)wrk_reply[2]}"
+                ((text = text > 5 ? text - 1 : text))
+                : ${(P)wrk_reply[2]::=$text}
+                ;;
+            (UP|PPAGE)
+                text="${(P)wrk_reply[2]}"
+                ((text ++))
+                : ${(P)wrk_reply[2]::=$text}
+                ;;
+            ($'\C-K'|$'\C-U')
+                : ${(P)wrk_reply[4]::=}
+                : ${(P)wrk_reply[3]::=1}
+                ZUI[cursor_x]=$((ZUI[current_tfield_cidx_start]))
+                ;;
+            (HOME|$'\C-A')
+                ZUI[cursor_x]="${ZUI[current_tfield_cidx_start]}"
+                : ${(P)wrk_reply[3]::=1}
+                ;;
+            (END|$'\C-E')
+                ZUI[cursor_x]="${ZUI[current_tfield_cidx_end]}"
+                text="${(P)wrk_reply[4]}"
+                -zui_sys_index_tail_width "$text" "${(P)wrk_reply[2]}" text
+                : ${(P)wrk_reply[3]::=$text}
+                ;;
+            (LEFT)
+                text="${(P)wrk_reply[4]}"
+                if ((ZUI[cursor_x] - ${(m)#text[${ZUI[current_tfield_instr_idx]}]} >= ZUI[current_tfield_cidx_start])); then
+                    ((ZUI[cursor_x] -= ${(m)#text[${ZUI[current_tfield_instr_idx]}]}))
+                else
+                    text="${(P)wrk_reply[3]}"
+                    ((text = text > 1 ? text - 1 : text))
+                    : ${(P)wrk_reply[3]::=$text}
+                fi
+                ;;
+            (RIGHT)
+                text="${(P)wrk_reply[4]}"
+                if [[ "${(m)#text[${ZUI[current_tfield_instr_idx]}+1]}" -ne 0 ]] && ((ZUI[cursor_x] + ${(m)#text[${ZUI[current_tfield_instr_idx]}+1]} <= ZUI[current_tfield_cidx_end])); then
+                    ((ZUI[cursor_x] += ${(m)#text[${ZUI[current_tfield_instr_idx]}+1]}))
+                else
+                    # Dont advance cursor when we're at right boundary, advance
+                    # index so that whole string is shown. Also, allow further
+                    # advancement of the index, to scroll string left.
+                    # string index + width - 1 < #string + width/2
+                    if ((${(P)wrk_reply[3]} + ${(P)wrk_reply[2]} - 1 < ${(P)#wrk_reply[4]} + ${(P)wrk_reply[2]} / 2)); then
+                        text="${(P)wrk_reply[3]}"
+                        ((++text))
+                        : ${(P)wrk_reply[3]::=$text}
+                    fi
+                fi
+                ;;
+            ($'\b'|$'\C-?'|BACKSPACE)
+                if ((ZUI[cursor_x] > ZUI[current_tfield_cidx_start])); then
+                    text="${(P)wrk_reply[4]}"
+                    ((ZUI[cursor_x] -= ${(m)#text[${ZUI[current_tfield_instr_idx]}]}))
+                    text[${ZUI[current_tfield_instr_idx]}]=""
+                    : ${(P)wrk_reply[4]::=$text}
+                fi
+                ;;
+            (DC)
+                if ((ZUI[cursor_x] < ZUI[current_tfield_cidx_end])); then
+                    text="${(P)wrk_reply[4]}"
+                    text[${ZUI[current_tfield_instr_idx]}+1]=""
+                    : ${(P)wrk_reply[4]::=$text}
+                fi
+                ;;
+            (??*|$'\t')
+                ;;
+            (*)
+                text="${(P)wrk_reply[4]}"
+                if ((ZUI[current_tfield_instr_idx])); then
+                    text[${ZUI[current_tfield_instr_idx]}]="${text[${ZUI[current_tfield_instr_idx]}]}$key"
+                    : ${(P)wrk_reply[4]::=$text}
+
+                    # Scroll text right if string protrudes from
+                    # right boundary of text field
+                    if ((${(m)#text[${(P)wrk_reply[3]},-1]} > ${(P)wrk_reply[2]})); then
+                        text="${(P)wrk_reply[3]}"
+                        ((text += ${(m)#key}))
+                        : ${(P)wrk_reply[3]::=$text}
+                    else
+                        ((ZUI[cursor_x] += ${(m)#key}))
+                    fi
+                else
+                    # Prepend
+                    text="$key$text"
+                    : ${(P)wrk_reply[4]::=$text}
+                    ((ZUI[cursor_x] += ${(m)#key}))
+                fi
+                ;;
+        esac
+
+        -zui_sys_get_tfield_cursor_boundaries 'ZUI[current_tfield_cidx_start]' 'ZUI[current_tfield_cidx_end]' "${(P)list_var_current}" "${wrk_reply[1]}"
+        ((ZUI[cursor_x] = ZUI[cursor_x] > ZUI[current_tfield_cidx_end] ? ZUI[current_tfield_cidx_end] : ZUI[cursor_x]))
+        -zui_sys_map_cursor_on_string "${(P)wrk_reply[3]}" "${(P)wrk_reply[4]}" $((ZUI[cursor_x] - ZUI[current_tfield_cidx_start] - 1)) 'ZUI[current_tfield_instr_idx]'
+    else
+        ZUI[current_tfield]=""
+    fi
+# End of CURRENT_TFIELD block
+elif ((!in_query)); then
+# not-IN_QUERY block
+local QKEY
+integer EC FOUND
+for QKEY in ${ZUI[(I)bindkey_*]##bindkey_}; do
+    [[ $QKEY == $key ]]&&{eval $ZUI[bindkey_$QKEY]; EC=$?; FOUND=1; break;}
+done
+
+((!FOUND))&&\
+case "$key" in
+    (UP|k)
+        # Are there any elements before the current one?
+        [[ "$current_idx" -gt 1 ]] && current_idx=current_idx-1
+        while [[ -z "${(P)list_var_current}" && "$current_idx" -gt 1 ]]; do
+            current_idx=current_idx-1
+        done
+        -zui_listin_compute_first_to_show_idx_up_many
+        ;;
+    (DOWN|j)
+        # Are there any elements after the current one?
+        [[ "$current_idx" -lt "$last_element" ]] && current_idx=current_idx+1
+        while [[ -z "${(P)list_var_current}" && "$current_idx" -lt "$last_element" ]]; do
+            current_idx=current_idx+1
+        done
+        -zui_listin_compute_first_to_show_idx_down_many
+        ;;
+    ($'\C-P')
+        [[ "$current_idx" -gt 1 ]] && current_idx=current_idx-1
+        while [[ -z "${(P)list_var_current}" && "$current_idx" -gt 1 ]]; do
+            current_idx=current_idx-1
+        done
+        -zui_listin_compute_first_to_show_idx_center
+        ;;
+    ($'\C-N')
+        # Are there any elements after the current one?
+        [[ "$current_idx" -lt "$last_element" ]] && current_idx=current_idx+1
+        while [[ -z "${(P)list_var_current}" && "$current_idx" -lt "$last_element" ]]; do
+            current_idx=current_idx+1
+        done
+        -zui_listin_compute_first_to_show_idx_center
+        ;;
+    (PPAGE|$'\b'|$'\C-?'|BACKSPACE)
+        current_idx=current_idx-page_height
+        [[ "$current_idx" -lt 1 ]] && current_idx=1;
+        -zui_listin_compute_first_to_show_idx
+        ;;
+    (NPAGE|" ")
+        current_idx=current_idx+page_height
+        [[ "$current_idx" -gt "$last_element" ]] && current_idx=last_element;
+        -zui_listin_compute_first_to_show_idx
+        ;;
+    ($'\C-U')
+        current_idx=current_idx-page_height/2
+        [[ "$current_idx" -lt 1 ]] && current_idx=1;
+        -zui_listin_compute_first_to_show_idx
+        ;;
+    ($'\C-D')
+        current_idx=current_idx+page_height/2
+        [[ "$current_idx" -gt "$last_element" ]] && current_idx=last_element;
+        -zui_listin_compute_first_to_show_idx
+        ;;
+    (HOME|g)
+        current_idx=1
+        -zui_listin_compute_first_to_show_idx
+        ;;
+    (END|G)
+        current_idx=last_element
+        -zui_listin_compute_first_to_show_idx
+        ;;
+    ($'\n'|ENTER)
+        # Is that element selectable?
+        # Check for this only when there is no in_query
+        if [[ -n "$buffer" || "$uniq" -eq 1 || -z ${ZUILIST_NONSELECTABLE_ELEMENTS[(r)$current_idx]} ]]
+        then
+            # Check if we are at hyperlink. Only then allow selection
+            -zui_util_get_segment "${(P)list_var_current}" "$current_segment"
+
+            local -a data
+            reply=()
+            if -zui_glib_decode_hyperlink "$REPLY"; then
+                if [[ "${reply[1]}" = zuianchor* || "${reply[1]}" = zuiiaction* ]]; then
+                    # This is to run internal action,
+                    # i.e. action without leaving list
+                    reply=($current_idx HYPERLINK)
+                else
+                    # This hyperlink path is through
+                    # quitting list and restarting it
+                    reply=($current_idx SELECT)
+                fi
+            elif -zui_glib_decode_text_field "$REPLY"; then
+                ZUI[current_tfield]="${reply[1]}"
+                ZUI[current_tfield_initial_sidx]="${(P)reply[3]}"
+                ZUI[current_tfield_initial_data]="${(P)reply[4]}"
+                -zui_sys_get_tfield_cursor_boundaries 'ZUI[current_tfield_cidx_start]' 'ZUI[current_tfield_cidx_end]' "${(P)list_var_current}" "${reply[1]}"
+                ZUI[cursor_y]=$((current_idx - from_what_idx_list_is_shown + 1))
+                ZUI[cursor_x]=$((ZUI[current_tfield_cidx_end]))
+                -zui_sys_map_cursor_on_string "${(P)reply[3]}" "${(P)reply[4]}" $((ZUI[cursor_x] - ZUI[current_tfield_cidx_start] - 1)) 'ZUI[current_tfield_instr_idx]'
+                reply=($current_idx HYPERLINK)
+            elif -zui_glib_decode_list_box "$REPLY"; then
+                local min_x max_x y_pos
+                -zui_sys_get_tfield_cursor_boundaries min_x max_x "${(P)list_var_current}" "${reply[1]}"
+                y_pos=$((current_idx - from_what_idx_list_is_shown + 1))
+                -zui-list-box-loop "$page_height" "$page_width" "$y_pos" $((min_x + 6)) "${reply[@]}" && { reply=($current_idx LBOX_LEFT); } || { reply=(-1 ''); }
+            else
+                # Selecting non-hyperlink is allowed?
+                ((${ZUI[text_select]})) && reply=($current_idx SELECT) || reply=(-1 '')
+            fi
+        fi
+        ;;
+    (q|Q)
+        reply=(-1 QUIT)
+        ;;
+    (/|$'\e'/)
+        if [[ "$disable_search" = "0" ]]; then
+            in_query=1
+            [[ -n $ZUI[QUERY_CHANGE_CALLBACK] ]]&&\
+                eval $ZUI[QUERY_CHANGE_CALLBACK] 1
+            -zui_list_cursor_visibility status 1
+        fi
+        ;;
+    ($'\C-L')
+        reply=(-1 REDRAW)
+        ;;
+    (\])
+        if [[ "${ZUILIST_ENABLED_EVENTS[(r)BR_MOVE_RIGHT]}" = "BR_MOVE_RIGHT" ]]; then
+            reply=("$current_segment" "BR_MOVE_RIGHT")
+        else
+
+        [[ "${(t)ZUILIST_HOP_INDICES}" = "array" || "${(t)ZUILIST_HOP_INDICES}" = "array-local" ]] && [[ -z "$buffer" && "$uniq" -eq 0 ]] &&
+        for idx in "${(n)ZUILIST_HOP_INDICES[@]}"; do
+            if [[ "$idx" -gt "$current_idx" ]]; then
+                current_idx=$idx
+                -zui_listin_compute_first_to_show_idx_center
+                break
+            fi
+        done
+
+        fi
+        ;;
+    (\[)
+        if [[ "${ZUILIST_ENABLED_EVENTS[(r)BR_MOVE_LEFT]}" = "BR_MOVE_LEFT" ]]; then
+            reply=("$current_segment" "BR_MOVE_LEFT")
+        else
+
+        [[ "${(t)ZUILIST_HOP_INDICES}" = "array" || "${(t)ZUILIST_HOP_INDICES}" = "array-local" ]] && [[ -z "$buffer" && "$uniq" -eq 0 ]] &&
+        for idx in "${(nO)ZUILIST_HOP_INDICES[@]}"; do
+            if [[ "$idx" -lt "$current_idx" ]]; then
+                current_idx=$idx
+                -zui_listin_compute_first_to_show_idx_center
+                break
+            fi
+        done
+
+        fi
+        ;;
+    ('<'|'{')
+        hscroll=hscroll-7
+        [[ "$hscroll" -lt 0 ]] && hscroll=0
+        ;;
+    ('>'|'}')
+        hscroll+=7
+        ;;
+    (LEFT|'h'|BTAB)
+        if [[ "$key" = "BTAB" && ${ZUILIST_NONSELECTABLE_ELEMENTS[(r)$current_idx]} = $current_idx ]]; then
+            [[ "$current_idx" -gt "1" ]] && {
+                current_idx=current_idx-1
+                current_segment="100"
+            }
+            while [[ -z "${(P)list_var_current}" && "$current_idx" -gt 1 ]]; do
+                current_idx=current_idx-1
+            done
+            -zui_listin_compute_first_to_show_idx_up_many
+        else
+            # Establish exact right-edge segment
+            if [[ "$current_segment" -gt "$nseg" ]]; then
+                ((current_segment = nseg))
+                [[ "$current_segment" -le 0 ]] && current_segment=1
+            fi
+
+            if [[ "$key" = "BTAB" ]]; then
+                if ! -zui_listin_set_next_hyperlink 0; then
+                    # No link left in current line - move
+                    # one line up, set segment to far-most,
+                    # verification at bottom will find the
+                    # nearest hyperlink
+                    [[ "$current_idx" -gt "1" ]] && {
+                        current_idx=current_idx-1
+                        current_segment="100"
+                        search_for_hyperlink=1
+                    }
+                    while [[ -z "${(P)list_var_current}" && "$current_idx" -gt 1 ]]; do
+                        current_idx=current_idx-1
+                    done
+                    -zui_listin_compute_first_to_show_idx_up_many
+                fi
+            else
+                if [[ "${ZUI[text_mode]}" = "off" ]]; then
+                    # Search left accepting lack of success
+                    -zui_listin_set_next_hyperlink 0
+                elif -zui_glib_has_any_hyperlinks "${(P)list_var_current}"; then
+                    if [[ "${ZUI[text_mode]}" = (hyp|all) ]]; then
+                        ((-- current_segment))
+                    else
+                        -zui_listin_set_next_hyperlink 0
+                    fi
+                else
+                    if [[ "${ZUI[text_mode]}" = (nohyp|all) ]]; then
+                        ((-- current_segment))
+                    else
+                        -zui_listin_set_next_hyperlink 0
+                    fi
+                fi
+            fi
+        fi
+        ;;
+    (RIGHT|'l'|$'\t')
+        if [[ "$key" = $'\t' && ${ZUILIST_NONSELECTABLE_ELEMENTS[(r)$current_idx]} = $current_idx ]]; then
+            [[ "$current_idx" -lt "$last_element" ]] && {
+                current_idx=current_idx+1
+                current_segment=1
+            }
+            while [[ -z "${(P)list_var_current}" && "$current_idx" -lt "$last_element" ]]; do
+                current_idx=current_idx+1
+            done
+            -zui_listin_compute_first_to_show_idx_down_many
+        else
+            if [[ "$key" = $'\t' ]]; then
+                # Search hyperlinks right
+                if ! -zui_listin_set_next_hyperlink 1; then
+                    # Move to next line, set current_segment
+                    # to 1, verification at bottom will find
+                    # nearest hyperlink if it exists in the
+                    # next line
+                    [[ "$current_idx" -lt "$last_element" ]] && {
+                        current_idx=current_idx+1
+                        current_segment="1"
+                        search_for_hyperlink=1
+                    }
+                    while [[ -z "${(P)list_var_current}" && "$current_idx" -lt "$last_element" ]]; do
+                        current_idx=current_idx+1
+                    done
+                    -zui_listin_compute_first_to_show_idx_down_many
+                fi
+            else
+                if [[ "${ZUI[text_mode]}" = "off" ]]; then
+                    # Search right accepting lack of success
+                    -zui_listin_set_next_hyperlink 1
+                elif -zui_glib_has_any_hyperlinks "${(P)list_var_current}"; then
+                    if [[ "${ZUI[text_mode]}" = (hyp|all) ]]; then
+                        ((++current_segment))
+                    else
+                        -zui_listin_set_next_hyperlink 1
+                    fi
+                else
+                    if [[ "${ZUI[text_mode]}" = (nohyp|all) ]]; then
+                        ((++current_segment))
+                    else
+                        -zui_listin_set_next_hyperlink 1
+                    fi
+                fi
+            fi
+            [[ "$current_segment" -gt "$nseg" ]] && current_segment="$nseg"
+        fi
+        ;;
+    (F1|F2|F3|F4)
+        reply=(-1 "$key")
+        ;;
+    ($'\E')
+        in_query=0
+        [[ -n $ZUI[QUERY_CHANGE_CALLBACK] ]]&&eval $ZUI[QUERY_CHANGE_CALLBACK] 0
+        -zui_list_cursor_visibility status 0
+        ;;
+    (o|$'\C-O')
+        uniq_mode=1-uniq_mode
+        ;;
+    (*)
+        ;;
+esac
+
+# end of not-IN_QUERY mode
+else
+
+# IN_QUERY mode
+local QKEY
+integer EC FOUND
+for QKEY in ${ZUI[(I)bindkey_*]##bindkey_}; do
+    [[ $QKEY == $key ]]&&{eval $ZUI[bindkey_$QKEY]; EC=$?; FOUND=1; break;}
+done
+
+[[ $buffer == [[:space:]]# && $key != $'\n' && $key == [[:space:]]## ]]&&\
+    key=NPAGE buffer=
+
+((!FOUND))&&\
+case "$key" in
+    ($'\n'|ENTER)
+        if ((in_query==3))&&[[ $ZUI[QUERY_BUFFER] != $~galiases[WRONGSTR] ]];then
+            special_cmd=query-accept
+            -zui_list_cursor_visibility status 0
+        elif ((ZUI[instant_select]));then
+            # Cascade to this function with in_query ($10) set to false (0)
+            zui-list-input $current_idx $current_segment \
+                            $from_what_idx_list_is_shown \
+                            $page_height $page_width $last_element \
+                            "$nseg" "$hscroll" ENTER 0 \
+                            "$buffer" "$uniq_mode" "$disable_search" \
+            return $?
+        else
+            in_query=0
+            [[ -n $ZUI[QUERY_CHANGE_CALLBACK] ]]&&\
+                eval $ZUI[QUERY_CHANGE_CALLBACK] 0e
+            -zui_list_cursor_visibility status 0
+        fi
+        ;;
+    ($'\C-L')
+        reply=(-1 REDRAW)
+        ;;
+
+    #
+    # Slightly limited navigation
+    #
+
+    (UP)
+        [[ "$current_idx" -gt 1 ]] && current_idx=current_idx-1
+        while [[ -z "${(P)list_var_current}" && "$current_idx" -gt 1 ]]; do
+            current_idx=current_idx-1
+        done
+        -zui_listin_compute_first_to_show_idx_up_many
+        ;;
+    (DOWN)
+        [[ "$current_idx" -lt "$last_element" ]] && current_idx=current_idx+1
+        while [[ -z "${(P)list_var_current}" && "$current_idx" -lt "$last_element" ]]; do
+            current_idx=current_idx+1
+        done
+        -zui_listin_compute_first_to_show_idx_down_many
+        ;;
+    ($'\C-P')
+        [[ "$current_idx" -gt 1 ]] && current_idx=current_idx-1
+        while [[ -z "${(P)list_var_current}" && "$current_idx" -gt 1 ]]; do
+            current_idx=current_idx-1
+        done
+        -zui_listin_compute_first_to_show_idx_center
+        ;;
+    ($'\C-N')
+        # Are there any elements after the current one?
+        [[ "$current_idx" -lt "$last_element" ]] && current_idx=current_idx+1
+        while [[ -z "${(P)list_var_current}" && "$current_idx" -lt "$last_element" ]]; do
+            current_idx=current_idx+1
+        done
+        -zui_listin_compute_first_to_show_idx_center
+        ;;
+    (PPAGE)
+        current_idx=current_idx-page_height
+        [[ "$current_idx" -lt 1 ]] && current_idx=1;
+        -zui_listin_compute_first_to_show_idx
+        ;;
+    (NPAGE)
+        current_idx=current_idx+page_height
+        [[ "$current_idx" -gt "$last_element" ]] && current_idx=last_element;
+        -zui_listin_compute_first_to_show_idx
+        ;;
+    ($'\C-U')
+        current_idx=current_idx-page_height/2
+        [[ "$current_idx" -lt 1 ]] && current_idx=1;
+        -zui_listin_compute_first_to_show_idx
+        ;;
+    ($'\C-D')
+        current_idx=current_idx+page_height/2
+        [[ "$current_idx" -gt "$last_element" ]] && current_idx=last_element;
+        -zui_listin_compute_first_to_show_idx
+        ;;
+    (HOME)
+        current_idx=1
+        -zui_listin_compute_first_to_show_idx
+        ;;
+    (END)
+        current_idx=last_element
+        -zui_listin_compute_first_to_show_idx
+        ;;
+    (LEFT|BTAB)
+        if [[ "$key" = "BTAB" && ${ZUILIST_NONSELECTABLE_ELEMENTS[(r)$current_idx]} = $current_idx ]]; then
+            [[ "$current_idx" -gt "1" ]] && {
+                current_idx=current_idx-1
+                current_segment="100"
+            }
+            while [[ -z "${(P)list_var_current}" && "$current_idx" -gt 1 ]]; do
+                current_idx=current_idx-1
+            done
+            -zui_listin_compute_first_to_show_idx_up_many
+        else
+            # Establish exact right-edge segment
+            if [[ "$current_segment" -gt "$nseg" ]]; then
+                ((current_segment = nseg))
+                [[ "$current_segment" -le 0 ]] && current_segment=1
+            fi
+
+            if [[ "$key" = "BTAB" ]]; then
+                if ! -zui_listin_set_next_hyperlink 0; then
+                    # No link to the left in current line - move
+                    # one line up, set segment to far-most, the
+                    # verification at bottom will find the nearest
+                    # hyperlink
+                    [[ "$current_idx" -gt "1" ]] && {
+                        current_idx=current_idx-1
+                        current_segment="100"
+                        search_for_hyperlink=1
+                    }
+                    while [[ -z "${(P)list_var_current}" && "$current_idx" -gt 1 ]]; do
+                        current_idx=current_idx-1
+                    done
+                    -zui_listin_compute_first_to_show_idx_up_many
+                fi
+            else
+                if [[ "${ZUI[text_mode]}" = "off" ]]; then
+                    # Search left accepting lack of success
+                    -zui_listin_set_next_hyperlink 0
+                elif -zui_glib_has_any_hyperlinks "${(P)list_var_current}"; then
+                    if [[ "${ZUI[text_mode]}" = (hyp|all) ]]; then
+                        ((-- current_segment))
+                    else
+                        -zui_listin_set_next_hyperlink 0
+                    fi
+                else
+                    if [[ "${ZUI[text_mode]}" = (nohyp|all) ]]; then
+                        ((-- current_segment))
+                    else
+                        -zui_listin_set_next_hyperlink 0
+                    fi
+                fi
+            fi
+        fi
+        ;;
+    (RIGHT|$'\t')
+        if [[ "$key" = $'\t' && ${ZUILIST_NONSELECTABLE_ELEMENTS[(r)$current_idx]} = $current_idx ]]; then
+            [[ "$current_idx" -lt "$last_element" ]] && {
+                current_idx=current_idx+1
+                current_segment=1
+            }
+            while [[ -z "${(P)list_var_current}" && "$current_idx" -lt "$last_element" ]]; do
+                current_idx=current_idx+1
+            done
+            -zui_listin_compute_first_to_show_idx_down_many
+        else
+            if [[ "$key" = $'\t' ]]; then
+                if ! -zui_listin_set_next_hyperlink 1; then
+                    # Move to next line, set current_segment
+                    # to 1, verification at bottom will find
+                    # nearest hyperlink if it exists in the
+                    # next line
+                    [[ "$current_idx" -lt "$last_element" ]] && {
+                        current_idx=current_idx+1
+                        current_segment="1"
+                        search_for_hyperlink=1
+                    }
+                    while [[ -z "${(P)list_var_current}" && "$current_idx" -lt "$last_element" ]]; do
+                        current_idx=current_idx+1
+                    done
+                    -zui_listin_compute_first_to_show_idx_down_many
+                fi
+            else
+                if [[ "${ZUI[text_mode]}" = "off" ]]; then
+                    # Search right accepting lack of success
+                    -zui_listin_set_next_hyperlink 1
+                elif -zui_glib_has_any_hyperlinks "${(P)list_var_current}"; then
+                    if [[ "${ZUI[text_mode]}" = (hyp|all) ]]; then
+                        ((++current_segment))
+                    else
+                        -zui_listin_set_next_hyperlink 1
+                    fi
+                else
+                    if [[ "${ZUI[text_mode]}" = (nohyp|all) ]]; then
+                        ((++current_segment))
+                    else
+                        -zui_listin_set_next_hyperlink 1
+                    fi
+                fi
+            fi
+            [[ "$current_segment" -gt "$nseg" ]] && current_segment="$nseg"
+        fi
+        ;;
+    (F1|F2|F3|F4)
+        reply=( -1 "$key" )
+        ;;
+
+    (F1|F2|F3|F4|F5|F6|F7|F8|F9|F10)
+        # ignore
+        ;;
+
+    #
+    # The input
+    #
+
+    ($'\b'|$'\C-?'|BACKSPACE)
+        buffer="${buffer%?}"
+        ;;
+    ($'\C-W')
+        [[ "$buffer" = "${buffer% *}" ]] && buffer="" || buffer="${buffer% *}"
+        ;;
+    ($'\C-K')
+        buffer=""
+        ;;
+    ($'\E')
+        in_query=0
+        [[ -n $ZUI[QUERY_CHANGE_CALLBACK] ]]&&eval $ZUI[QUERY_CHANGE_CALLBACK] 0
+        -zui_list_cursor_visibility status 0
+        ;;
+    ($'\C-O')
+        uniq_mode=1-uniq_mode
+        ;;
+    (*)
+        if [[ $#key == 1 && $((#key)) -lt 31 ]]; then
+            # ignore all other control keys
+        else
+            buffer+="$key"
+        fi
+        ;;
+esac
+
+fi
+
+# Make current_segment point to hyperlink, if it exists in line
+if -zui_glib_has_any_hyperlinks "${(P)list_var_current}"; then
+    [[ "${ZUI[text_mode]}" = (hyp|all) && "$search_for_hyperlink" = "0" ]] || -zui_listin_search_for_hyperlink_graphical
+else
+    [[ "${ZUI[text_mode]}" = (nohyp|all) && "$search_for_hyperlink" = "0" ]] || -zui_listin_search_for_hyperlink_graphical
+fi
+
+reply[3]="$current_idx"
+reply[4]="$current_segment"
+reply[5]="$from_what_idx_list_is_shown"
+reply[6]="$hscroll"
+reply[7]="$in_query"
+reply[8]="${buffer##[[:space:]]##}"
+reply[9]="$uniq_mode"
+reply[10]="$special_cmd"
+
+return EC
+
+# vim:ft=zsh
+

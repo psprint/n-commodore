@@ -1,0 +1,28 @@
+#!/usr/bin/env zsh
+
+int/nc::prune-esc() {
+    eval "${SNIP_EMULATE_OPTIONS_ZERO:-false}"||\
+        0=${${${(M)${0::=${(%):-%x}}:#/*}:-$PWD/$0}:A}
+
+    # Input/options
+    local -A Opts;local -a opts
+    int/nc::parse-opts "T -no-trim s -jspace b -bold v: -var:" Opts opts "$@"||\
+        {iqerr bad option given to: {func}nc::prune-esc: $@;return 7;}
+    set -- "$reply[@]"
+    int/nc::opt-cascade Opts -T --no-trim -s --jspace -b --bold -v --var
+    int/nc::reset
+    local qe=$'\x1b' __VAR_NAME=${Opts[-v]:-REPLY} __REPLY
+    __REPLY=$*
+    if (($+Opts[-b]));then
+        __REPLY=${__REPLY//(#m)$qe\[/${MATCH}1\;}
+    else
+        __REPLY=${__REPLY//$qe\[[0-9\;]#m}
+    fi
+    (($+Opts[-T]))||__REPLY=${__REPLY//((#s)[[:space:]]##|[[:space:]]##(#e))}
+    (($+Opts[-s]))&&__REPLY=${__REPLY//(#b)([[:space:]]##)/${match[1][1]}}
+    : ${(P)__VAR_NAME::=$__REPLY}
+    [[ $__REPLY != WRONGSTR ]]
+}
+int/nc::prune-esc "$@"
+
+# vim:ft=zsh

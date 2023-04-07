@@ -1,0 +1,30 @@
+#!/usr/bin/env zsh
+# -*- mode: sh; sh-indentation: 4; indent-tabs-mode: nil; sh-basic-offset: 4;-*-
+# Copyright (c) 2023 Sebastian Gniazdowski
+int/nc::parse-opts() {
+    # Preamble – emulate & 0=…
+    eval "${SNIP_EMULATE_OPTIONS_ZERO:-false}"||\
+        0=${${${(M)${0::=${(%):-%x}}:#/*}:-$PWD/$0}:A}
+    tmp/nc::prune-dashes() {
+        # Remove any --/- end option mark
+        integer QIDX=${@[(i)(--|-)]}
+        ((QIDX<=$#))&&reply=("$@[1,QIDX-1]" "$@[QIDX+1,-1]")||reply=("$@")
+    }
+    int/nc::reset
+    local OPTSPEC=$1 ASVAR=$2 ARVAR=$3
+    shift 3
+    tmp/nc::prune-dashes "$@"
+    local -a qe=("$reply[@]")
+
+    eval "local qfopt=$SNIP_F_OPT_FOR_ZP_OPTS_VERSION"
+    builtin zparseopts $qfopt \
+        -D -E ${(s| |)ASVAR:+-A $ASVAR} ${(s| |)ARVAR:+-a $ARVAR} -- \
+            ${(s: :)OPTSPEC}||THROW BadOpts #zsweep:pass
+
+    # Save remains without options in reply (pruning --/-)
+    tmp/nc::prune-dashes "$@"
+    # Get the recognized options
+    REPLY="${(j| |)${(@)qe:|reply}}"
+    return 0
+}
+# vim:ft=zsh

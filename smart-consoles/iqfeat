@@ -1,0 +1,124 @@
+#!/usr/bin/env zsh
+# -*- mode: sh; sh-indentation: 4; indent-tabs-mode: nil; sh-basic-offset: 4; -*-
+
+# Copyright (c) 2021 Sebastian Gniazdowski
+
+# Run as script? Or as a function? Supports both ways.
+
+iqfeat()
+{
+# Preamble – emulate & 0=…
+eval "${SNIP_EMULATE_OPTIONS_ZERO:-false}"||\
+    0=${${${(M)${0::=${(%):-%x}}:#/*}:-$PWD/$0}:A}
+source $0:h:h/share/preamble.inc.zsh --script --fun
+
+local -A Opts;local -a opts
+int/nc::init-sm-con Opts opts "$@"||{print init failed, ec:{num}$?;return 13;}
+set -- "$reply[@]"
+eval "$REPLY"
+
+separ()
+{
+    features+=("$ZUI[YELLOW]${(l:COLUMNS*3::—:):-}$ZUI[FMT_END]")
+}
+
+if [[ $1 != --refresh ]]; then
+    -zui_glib_cleanup deserialize:"iqfeat"
+    -zui_glib_init app:"iqfeat" app_name:"Features Console"
+    emulate -L zsh -o extendedglob -o typesetsilent -o warncreateglobal -o combiningchars
+    -zui_glib_init2 # after emulate -LR
+
+    # Needed for immediate output from coprocesses (disables buffering).
+    ((${+commands[stdbuf]}))&& \
+        local -a stdbuf1=( stdbuf -o0 -i0 ) stdbuf2=( stdbuf -o0 -i0 )
+    ((${+commands[gstdbuf]}))&& \
+        local -a stdbuf1=( gstdbuf -o0 -i0 ) stdbuf2=( gstdbuf -o0 -i0 )
+
+    ZUI[COLORING_PATTERN]="((([^\/—])(#c2,))(#e))~*[·]*" ZUI[COLORING_MATCH_MULTIPLE]=0
+    ZUI[COLORING_COLOR]=$ZUI[BOLD]$ZUI[YELLOW]       
+
+    -zui_glib_store_default_app_config s:select_mode "quit"   # Quit event loop on text-selection
+    -zui_glib_store_default_app_config b:text_select 1        # Allow selection of text
+    -zui_glib_store_default_app_config s:mark "white MAGENTA reverse"
+    -zui_glib_store_default_app_config s:timeout 50
+    -zui_glib_store_default_app_config s:text_mode off
+    -zui_glib_store_default_app_config b:top_anchors 0
+    local -a features GEN2_HOPS
+    local cstarted=0 mstarted=0 astarted=0 istarted=0  # denote if configure/make is running
+
+    [[ $1 == feat ]]&&shift
+    [[ -n $* ]]&&ZUI[SEARCH_BUFFER]=$*
+    ZUI[START_IN_QUERY]=1
+fi
+
+generator_A() {
+    local mod="$1" ice="$2"
+
+    local -a group1 group2 group3
+    reply=()
+
+    # First Group
+    -zui_glib_rc_button "button17" "·New feature·" \
+        'reply=( ",all," ); new_feature'
+    group1=( $reply ) reply=()
+
+    # Content
+    reply=( "$group1[@]" )
+
+    # Non-selectable lines  Hops to jump with [ and ]   Local anchors
+    reply2=( )              reply3=( 3 )                reply4=( )
+
+}
+
+generator_B() {
+    reply=()
+    -zui_glib_special_text "·≈TigSuite Features≈·"
+    features=()
+    separ
+    features+=("${(@)${(@)${(@f)"$(<$TINFO)"}%%:*}:#(#s)(#e)}")
+    reply=( "${reply[1]}" "$features[@]" )
+    reply2=( )  reply3=( 1 $GEN2_HOPS )  reply4=( )
+}
+
+# Read & publish configure/make output
+-zui-standard-timeout-callback() {
+}
+
+typeset -ag toggle_cols=( $ZUI[BLUE] $ZUI[BG_YELLOW] )
+ZUI[autscr_col]=$toggle_cols[ZUI[autscr]+1]
+
+if [[ $1 == --refresh ]]; then
+    return
+fi
+
+## Start application ##
+-zui_glib_msg "" "@@@ " "Welcome to " "NC System " "features console!" " @@@";
+while (( 1 )); do
+    tput smcup
+    zui-event-loop 1:generator_A 1:generator_B
+    tput rmcup
+    [[ -z $REPLY ]]&&break
+    if [[ $REPLY == (#b)([^\/]#/[^/]##) ]]; then
+        local FEATURE=${${(M)${(f)"$(<$TINFO)"}:#$REPLY:*}##$REPLY:}
+        int/nc::get-editor||return 1
+        local -a qfe=(${(Q)${(z)FEATURE}})
+        local PTH=${qfe[1]#Q:}
+        (
+            # Run the editor in $REPLY, first cd-ing into project's directory
+            builtin cd -q -- $PTH
+            $REPLY $qfe[2,-1]
+        )
+    fi
+    zcurses clear main redraw
+    zcurses clear status redraw
+done
+
+-zui_glib_cleanup serialize
+command tput rmcup
+return 0
+
+}
+
+iqfeat "$@"
+
+# vim:ft=zsh:tw=80:sw=4:sts=4:et:foldmarker=[[[,]]]

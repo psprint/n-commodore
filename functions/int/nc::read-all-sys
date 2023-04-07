@@ -1,0 +1,49 @@
+#!/usr/bin/env zsh
+
+# $1 - file-descriptor to be read from, or a file name if contains any non-digit
+# $2 - name of output variable (default: REPLY)
+
+int/nc::read-all-sys() {
+    # Preamble – emulate & 0=…
+    eval "${SNIP_EMULATE_OPTIONS_ZERO:-false}"||\
+        0=${${${(M)${0::=${(%):-%x}}:#/*}:-$PWD/$0}:A}
+
+    local -A Opts; local -a opts
+    int/nc::parse-opts "r: t: d: u:" Opts opts "$@"||return 1
+    set -- "$reply[@]"
+    int/nc::opt-cascade Opts
+    integer __in_fd
+    local __out_var=${1:-REPLY}
+
+    (($+Opts[-d]))&&[[ ! -r $Opts[-d] ]]&&
+           {iqerr File {file}$Opts[-d]{%} not found or bad permissions;return 1;}
+
+    if ((!$+Opts[-u]))&&[[ -f $Opts[-d] ]];then
+        exec {__in_fd}<$Opts[-d]||return 3
+    else
+        __in_fd=${Opts[-u]:-0};
+    fi
+
+    local -a __tmp
+    local __QREPLY
+    integer __ret=1 __repeat=${Opts[-r]:-3} __tmp_size
+
+    zmodload zsh/system||return 3
+    while true;do
+        builtin sysread -s65535 -t${Opts[-t]:-1} -i$__in_fd '__tmp[__tmp_size + 1]'
+        (((__ret=$?) == 0))&&__tmp_size+=1
+        ((__ret==5||__ret==4)) && { __ret=0; ((--__repeat==0))&&break; }
+        ((__ret))&&break
+    done
+
+    __QREPLY="${(j::)__tmp}"
+    [[ $__QREPLY != WRONGSTR ]]
+    __ret+=$(($?))
+    [[ $__in_fd != ${Opts[-u]:-0} ]]&&exec {__in_fd}<&-
+    typeset -g $__out_var=
+    : ${(P)__out_var::=$__QREPLY}
+    reply=("${(@f)__QREPLY}")
+    return __ret
+}
+int/nc::read-all-sys "$@"
+# vim:ft=zsh:et:sw=4:sts=4

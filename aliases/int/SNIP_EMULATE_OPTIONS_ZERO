@@ -1,0 +1,1 @@
+-r:builtin emulate -L zsh -o extendedglob -o noshortloops -o warncreateglobal -o typesetsilent -o rcquotes -o nopromptsubst ${=${options[xtrace]:#off}:+-o xtrace};integer QBESCRIPT=${${${(M)0:#$ZSH_ARGZERO}:+1}:-0};0=${${${(M)${0::=${(%):-%x}}:#/*}:-$PWD/$0}:A}

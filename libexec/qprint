@@ -1,0 +1,41 @@
+#!/usr/bin/env zsh
+
+qprint(){
+    # Preamble – emulate & 0=…
+    eval "${SNIP_EMULATE_OPTIONS_ZERO:-false}"||\
+        0=${${${(M)${0::=${(%):-%x}}:#/*}:-$PWD/$0}:A}
+    source $0:h:h/share/preamble.inc.zsh --fun
+
+    local -a __xopts; local -A __xOpts
+    int/nc::parse-opts "o: 1 e n p q c E" __xOpts __xopts "$@"||\
+         {iqerr incorrect options given to {cmd}qprint{%}; return 7}
+
+    set -- "$reply[@]"
+    (($+__xOpts[-q]))&&__xOpts[-q]=-q
+    if ((!$+__xOpts[-p]));then
+        local __QN
+        for __QN ($@){
+            iqmsg -Q $__xOpts[-q] {nl}{note}Notice:\
+                {%}showing variable {var}$__QN{%}:
+            int/@nc::str4var $__QN
+        }
+        return $?
+    fi
+
+    local \
+        n=${(M)__xopts:#-n} \
+        E=${${(M)__xopts:#-E}:+-r} \
+        o=${${(M)__xopts:#-o}:+-v $__xOpts[-o]} \
+        l=${${(M)__xopts:#-1}:+-l} \
+        c=${${(M)__xopts:#-c}:+-C1}
+    local -a args
+
+    if (($+__xOpts[-1]&&!$+__xOpts[-c]));then
+      args=(printf $=o ·%${${E:+s}:-b}${${n:+" "}:-\\n})
+    else
+      args=(print $c $n $E $=o)
+    fi
+    builtin "$args[@]" "$@"
+}
+
+qprint "$@"

@@ -1,0 +1,41 @@
+#!/usr/bin/env zsh
+# Copyright (c) 2023 Sebastian Gniazdowski
+#
+# Hop – a returning code snippet after specified delay,
+# executed in Zle.
+#
+
+hop() {
+    # Preamble – emulate & 0=…
+    eval "${SNIP_EMULATE_OPTIONS_ZERO:-false}"||\
+        0=${${${(M)${0::=${(%):-%x}}:#/*}:-$PWD/$0}:A}
+    source $0:h:h/share/preamble.inc.zsh --fun
+
+    local -A Opts; local -a opts qopts
+    int/nc::parse-opts "t: -timeout: i=qopts -zle-nt=qopts \
+                        m=qopts -msg=qopts" Opts opts "$@"||\
+        {iqerr incorrect options given to {cmd}hop{%}; return 7}
+    builtin set -- "$reply[@]"
+    ((Opts[-t]+Opts[--timeout]<=0))&&Opts[-t]=0.1
+    # Cascade options to short ones
+    int/nc::opt-cascade Opts -t --timeout -i --zle-nt
+    EC+=$?
+    # Text comes from stdin? If no args…
+    if ((!$#));then
+        if ! int/nc::read-all -u0;then
+            iqwarn No script instructions given, checked stdin and \
+                    arguments, nothing run…
+            return 7
+        fi
+        builtin set -- "$reply[@]"
+    else
+        builtin set -- "$*"
+    fi
+
+    local t="@sleep:$Opts[-t]"
+    int/nc::exec-hop-back $t $qopts -- "$@"
+    EC+=$?
+    return EC
+}
+
+hop "$@"

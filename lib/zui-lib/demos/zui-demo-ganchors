@@ -1,0 +1,42 @@
+# Started from Zle or from command line
+
+-zui_glib_cleanup deserialize:"zui-demo-ganchors"
+-zui_glib_init app:"zui-demo-ganchors" app_name:"ZUI Global Anchors"
+emulate -LR zsh -o extendedglob -o typesetsilent -o warncreateglobal
+-zui_glib_init2 # after emulate -LR
+
+-zui_glib_store_default_app_config b:text_mode off
+-zui_glib_store_default_app_config b:top_anchors 0  # no top-anchors
+
+demo_generator_A() {
+    local mod="$1" ice="$2"
+
+    reply=()
+    -zui_glib_get_ganchor 2 1 "[Module2]"
+    -zui_glib_get_ganchor 3 1 "[Module3]"
+    -zui_glib_get_ganchor 4 1 "[Module4/1]"
+    -zui_glib_get_ganchor 4 2 "[Module4/2]"
+
+    # Content
+    reply=( "There are no top-anchors, but you can fetch them and use in modules:" "" "Jump to ${reply[1]}, ${reply[2]}, ${reply[3]}, ${reply[4]}" )
+
+    # Non-selectable lines   Hops to jump with [ and ]   Local anchors
+    reply2=( 1 2 )           reply3=( 1 )                reply4=( )
+}
+
+# Generator for module 1
+demo_generator_B() {
+    local mod="$1" ice="$2"
+
+    # Content, no hyper-links                    Non-selectable lines   Hops to jump with [ and ]   Local anchors
+    reply=( "-> Module $mod, instance $ice." )   reply2=( )             reply3=( 1 )                reply4=( )
+}
+
+## Start application ##
+zui-event-loop 1:demo_generator_A 1:demo_generator_B 1:demo_generator_B 2:demo_generator_B
+
+-zui_glib_cleanup serialize
+
+return 0
+
+# vim:ft=zsh

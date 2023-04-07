@@ -1,0 +1,26 @@
+#!/usr/bin/env zsh
+# Copyright (c) 2023 Sebastian Gniazdowski
+#
+# int/nc::test-stdin
+#
+
+int/nc::test-stdin() {
+
+    eval "${SNIP_EMULATE_OPTIONS_ZERO:-false}"||\
+        0=${${${(M)${0::=${(%):-%x}}:#/*}:-$PWD/$0}:A}
+
+    integer EC QF;[[ -f $0 ]];EC+=$?
+    local VAR_NAME=$1 VAR_NAME3=$2
+    int/nc::reset
+    if read -k -t -u0; then
+        : ${VAR_NAME3::=$REPLY}
+        exec {QF}<&0
+        : ${VAR_NAME::=$QF}
+    fi
+
+    [[ -n $REPLY ]]
+    EC+=$?
+    return EC
+}
+int/nc::test-stdin "$@"
+# vim:ft=zsh

@@ -1,0 +1,1 @@
+-r:noglob iqmsgi ${${(%):-%x}:t}${(%):-:%I} $ndbg -h {pre}Debug:{txt}

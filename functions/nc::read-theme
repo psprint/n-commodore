@@ -1,0 +1,39 @@
+#!/usr/bin/env zsh
+# -*- mode: sh;sh-indentation: 4;indent-tabs-mode: nil;sh-basic-offset: 4; -*-
+#
+# Copyright (c) 2023 Sebastian Gniazdowski
+#
+
+nc::read-theme() {
+
+# Set options
+builtin emulate -L zsh -o extendedglob -o noshortloops \
+                        -o warncreateglobal -o typesetsilent \
+                        -o nopromptsubst -o rcquotes
+
+# Preamble – emulate & 0=…
+eval "${SNIP_EMULATE_OPTIONS_ZERO:-false}"||\
+    0=${${${(M)${0::=${(%):-%x}}:#/*}:-$PWD/$0}:A}
+
+# The color theme → customize via theme file or NC global, first testing it
+(
+    {local -A NC=("${(kv@)NC}")} &>>!$NCLOG
+    return 3
+)||\
+    (($?==3))&&local -A NC=("${(kv@)NC}")||local -A NC
+
+local NCTHEME=$NCTHEME
+if [[ -f $NCDIR/themes/$NCTHEME:t:r.xzt(#qN) || -f ${NCTHEME::=$NCDIR/themes/default.xzt} ]]; then
+    local -a q=($NCDIR/themes/$NCTHEME(.xzt|)(N) $NCTHEME(.xzt|)(N))
+    eval "NC+=(${(qqq@)${(@z)"$(<$q[1])"}})" &>>!$NCLOG ||\
+        builtin print -u2 -P -r ${${(%):-%x}:t}:%I: Couldn\'t read theme \
+            file: %F{41}$NCTHEME%f
+else
+     builtin print -u2 -P -r ${${(%):-%x}:t}:%I: Couldn\'t read default \
+        theme \(%F{41}$NCTHEME%f\)
+fi
+# Return theme
+reply=("${(kv@)NC}")
+return !$#reply
+}
+# vim:ft=zsh:sw=4:sts=4:et

@@ -1,0 +1,50 @@
+# Started from Zle or from command line
+
+-zui_glib_cleanup deserialize:"zui-demo-fly"
+-zui_glib_init app:"zui-demo-fly" app_name:"ZUI On-The-Fly Regeneration"
+emulate -LR zsh -o extendedglob -o typesetsilent -o warncreateglobal
+-zui_glib_init2 # after emulate -LR
+
+-zui_glib_store_default_app_config b:border 1
+-zui_glib_store_default_app_config b:status_border 1
+-zui_glib_store_default_app_config s:text_mode off
+
+local internal  # trick variable to make a handler no-restart
+
+# Generator for module 1
+demo_generator_A() {
+    local mod="$1" ice="$2"
+
+    reply=()
+    -zui_glib_rc_button_ext "restart" "" "" ",mod1_ice1," "" "${ZUI[MAGENTA]}restart${ZUI[FMT_END]}"
+    -zui_glib_rc_button "on-the-fly" "${ZUI[MAGENTA]}on-the-fly${ZUI[FMT_END]}" 'internal=1; -zui_glib_fly_mod_regen "'"$mod"'" "'"$ice"'"'
+
+    # Content
+    reply=( "${ZUI[YELLOW]}ZUI${ZUI[FMT_END]} can regenerate module instance with ${reply[1]} or ${reply[2]}!" "Random number: $RANDOM" )
+
+    # Non-selectable lines  Hops to jump with [ and ]   Local anchors
+    reply2=( 2 )            reply3=( 1 )                reply4=( )
+}
+
+# Show handler code in status window
+-zui-standard-status-callback() {
+    local tpe="$1" selectable="$2" uniq="$3" search="$4" line="$5" segment="$6"
+    [[ "$tpe" = "0" ]] && return 0 # Filter out non-hyperlinks
+
+    shift 6; local id="$1" data1="$2" data2="$3" data3="$4" data4="$5"
+    id="${id#(zuiiaction|zuiaction|zuicheckbox|zuieanchor|zuianchor|zuitfield)}"
+    handler="${ZUI[zuiiaction$id]}"
+    reply=( "Handler: " "$handler" )
+
+    # Resulting type: 1 - log message
+    return 1
+}
+
+## Start application ##
+zui-event-loop 1:demo_generator_A
+
+-zui_glib_cleanup serialize
+
+return 0
+
+# vim:ft=zsh

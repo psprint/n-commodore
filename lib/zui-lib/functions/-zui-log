@@ -1,0 +1,181 @@
+#!/usr/bin/env zsh
+#
+# Prints log to given window
+#
+# $1 - window name
+# $2 - window height
+# $3 - window width
+# $4 - window colorpair
+# $5 - 0/1 if window has border
+# $6 - grep string
+# $7 - uniq mode 0/1
+# $8 - search mode 0/1
+# $9 - generation time
+# $10 - 0/1 if selectable
+# $11 - 0/1 if has search buffer
+# $12 - current index
+# $13 - last element
+
+# Outputs message in color, restores default color. Counts
+# characters in message to divide it into line-fitting parts.
+# Returns how much last line is filled, via "$5" parameter
+# name (P flag).
+#
+# $1 - color
+# $2 - text
+# $3 - line parameter name; line points at text
+# $4 - indentation
+# $5 - actual length of text in current line (output parameter name)
+-zuilog_counted_msg() {
+    local color="$1" txt="$2" line_var="$3" indent="$4" actlen_var="$5"
+
+    [[ -z "$txt" ]] && return 0
+
+    [[ -n "$color" ]] && zcurses attr "$window" "$color/${win_colorpair#*/}"
+
+    while (( ${(P)actlen_var} + ${#txt} > win_width - indent * 2 )); do
+        integer part_count=$(( (win_width - indent * 2) - ${(P)actlen_var} ))
+        zcurses string "$window" "${txt[1,part_count]}"
+        : ${(P)actlen_var::=0}
+        # Needed next line 0-based > maximum line 0-based -> abort
+        [[ $(( ${(P)line_var} + 1 )) -gt $(( win_height - win_border - 1 )) ]] && {
+            [[ -n "$color" ]] && zcurses attr "$window" "$win_colorpair"
+            return 1
+        }
+        txt="${txt[part_count+1,-1]}"
+
+        # Curses cursor: right after text. Line number: at text.
+        if [[ -n "$txt" ]]; then
+            : ${(P)line_var::=${(P)line_var}+1}
+            zcurses move "$window" "${(P)line_var}" "$indent"
+        fi
+    done
+
+    if [[ -n "$txt" ]]; then
+        zcurses string "$window" "$txt"
+        : ${(P)actlen_var::=${(P)actlen_var}+${#txt}}
+    fi
+
+    [[ -n "$color" ]] && zcurses attr "$window" "$win_colorpair"
+
+    return 0
+}
+
+# Outputs a message in the bottom of the screen
+# "[UNIQ]", "Text", "[Grep string]", "Generation time", "$reply[@]" from callback
+-zuilog_output_message() {
+    local direction="${1:-above}" line_var="$2" entry="$3" number="$4" txt
+    integer indent=2 msg_len track_len=0 index=0
+
+    local -a elems
+    elems=( "${(@Q)${(z@)entry}}" )
+    msg_len="${elems[1]}"
+    shift 3 elems
+
+    (( msg_len == 0 )) && return
+
+    msg_len+=${#elems[1]}
+
+    (( number > 0 )) && msg_len+=3+${#number}
+
+    #
+    # Scroll
+    #
+
+    if [[ "$direction" = "below" ]]; then
+        # (P)line_var is 0-based and it points after previous text
+        integer __line="${(P)line_var}"+$(( (msg_len-1)/(win_width-2*indent) ))
+        # Needed line 0-based, minus maximum line 0-based
+        integer __scroll=__line-$(( win_height - win_border - 1 ))
+        if (( __scroll > 0 )); then
+            (( __scroll = __scroll > (${(P)line_var}-win_border) ? ${(P)line_var} - win_border : __scroll ))
+            zcurses scroll "$window" +$__scroll
+            : ${(P)line_var::=${(P)line_var}-$__scroll}
+        fi
+    elif [[ "$direction" = "above" ]]; then
+        zcurses scroll "$window" -$(( 1 + (msg_len-1)/(win_width-2*indent) ))
+    fi
+
+    zcurses move "$window" "${(P)line_var}" $indent
+
+    #
+    # Print
+    #
+
+
+    (( number > 0 )) && -zuilog_counted_msg "${zui_log_colors[1]}" "[$number] " "$line_var" $indent track_len
+
+    index=2
+    for txt in "${elems[@]}"; do
+        [[ -n "$txt" ]] && { -zuilog_counted_msg "${zui_log_colors[index]}" "$txt" "$line_var" $indent track_len || break; }
+        (( ++ index ))
+    done
+
+    # Return number of lines of the message
+    REPLY=$(( (msg_len-1)/(win_width-2*indent) + 1 ))
+}
+
+local window="$1"
+integer win_height="$2"
+integer win_width="$3"
+integer win_border="$4"
+local win_colorpair="$5"
+local grep_string="$6"
+integer uniq="$7"
+integer search="$8"
+local generation_time="$9"
+integer selectable="$10"
+integer search_buf="$11"
+integer idx="$12"
+integer last_element="$13"
+
+local _uniq="" _text="" _grep="" _gen=""
+(( uniq )) && _uniq="[-UNIQ-]"
+[[ -n "$grep_string" ]] && _grep="[$ZUILIST_GREP_STRING]"
+[[ -n "$generation_time" ]] && _gen="GENERATED IN ${generation_time}s"
+(( selectable + search_buf + uniq )) && _text="Current #$idx (of #$last_element entries)" || _text="---"
+
+integer last="${#ZUI_MESSAGES}" start=last-win_height+win_border line=win_border+1
+(( start = start <= 0 ? 1 : start ))
+
+integer message_num=$(( ZUI[message_count] - (last-start+1) + 1 ))
+(( message_num = message_num <= 0 ? 1 : message_num ))
+(( ZUI[log_index] == 0 )) && message_num=0
+
+zcurses clear "$window"
+
+local entry
+for entry in "${(@)ZUI_MESSAGES[start,last]}"; do
+    -zuilog_output_message "${ZUI[log_append]}" "line" "$entry" "$message_num"
+    (( message_num = message_num ? ++ message_num : 0 ))
+
+    if [[ "${ZUI[log_append]}" = "below" ]]; then
+        (( ++ line ))
+    else
+        (( line = win_border ))
+    fi
+done
+
+
+if (($ZUI[status_pointer])); then
+    zcurses scroll "$window" -1
+    zcurses move "$window" "$win_border" 2
+    zcurses clear "$window" eol
+
+    local track_len=0
+    line=0
+
+    for txt in $_uniq $_text $_grep; do
+        -zuilog_counted_msg "" "$txt " line 2 track_len
+    done
+    zcurses refresh $window
+fi
+if [[ -n $ZUI[text_bar] ]];then
+    zcurses move "$window" $((ZUI[status_size]-1)) $((win_border+2))
+    zcurses clear "$window" eol
+    line=$ZUI[status_size]-1
+    -zuilog_counted_msg $zui_log_colors[3] $ZUI[text_bar] line 2 track_len
+
+
+fi
+# vim:ft=zsh

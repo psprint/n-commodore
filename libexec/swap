@@ -1,0 +1,25 @@
+#!/usr/bin/env zsh
+
+swap() {
+    eval "${SNIP_EMULATE_OPTIONS_ZERO:-false}"||\
+        0=${${${(M)${0::=${(%):-%x}}:#/*}:-$PWD/$0}:A}
+    source $0:h:h/share/preamble.inc.zsh --fun||return 3
+
+    local Q
+    if [[ -n ${Q::=first one:$1} && ! -e "$1" || -n ${Q::=second one:$2} && ! -e "$2" ]]
+    then
+        iqwarn The arg(s) ({file}$Q{%}) do not exist
+        return 1
+    fi
+
+    integer EC
+    local suffix=$(( RANDOM % 1000 ))
+    command mv -v "$1:a" "$1:a"_"$suffix"; EC+=$?
+    command mv -v "$2:a" "$1:a"; EC+=$?
+    command mv -v "$1:a"_"$suffix" "$2:a"; EC+=$?
+
+    ((EC))&&iqwarn Something wrong happened, summed exit values: {int}$EC||\
+            iqmsg {head}Files have been correctly moved
+}
+swap "$@"
+# vim:ft=zsh:et:sts=4:sw=4:wrap

@@ -1,0 +1,44 @@
+#!/usr/bin/env zsh
+# Copyright (c) 2023 Sebastian Gniazdowski
+#
+# iqsn
+#
+
+int/nc::read-all() {
+    # Preamble – emulate & 0=…
+    eval "${SNIP_EMULATE_OPTIONS_ZERO:-false}"||\
+        0=${${${(M)${0::=${(%):-%x}}:#/*}:-$PWD/$0}:A}
+
+    local -A Opts; local -a opts
+    int/nc::parse-opts "d: t: x: u:" Opts opts "$@"||return 7
+    set -- "$reply[@]"
+    int/nc::opt-cascade Opts
+    integer __I __RET __CX=${Opts[-x]:--1}
+    local __out_var=${1:-REPLY}
+
+    (($+Opts[-d]))&&[[ ! -f $Opts[-d] ]]&&
+            {iqerr File {file}$Opts[-d]{%} not found;return 1;}
+
+    if ((!$+Opts[-u]))&&[[ -f $Opts[-d] ]];then
+        exec {__I}<$Opts[-d]||return 3
+    else
+        __I=${Opts[-u]:-0};
+    fi
+
+    int/nc::reset
+    local TXT
+
+    while ((__CX--))&&IFS= read -t${Opts[-t]:-1} -r TXT <&$__I;do
+        reply+=("$TXT")
+    done
+    __RET+=$?
+    local __QREPLY=${(F)reply}$'\n'
+    [[ $__QREPLY != WRONGSTR ]]
+    __RET+=$?
+    [[ $__I != ${Opts[-u]:-0} ]]&&{exec {__I}<&-;__RET+=$?;}
+    : ${(P)__out_var::=$__QREPLY}
+    __RET+=$?
+    return __RET
+}
+
+# vim:ft=zsh

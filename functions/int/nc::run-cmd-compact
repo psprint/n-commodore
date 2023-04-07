@@ -1,0 +1,55 @@
+#!/usr/bin/env zsh
+# Copyright (c) 2023 Sebastian Gniazdowski
+int/nc::run-cmd-compact() {
+    eval "${SNIP_EMULATE_OPTIONS_ZERO:-false}"||\
+        0=${${${(M)${0::=${(%):-%x}}:#/*}:-$PWD/$0}:A}
+    # Input/options
+    local -A Opts;local -a opts
+    int/nc::parse-opts "-ex p o E s 0: 2: 1:" Opts opts "$@"||return 7
+    set -- "$reply[@]"
+    integer EC
+    tmp/iqrun() {
+        setopt localoptions
+        local -a qcmd=("$@")
+        (($+Opts[-p]))&&{setopt globsubst;qcmd=(${~:-"$@"});}
+        integer EC EOPT=${${Opts[-E]+1}:-2} OUT=1 ERR=2 IN
+        [[ -n $Opts[-0] ]]&&exec {IN}<$Opts[-0]
+        [[ -n $Opts[-1] ]]&&exec {OUT}>$Opts[-1]
+        [[ -n $Opts[-2] ]]&&exec {ERR}>$Opts[-2]
+        if ((EOPT==2));then
+            "$qcmd[@]" 0<&$IN 2>&$ERR 1>&$OUT
+        elif ((ERR==2));then
+            "$qcmd[@]" 0<&$IN 2>&$EOPT 1>&$OUT
+        else
+            "$qcmd[@]" 0<&$IN 2>&$EOPT 2>&$ERR 1>&$OUT
+        fi
+        EC=$?
+        ((OUT!=1))&&exec {OUT}>&-
+        ((ERR!=2))&&exec {ERR}>&-
+        ((IN))&&exec {IN}<&-
+        return EC
+    }
+    tmp/iqrun-cmd() {
+        integer EC
+        if (($+Opts[-o]));then
+            REPLY="$(tmp/iqrun "$@")"
+            EC=$?
+            reply="${(f)REPLY}"
+        else
+            tmp/iqrun "$@"
+            EC=$?
+        fi
+        return EC
+    }
+
+    int/nc::reset
+    if (($+Opts[-s]));then
+        (tmp/iqrun-cmd "$@")
+    elif (($+Opts[--ex]));then
+        exec tmp/iqrun-cmd "$@"
+    else
+        tmp/iqrun-cmd "$@"
+    fi
+    return $?
+}
+# vim:ft=zsh

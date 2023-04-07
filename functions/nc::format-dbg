@@ -1,0 +1,40 @@
+#!/usr/bin/env zsh
+# Copyright (c) 2023 Sebastian Gniazdowski
+#
+# zsqb – zs…quote…braces
+#
+
+nc::format-dbg() {
+    eval "${SNIP_EMULATE_OPTIONS_ZERO:-false}"||\
+        0=${${${(M)${0::=${(%):-%x}}:#/*}:-$PWD/$0}:A}
+
+    # Parse -o, -l options
+    local -A Opts; local -a opts
+    int/nc::parse-opts "o l h -help" Opts opts "$@"||return 7
+    set -- "$reply[@]"
+
+    if (($+Opts[-h]||$+Opts[--help]));then
+        iqnotice {txt}Usage:{cmd} nc::format-dbg {opt}-loh{%}{nl} \
+            {opt}-o{%} – output to stdout, not only to {var}\$REPLY{%}{nl} \
+            {opt}-l{%} – use new-lines to print arguments{%}{nl} \
+            {opt}-z{%} – output even empty result
+        return 0
+    fi
+
+    # Mute warncreateglobal warning
+    typeset -g REPLY
+
+    # Should join with new lines?
+    (($+Opts[-l]))&&local IFS=$'\n'
+    local INPUT=$*
+
+    # Should output anything?
+    int/nc::reset
+    ((NCDBG))&&REPLY=$INPUT
+
+    # Stdout requested?
+    (($+Opts[-o]&&($#REPLY||$+Opts[-z])))&&print -r -- $REPLY
+    [[ -n $REPLY ]]
+}
+nc::format-dbg "$@"
+# vim:ft=zsh

@@ -1,0 +1,18 @@
+#!/usr/bin/env zsh
+
+fresh-in() {
+    # Preamble – emulate & 0=…
+    eval "${SNIP_EMULATE_OPTIONS_ZERO:-false}"||\
+        0=${${${(M)${0::=${(%):-%x}}:#/*}:-$PWD/$0}:A}
+    source $0:h:h/share/preamble.inc.zsh --fun||return 3
+    local -a opts; local -A Opts
+    int/nc::parse-opts "q -quiet" Opts opts "$@"||\
+        {iqerr incorrect options given to {cmd}fresh-in{%}; return 7}
+    set -- "$reply[@]"
+    int/nc::opt-cascade Opts -q --quiet
+    local t=$1
+    iqmsg $opts {pre}Files changed in last {int}$t{pre} minutes:
+    command find . -newerct "$t minute ago" -print
+}
+
+fresh-in "$@"

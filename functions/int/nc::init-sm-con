@@ -1,0 +1,55 @@
+#!/usr/bin/env zsh
+#
+# Copyright (c) 2023 Sebastian Gniazdowski
+#
+
+int/nc::init-sm-con() {
+    eval "${SNIP_EMULATE_OPTIONS_ZERO:-false}"||\
+        0=${${${(M)${0::=${(%):-%x}}:#/*}:-$PWD/$0}:A}
+
+    integer EC;[[ -f $0 ]];EC+=$?
+    export NC_CON_DIR=${0:h:h:h}/smart-consoles NC_ORIG_PWD=$PWD
+
+    if ! builtin zmodload zsh/curses;then
+        iqerr no {pid}zsh/curses{%} module found, it is requred to run any \
+                smart-consoles, exiting…
+        return EC+3
+    fi
+    {
+        # Options and arguments
+        local -A __Opts; local -a __opts
+        int/nc::parse-opts "s -sort C: -dir: R -reverse -refresh" __Opts __opts "$@"||THROW BadOpts
+    } always {
+        ((TRY_BLOCK_ERROR))&&\
+            iqw "Bad options given to console"
+    }
+    set -- "$reply[@]"
+    int/nc::opt-cascade __Opts -C --dir -s --sort -R --reverse
+    EC+=$?
+    int/nc::reset
+    local VAR_OPT=$2 VAR_OPTS=$1; shift 2
+    : ${(AP@)VAR_OPT::="$__opts[@]"}
+    : ${(AAP@)VAR_OPTS::="${(kv)__Opts[@]}"}
+    # Change directory to the supplied one
+    if [[ -n $__Opts[-C] ]];then
+        if ! cd -q -- $__Opts[-C];then
+            iqerr couldn\'t change {var}CWD{%} to {path}$__Opts[-C] \
+                (exited with {num}${${EC::=EC+$?}:+$?}), trying to \
+                continue…
+        fi
+    fi
+
+    # Load  TUI library, the Zsh User Interface (ZUI)
+    (($+ZUI))||{source $NC_CON_DIR/../lib/zui-lib/zui.lib.zsh;EC+=$?;}
+
+    # REPLY eval – ensure that CWD doesn't change
+    REPLY='
+        trap "return 1" INT TERM QUIT HUP
+        trap "cd -q -- ${(qqq)NC_ORIG_PWD}" EXIT
+        local -Ua fpath=($NC_CON_DIR $fpath) path=($NC_CON_DIR $path)
+        fpath[1,0]=(${${:-$NC_CON_DIR/../lib/zui-lib/functions}:A})'
+    reply=("$@")
+    return EC
+}
+int/nc::init-sm-con "$@"
+# vim:ft=zsh

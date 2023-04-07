@@ -1,0 +1,122 @@
+#!/usr/bin/env zsh
+# -*- mode: sh; sh-indentation: 4; indent-tabs-mode: nil; sh-basic-offset: 4;-*-
+# Copyright (c) 2018 Sebastian Gniazdowski
+#
+help() {
+    # Preamble – emulate & 0=…
+    eval "${SNIP_EMULATE_OPTIONS_ZERO:-false}"||\
+        0=${${${(M)${0::=${(%):-%x}}:#/*}:-$PWD/$0}:A}
+    source $0:h:h/share/preamble.inc.zsh --fun
+
+    local -a opts; local -A Opts
+    int/nc::parse-opts "q h -help" Opts opts "$@"||return 7
+    set -- "$reply[@]"
+    int/nc::reset
+
+    (($+Opts[-q]))&&local -A NC
+    local -A QMsg=(
+            tags       "generate Ctags for current project"
+            con        "open smart console for current directory"
+            qprint     "print contents of given variable (by name not by value)"
+            swap       "swap two files in their locations"
+            gh-create  "create a repository at GitHub"
+            gh-unscope "get the username of the given repository at GitHub (wins the one with biggest # of forks)"
+            gh-clone   "get the the given repository from GitHub, only via username/repository ID, with a graphical, colorful progress meter"
+            clone      "get a given repo via full URL, with a graphical, colorful progress meter"
+            prj-dir    "get the project by looking for a file (like .git, configure, e.g.) in uptree ((../)+{file})"
+            countdown  "a graphical countdown, waits for ARGUMENT seconds."
+            hop        "deploy a block of code for execution in ZLE\
+-scope"
+            fetch      "a frontend to curl and wget (first tries cURL)"
+            fresh-in   "finds files changed in ARGUMENT-\
+minutes"
+            filter     "filters out any color escape codes, reads stdin\
+if no arguments"
+            try-ng     "takes string and a pattern and returns the matched \
+string. NON-GREEDY mode"
+            tries-ng   "takes strings and a pattern and returns the strings \
+each after the pattern applied. NON-GREEDY mode"
+            try        "the same as try-ng, but greedy"
+            tries      "the same as tries-ng, but greedy"
+            x-tract    "extracts any archive, recognizes many types"
+            palette    "shows the 256 color palette"
+        )
+    [[ -z $1 ]]&&{iqnotice Available\ commands:;n-commodore qprint -q QMsg|\
+        {
+            local line
+            while IFS= read line;do
+                iqmsg -- ${line/(#m)(#s)[^:]##/{pre}$MATCH{%}}
+            done
+        }
+        return 0;
+    }
+    printf %s\\n $@
+    (($+QMsg[$1]))||{iqerr unknown command: {cmd}$1{%};return 1;}
+
+    iqnotice $QMsg[$1]
+    case $1 in
+        (tags)
+
+            iqmsg {note}Usage:{pre} n-commodore tags [-z] [-c]{%}{nl}\
+                -- {opt}-z{%}${(l:10:)} process Zsh files{nl}\
+                    {opt}-c{%}${(l:10:)} process C files
+            ;;
+        (con)
+            iqmsg {note}Usage:{pre} n-commodore con
+            ;;
+        (countdown)
+            iqmsg {note}Usage:{pre} n-commodore countdown {num}\[0-9\]
+            ;;
+        (filter)
+            iqmsg {note}Usage:{pre} n-commodore filter \
+                \[{opt}-T{pre}\|{opt}--trim{pre}\] \
+                \[{opt}-s{pre}\|{opt}--1space{pre}\] \
+                \[{opt}-p{pre}\|{opt}--print{pre}\] \
+                \[{opt}-t{pre}\|{opt}--timeout{pre}\] \
+                \[arg1{pre}\] ... \[argN{pre}\]
+
+            ;;
+        (fresh-in)
+            iqmsg {note}Usage:{pre} n-commodore fresh-in {data}\\{minutes\}
+        ;;
+        (gh-create)
+            iqmsg {note}Usage:{pre} n-commodore gh-create {pid}user/repo
+        ;;
+        (hop)
+            iqmsg {note}Usage:{pre} n-commodore hop \[-t/--timeout\] \
+                \[--msg] \[code …]
+        ;;
+        (palette)
+            iqmsg {note}Usage:{pre} n-commodore palette
+        ;;
+        (qprint)
+            iqmsg {note}Usage:{pre} n-commodore qprint VAR_NAME
+        ;;
+        (swap)
+            iqmsg {note}Usage:{pre} n-commodore swap {file}file file-B
+        ;;
+        (tries)
+            iqmsg {note}Usage:{pre} n-commodore tries {data}string{pre}\
+                … {data}string-N {pat}pattern
+        ;;
+        (tries-ng)
+            iqmsg {note}Usage:{pre} n-commodore tries-ng {data}string{pre}\
+                … {data}string-N {pat}pattern
+        ;;
+        (try)
+            iqmsg {note}Usage:{pre} n-commodore try {data}string{pre}\
+                {pat}pattern
+        ;;
+        (try-ng)
+            iqmsg {note}Usage:{pre} n-commodore try-ng {data}string{pre}\
+                {pat}pattern
+        ;;
+        (x-tract)
+            iqmsg {note}Usage:{pre} n-commodore x-tract ({file}archive file{pre}\
+\|{opt}--auto{pre})
+        ;;
+    esac
+   return 0
+}
+help "$@"
+# vim:ft=zsh:sw=4:sts=4:et

@@ -1,0 +1,10 @@
+#!/usr/bin/env zsh
+
+# Copyright (c) 2023 Sebastian Gniazdowski
+int/nc::reset() {
+    # Cleanup
+    typeset -g REPLY= MATCH=
+    typeset -gi MBEGIN= MEND=
+    typeset -g -a reply=() match=() mbegin=() mend=()
+}
+# vim:ft=zsh

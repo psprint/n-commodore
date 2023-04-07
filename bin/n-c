@@ -1,0 +1,74 @@
+#!/usr/bin/env zsh
+# Copyright (c) 2023 Sebastian Gniazdowski
+#
+# Angel – NC Swiss Knife
+#
+
+\n-c() {
+    # ↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓
+    # The only place where code repetition occurs
+    # ↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓
+
+    # Set options
+    builtin emulate -L zsh -o extendedglob -o noshortloops \
+                            -o warncreateglobal -o typesetsilent \
+                            -o nopromptsubst -o rcquotes
+
+    # Run as script?
+    integer QBESCRIPT=${${${(M)0:#$ZSH_ARGZERO:t}:+1}:-0};
+
+    # Set $0 with a new trik - use of %x prompt expansion
+    0=${${${(M)${0::=${(%):-%x}}:#/*}:-$PWD/$0}:A}
+    source $0:h:h/share/preamble.inc.zsh --fun
+
+    # ↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑
+    # End of code repetition
+    # ↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑
+
+    integer EC
+    local -A Opts; local -a opts
+    int/nc::parse-opts "t: -timeout: z -zsh C: -dir: c -c v -verbose V -vim \
+                         o: 1 e n p q -quiet E O -ed s h -help m -msg \
+                         -auto -move -move2 -prune -bkp \
+                            T -cat -1space i -zle-nt R -reverse r: x:" \
+                            Opts opts "$@"||return 7
+    set -- "$reply[@]"
+    local CMD=$1
+    if (($+Opts[-h]||$+Opts[--help]));then
+        CMD=help
+    else
+        (($#&&$#CMD))&&shift||CMD=help
+    fi
+    [[ $CMD == (feat|open|con|inst) ]]&&{set -- $CMD "$@";CMD=console;}
+    if [[ -s $NCDIR/libexec/$CMD ]];then
+        local FBKP=$functions[$CMD]
+        builtin unset -f $CMD&>>!$NCNUL
+        builtin autoload -z $NCDIR/libexec/$CMD #zsweep:pass
+
+        # Edit source?
+        if (($+Opts[--ed]));then
+            int/nc::get-editor||return 1
+            if eval "type $REPLY $NC[NCIO]";then
+                $REPLY $^fpath/$CMD(N.)
+            else
+                iqerr couldn\'t find editor, please set {var}\$EDITOR
+            fi
+        # … or run?
+        else
+            $CMD "${opts[@]:#(--help|-h)}" "$@"
+        fi
+        EC+=$?
+
+        [[ -n $FBKP ]]&&functions[$CMD]=$FBKP||builtin unfunction $CMD&>>|$NCNUL
+    else
+        iqmsgi $0:t\:$LINENO {err}Error:{txt} \
+            no such subcommand %B{quot}·{cmd}${(U)CMD}{%}%B{quot}·{%},\
+                exiting doing nothing…
+        EC+=3
+    fi
+
+    return EC
+}
+
+# To support autoloading the script as a function
+n-c "$@"

@@ -1,0 +1,42 @@
+#!/usr/bin/env zsh
+#
+# Copyright (c) 2023 Sebastian Gniazdowski
+
+# An example of type-agnostic script/function, i.e.: the file can
+# be run as a +x script or as an autoload function.
+
+# Set the base and typically useful options
+builtin emulate -L zsh -o extendedglob -o warncreateglobal \
+                    -o typesetsilent -o noshortloops \
+                    -o rcquotes -o noautopushd \
+                    -o nopromptsubst
+
+# Run as script? Or as a function?
+integer BESCRIPT=${${${(M)0:#$ZSH_ARGZERO:t}:+1}:-0}
+# Set $0 to the script file
+0=${${${(M)${0::=${(%):-%x}}:#/*}:-$PWD/$0}:A}
+
+if ((BESCRIPT)); then
+    # Such global variable is expected to be typeset'd in plugin.zsh.
+    # Here it's restored in case of function being run as a script.
+    typeset -gA Plugins
+    Plugins[MY_PLUGIN_DIR]=${0:h}
+
+    # In case of the script using other scripts from the plugin, either set up
+    # $fpath and autoload, or add the directory to $PATH.
+    fpath+=( $Plugins[MY_PLUGIN_DIR] )
+    autoload …
+
+    # OR
+    path+=( $Plugins[MY_PLUGIN_DIR] )
+fi
+
+# The script/function contents possibly using Plugins[MY_PLUGIN_DIR]…
+# …
+
+
+
+# Use alternate marks [[[ and ]]] as original ones can confuse nested
+# substitutions, e.g.: ${${${VAR}}}
+
+# vim: ft=zsh sw=2 ts=2 et foldmarker=[[[,]]] foldmethod=marker

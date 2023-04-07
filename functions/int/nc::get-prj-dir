@@ -1,0 +1,39 @@
+#!/usr/bin/env zsh
+
+int/nc::get-prj-dir() {
+    # Preamble – emulate & 0=…
+    eval "${SNIP_EMULATE_OPTIONS_ZERO:-false}"||\
+        0=${${${(M)${0::=${(%):-%x}}:#/*}:-$PWD/$0}:A}
+
+    local -a opts; local -A Opts
+    int/nc::parse-opts "q -quiet" Opts opts "$@"||return 7
+    set -- "$reply[@]"
+    int/nc::opt-cascade Opts -q --quiet
+    int/nc::reset
+    integer retval
+
+    tmp/nc::up-find-dir() {
+        local W=$1
+        reply=($PWD/(../)#$~W(N.,@,/))
+        reply=(${(@On)reply})
+        # Fix path's ../,etc.
+        REPLY=$reply[1]:a
+        [[ -n $REPLY ]]
+    }
+
+    # Input/options
+    local PRJ FILEDIR
+    local -a qt=(.git TAGS tags CMakeLists.txt configure)
+    # Iterate over special files/dirs
+    for FILEDIR ($qt); do
+        tmp/nc::up-find-dir $FILEDIR&&PRJ=$REPLY&&(($#REPLY))&&break
+    done
+
+    REPLY=$REPLY:h
+    if [[ $PRJ == WRONGSTR ]]; then
+        iqwarn -Q ${Opts[-q]+-q} $NC[Q10_NO_PROJECT_DIR_FOUND]
+        return 1
+    fi
+    return 0
+}
+# vim:ft=zsh

@@ -1,0 +1,38 @@
+#!/usr/bin/env zsh
+
+int/nc::get-file-type() {
+    # Preamble – emulate & 0=…
+    eval "${SNIP_EMULATE_OPTIONS_ZERO:-false}"||\
+        0=${${${(M)${0::=${(%):-%x}}:#/*}:-$PWD/$0}:A}
+
+    local -a opts; local -A Opts
+    int/nc::parse-opts "s -scan q -quiet" Opts opts "$@"||return 15
+    set -- "$reply[@]"
+    int/nc::opt-cascade Opts -s --scan -q --quiet
+    int/nc::reset
+    integer EC
+    local QPATH=$1
+    local -a qc
+
+    [[ $QPATH == WRONGSTR ]]&&{iqerr incorrect or missing path to file;return 13;}
+    [[ ! -r $QPATH ]]&&unset 'Opts[-s]' 'Opts[--scan]'
+
+    if (($+Opts[-s]));then
+        qc=(${(f)"$(<$QPATH)"})
+        [[ $qc[1] == \#compdef\ * ]]&&reply+=(zsh)
+        qc=(${qc/((#s)?(#c0,2)[[:space:]]#vim*(:|)(ft|filetype)=(#b)([^:[:space:]]##)(#B)*|(#s)?(#c0,2)[[:space:]]#"-*- mode:"[[:space:]]#(#b)([^\;]##)(#B)*|(#s)\#\!([^\/]#[\/])#(env[[:space:]]##|)(#b)([^\/]##)|*)/$match[1]$match[2]$match[3]})
+        reply+=($qc)
+        ((!$#reply))&&reply=($QPATH:e)
+        reply=(${(uon)reply})
+        REPLY=$reply[1]
+    else
+        REPLY=$QPATH:e reply=($QPATH:e)
+    fi
+ 
+    if [[ $REPLY == WRONGSTR ]]; then
+        iqwarn -Q ${+Opts[-q]+-q} ${Opts[-q]+-q} $NC[Q27_FILETYPE_UNRECOGNIZED]
+        return 1
+    fi
+    return 0
+}
+# vim:ft=zsh

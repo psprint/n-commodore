@@ -1,0 +1,23 @@
+#!/usr/bin/env zsh
+# -*- mode: sh; sh-indentation: 4; indent-tabs-mode: nil; sh-basic-offset: 4;-*-
+# Copyright (c) 2023 Sebastian Gniazdowski
+#
+clone() {
+    # Preamble – emulate & 0=…
+    eval "${SNIP_EMULATE_OPTIONS_ZERO:-false}"||\
+        0=${${${(M)${0::=${(%):-%x}}:#/*}:-$PWD/$0}:A}
+    source $0:h:h/share/preamble.inc.zsh --fun
+
+    local -a opts; local -A Opts
+    int/nc::parse-opts "C: -dir:" Opts opts "$@"||return 7
+    set -- "$reply[@]"
+    int/nc::opt-cascade Opts -C --dir
+    int/nc::reset
+
+    local -a qcmd=(command git -C ${Opts[-C]:=$PWD} clone --progress "$1" $2)
+    int/nc::run-command -C ${Opts[-C]} -- "$qcmd[@]" |& nc::git-proc-out
+
+    return $?
+}
+clone "$@"
+# vim:ft=zsh:sw=4:sts=4:et

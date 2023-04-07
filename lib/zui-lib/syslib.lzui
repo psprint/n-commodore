@@ -1,0 +1,349 @@
+#!/usr/bin/env zsh
+#
+# Library file (*.lzui)
+#
+# System (internal) functions
+#
+
+ZUI[syslib_sourced]=1
+
+# FUNCTION: -zui_sys_get_tfield_cursor_boundaries {{{
+# Gets cursor minimum and maximum x position for
+# given line and given (via id) text field. Stores
+# them into two parameters given by name. Testable,
+# returns if the cursor positions could have been
+# established.
+#
+# Example call:
+# -zui_sys_get_tfield_cursor_boundaries "cidx_start" "cidx_end" "${list[10]}" "${reply[@]}"
+#
+# $1 - output parameter name - cursor start index
+# $2 - output parameter name - cursor end index
+# $3 - current $list (zui-list working variable) element
+# $4, ..., $11 - decoded __text field
+function -zui_sys_get_tfield_cursor_boundaries() {
+    local __out1="$1" __out2="$2" __elem="$3" __id="$4"
+    local -a __output
+
+    zui-process-buffer "$__elem"
+
+    integer __i __size="${#ZUI_PB_WORDS}" __idx=0
+    local __seg __text REPLY
+
+    for (( __i=1; __i <= __size; __i ++ )); do
+        __idx+="${#ZUI_PB_SPACES[__i]}"
+        __seg="${ZUI_PB_WORDS[__i]}"
+        if -zui_glib_is_hyperlink "$__seg"; then
+            __text="${__seg//(#b)$'\01'[^$'\01']#$'\01'[^$'\01']#$'\01'[^$'\01']#$'\01'[^$'\01']#$'\01'[^$'\02']#$'\02'([^$'\02']#)$'\02'/${(Q)match[1]}}"
+            -zui_util_strip_codes "$__text"
+            __idx+="${(m)#REPLY}"
+        elif -zui_glib_decode_text_field "$__seg" __output; then
+            if [[ "$__id" = "${__output[1]}" ]]; then
+                # Add characters that precede
+                if [[ "$__seg" = (#b)(*)$'\032'[^$'\032']#$'\032'[^$'\032']#$'\032'[^$'\032']#$'\032'[^$'\032']#$'\032'[^$'\032']#$'\032'[^$'\032']#$'\032'[^$'\02']#$'\02'* ]]; then
+                    __idx+=${(m)#match[1]}
+                fi
+                # Minimum x position
+                : ${(P)__out1::=$__idx}
+
+                __text="${(P)__output[4]}"
+                __text="${__text[${(P)__output[3]},-1]}"
+                __text="${__text[1,${(P)__output[2]}]}"
+                __idx+="${(m)#__text}"
+                # Maximum x position
+                : ${(P)__out2::=$__idx}
+                return 0
+            else
+                # Add characters that precede and follow
+                if [[ "$__seg" = (#b)(*)$'\032'[^$'\032']#$'\032'[^$'\032']#$'\032'[^$'\032']#$'\032'[^$'\032']#$'\032'[^$'\032']#$'\032'[^$'\032']#$'\032'[^$'\02']#$'\02'(*) ]]; then
+                    __idx+=${(m)#match[1]}+${(m)#match[2]}
+                fi
+                __idx+="${(P)__output[2]}"
+            fi
+        elif -zui_glib_decode_list_box "$__seg" __output; then
+            if [[ "$__id" = "${__output[1]}" ]]; then
+                # Add characters that precede
+                if [[ "$__seg" = (#b)(*)$'\034'[^$'\034']#$'\034'[^$'\034']#$'\034'[^$'\034']#$'\034'[^$'\034']#$'\034'[^$'\034']#$'\034'[^$'\034']#$'\034'[^$'\02']#$'\02'* ]]; then
+                    __idx+=${(m)#match[1]}
+                fi
+
+                # Minimum x position
+                : ${(P)__out1::=$__idx}
+
+                # Just take width
+                __idx+="${__output[2]}"
+
+                # Maximum x position
+                : ${(P)__out2::=$__idx}
+                return 0
+            else
+                # Add characters that precede and follow
+                if [[ "$__seg" = (#b)(*)$'\034'[^$'\034']#$'\034'[^$'\034']#$'\034'[^$'\034']#$'\034'[^$'\034']#$'\034'[^$'\034']#$'\034'[^$'\034']#$'\034'[^$'\02']#$'\02'(*) ]]; then
+                    __idx+=${(m)#match[1]}+${(m)#match[2]}
+                fi
+                __idx+="${(P)__output[2]}"
+            fi
+        elif -zui_glib_get_stext "$__seg" __text; then
+            -zui_util_strip_codes "$__text"
+            __idx+="${(m)#REPLY}"
+        else
+            -zui_util_strip_codes "$__seg"
+            __idx+="${(m)#REPLY}"
+        fi
+    done
+
+    __idx+="${#ZUI_PB_SPACES[__i]}"
+
+    # Store incorrect data
+    : ${(P)__out1::=$__idx}
+    : ${(P)__out2::=$__idx}
+
+    return 1
+} # }}}
+
+# FUNCTION: -zui_sys_map_cursor_on_string {{{
+# Maps visual cursor position onto in-string cursor
+# position. Supports characters with double and greater
+# width
+#
+# $1 - string start display index
+# $2 - string
+# $3 - cursor position
+# $4 - output parameter name
+function -zui_sys_map_cursor_on_string() {
+    local __idx="$1" __str="$2" __curx="$3" __var_name="$4"
+    integer __i __count=${#__str} __width_sum=0
+
+    for (( __i = 1; __i <= __count; __i ++ )); do
+        if (( __width_sum - 1 >= __curx )); then
+            (( __idx += __i - 1 - 1 ))
+            : ${(P)__var_name::=$__idx}
+            return 0
+        fi
+        __width_sum+=${(m)#__str[__idx+__i-1]}
+    done
+
+    (( __idx += __i - 1 - 1 ))
+    : ${(P)__var_name::=$__idx}
+    return 1
+} # }}}
+
+# FUNCTION: -zui_sys_index_tail_width {{{
+# Returns index in given string that results
+# in given width, when displaying the string
+# starting from that index
+#
+# $1 - string
+# $2 - expected width
+# $3 - output parameter name for the index
+function -zui_sys_index_tail_width() {
+    local __str="$1" __width="$2" __var_name="$3"
+    integer __i __count=${#__str} __width_sum=0
+
+    for (( __i = __count; __i >= 1; __i -- )); do
+        __width_sum+=${(m)#__str[__i]}
+        if (( __width_sum >= __width )); then
+            : ${(P)__var_name::=$__i}
+            return 0
+        fi
+    done
+
+    : ${(P)__var_name::=1}
+    return 1
+} # }}}
+
+# FUNCTION: -zui_sys_gather_lanchors  {{{
+# Appends mod${1}_ice${2}_lanchors into array given by name
+#
+# $1 - module index
+# $2 - instance index
+# $3 - target array name
+function -zui_sys_gather_lanchors() {
+    local __var_name1="mod${1}_ice${2}_lanchors" __var_name2=${3-reply}
+    if [[ -z $1 || -z $2 ]]; then
+        print -u2 "-zui_glib_gather_lanchors must obtain module and instance idx"
+        return 1
+    fi
+
+    # Append and store
+    local -a __output
+    __output=( "${(P@)__var_name2}" "${(P@)__var_name1}" )
+
+    : ${(PA)__var_name2::=${__output[@]}}
+} # }}}
+
+# FUNCTION: -zui_sys_decode_list_update {{{
+# Deserializes on-the-fly update package.
+# To be used rather only internally.
+#
+# $1 - the package
+# $2 - optional target parameter name
+function -zui_sys_decode_list_update() {
+    local -a __segments
+    [[ -n "$1" ]] && __segments=( "${(z@)1}" ) || __segments=( "" "" 0 0 )
+    local __var_name="${2-reply}"
+
+    : ${(PA)__var_name::="${(Q)__segments[@]}"}
+} # }}}
+
+# FUNCTION: -zui_sys_decode_hops {{{
+# Deserializes on-the-fly hops substitution.
+# For internal usage.
+#
+# $1 - the hops' package
+# $2 - optional target parameter name
+function -zui_sys_decode_hops() {
+    local -a __hops
+    [[ -n "$1" ]] && __hops=( "${(z@)1}" ) || __hops=( )
+    local __var_name="${2-reply}"
+    : ${(PA)__var_name::=${(Q)__hops[@]}}
+} # }}}
+
+# FUNCTION: -zui_sys_decode_nonselectables {{{
+# Deserializes on-the-fly nonselectables
+# substitution. For internal usage.
+#
+# $1 - the nonselectables' package
+# $2 - optional target parameter name
+function -zui_sys_decode_nonselectables() {
+    local -a __nonselectables
+    [[ -n "$1" ]] && __nonselectables=( "${(z@)1}" ) || __nonselectables=( )
+    local __var_name="${2-reply}"
+    : ${(PA)__var_name::="${(Q)__nonselectables[@]}"}
+} # }}}
+
+# FUNCTION: -zui_sys_decode_lanchors {{{
+# Deserializes on-the-fly local anchors.
+# For internal usage.
+#
+# $1 - the anchors' package
+# $2 - optional target parameter name
+function -zui_sys_decode_lanchors() {
+    local -a __lanchors
+    [[ -n "$1" ]] && __lanchors=( "${(z@)1}" ) || __lanchors=( )
+    local __var_name="${2-reply}"
+    : ${(PA)__var_name::=${(Q)__lanchors[@]}}
+} # }}}
+
+# FUNCTION: -zui_sys_add_message {{{
+# Appends given message to ZUI_MESSAGES
+#
+# $1 - message type
+# $2 - timestamp
+# $3, $4, ... - message bits / lines
+function -zui_sys_add_message() {
+    local tpe="$1" ts="${2:-$(date +%s)}" timestr=""
+
+    if [[ -n "${ZUI[log_time_format]}" ]]; then
+        if (( ${+builtins[strftime]} )); then
+            strftime -s timestr "${ZUI[log_time_format]}" "$ts"
+        else
+            # Slow and not respecting $ts fallback
+            # but will rescue users with weird zsh
+            timestr=$(date "+${ZUI[log_time_format]}")
+        fi
+    fi
+
+    # Clean space-only elements
+    set -- "${@[3,-1]/(#s)[[:space:]]##(#e)/}"
+
+    integer index msg_len=0
+    for (( index = 1; index <= ${#}; index ++ )); do
+        msg_len+=${#@[index]}
+    done
+
+    if ((tpe==3));then
+        ZUI_MESSAGES[-1]=( "${(q)msg_len} ${(q)tpe} ${(q)ts} ${(q)timestr} ${(j: :)${(q)@}}" )
+    else
+        ZUI_MESSAGES+=( "${(q)msg_len} ${(q)tpe} ${(q)ts} ${(q)timestr} ${(j: :)${(q)@}}" )
+    fi
+    (( ++ ZUI[message_count] ))
+
+    # House-keeping
+    (( ${#ZUI_MESSAGES} >= ZUI[log_size] + 10 ))&&\
+        { ZUI_MESSAGES=( "${(@)ZUI_MESSAGES[1+10,-1]}" ); }
+} # }}}
+
+
+function zui::get_diff_line() {
+    integer QFLAG QI QLINE QW\
+        QC=$(($#ZUI[SEARCH_BUFFER]?$#ZUILIST_NONSELECTABLE_ELEMENTS:0))
+    local LINE FILE
+    if [[ -n $ZUI[SEARCH_BUFFER] ]];then
+        repeat 1; do typeset +U -ga __slist=("$@[@]");done
+        -zui_sys_get_match_line QI||THROW "cannot resolve search"
+        QLINE=QI+QC
+    else
+        QLINE=${ZUI[CURRENT_IDX]}
+    fi
+    ((QLINE>$#))&&THROW "Cursor $QLINE > $# (max element)"
+    for ((QI=QLINE-1;QI>QC;--QI));do
+        LINE=$__qlist[QI]
+        LINE=$@[QI]
+        int/nc::prune-esc -T -- $LINE
+        if ((!QFLAG))&&[[ $REPLY == (#b)(#s)@@\ -<->,<->\ +(<->),<->\ @@* ]];then
+            QW+=match[1] QFLAG=1
+        elif [[ $REPLY == (#b)(#s)+++[[:space:]]##[ba]/(*) ]];then
+            FILE=$match[1]
+        elif ((!QFLAG))&&[[ $REPLY[1] != - || $REPLY[2] != ([[:space:]]|) ]];then
+            QW+=1
+        fi
+        (($#FILE&&QFLAG))&&break
+    done
+    ((QI==QC))&&THROW "No diff header found"
+    reply[2]=$FILE
+    reply[1]=$QW
+    [[ -n $FILE ]]||THROW "No such file: ·$FILE·"
+    return $?
+}
+
+# FUNCTION: -zui_sys_get_match_line {{{
+# Returns at which index in $__list the search
+# result that's currently highlighted is located.
+#
+# Allows to jump to search result, not only see it.
+#
+# $__slist - input variable with copy of $__list
+# $1 - output variable to hold the established target line number
+function -zui_sys_get_match_line() {
+    local __var_name=${1:-REPLY} __i
+    local -a __nonse=($ZUILIST_NONSELECTABLE_ELEMENTS)
+    integer __cnt=$#__nonse
+    [[ ${ZUI[UNIQ_MODE]} -eq 1 ]] &&typeset -ga __slist|| typeset +U -ga __slist 
+    (($#ZUI[SEARCH_BUFFER]||ZUI[UNIQ_MODE]))&&\
+        for __i in ${(nO)ZUILIST_NONSELECTABLE_ELEMENTS[@]}; do
+            #__slist[__i]=()
+        done
+
+    local search_buffer=${ZUI[SEARCH_BUFFER]%%(+| )##}
+    if [[ -n $search_buffer ]]; then
+        local search_pattern="(#b)(($ZUI[SEARCH_PATTERN])|(*))"
+        integer __line __correct __z
+        local -a __slist2
+        repeat 1; do
+            __slist=(${(@)__slist//(#i)$~search_pattern/$((++__line,\
+                    (${__nonse[(I)$__line]}==0?(__z=0):(++__correct, __z=1)),\
+                    (${#match[2]}>0 && (!__z) ? (__line-__correct):0)))})
+            __slist=(${(@)__slist:#0})
+            __slist2=(${(@)__slist:#})
+        done
+
+        # Use the same element but from line-number-only array
+        __line=${__slist2[ZUI[CURRENT_IDX]]}
+        # Correct for possible empty entries that weren't counted
+        # because // substitution ignores empty elements, always
+        integer __index=${__slist[(i)$__line]}
+        local -a __empty
+        __empty=(${(@M)__slist[1,__index]:#})
+        __line+=${#__empty}
+        : ${(P)__var_name::=$__line}
+        return 0
+    else
+        : ${(P)__var_name::=$ZUI[CURRENT_IDX]}
+        ((ZUI[CURRENT_IDX]>0&&\
+            ZUI[CURRENT_IDX]>${${(On)ZUILIST_NONSELECTABLE_ELEMENTS}[1]}))
+        return $?
+    fi
+} # }}}
+
+# vim:ft=zsh

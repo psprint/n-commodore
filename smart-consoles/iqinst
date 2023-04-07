@@ -1,0 +1,560 @@
+#!/usr/bin/env zsh
+# -*- mode: sh; sh-indentation: 4; indent-tabs-mode: nil; sh-basic-offset: 4; -*-
+
+# Copyright (c) 2023 Sebastian Gniazdowski
+
+# Run as script? Or as a function? Supports both ways.
+
+iqinst()
+{
+# Preamble – emulate & 0=…
+eval "${SNIP_EMULATE_OPTIONS_ZERO:-false}"||\
+    0=${${${(M)${0::=${(%):-%x}}:#/*}:-$PWD/$0}:A}
+
+source $0:h:h/share/preamble.inc.zsh --script --fun --cleanup
+
+local -A Opts;local -a opts
+int/nc::init-sm-con Opts opts "$@"||{print QE>>/tmp/reply;return 13}
+set -- "$reply[@]"
+eval "$REPLY"
+
+iqw(){
+    -zui_glib_msg "$@"
+}
+
+iqinst_util_swap4(){
+    local Q=$1 Q0=$2
+    shift 0+2
+    local -a vars=("$@")
+
+    : ${(P)vars[Q0+1]::=${(P)vars[4]}}
+    : ${(P)vars[4]::=${(P)vars[Q+1]}}
+}
+
+iqinst_util_set_current_idx(){
+    integer IN=ZUI[PREV_CURRENT_IDX]
+    local QPATH=${ZUI[QPATH]:+_$ZUI[QPATH]}
+    # Tree
+    if ((ZUI[GEN_B_IDX]==0));then
+       [[ $ZUI[PREV_CURRENT_IDX] -eq $ZUI[CURRENT_IDX_PVIEW_BKP$QPATH] ||\
+         $ZUI[PREV_CURRENT_IDX] -eq $ZUI[CURRENT_IDX_HIST_BKP] ]]&&\
+            ZUI[PREV_CURRENT_IDX]=${ZUI[CURRENT_IDX_MAIN_BKP]:-5}
+    # Preview
+    elif ((ZUI[GEN_B_IDX]==1));then
+        [[ $ZUI[PREV_CURRENT_IDX] -eq $ZUI[CURRENT_IDX_MAIN_BKP] ||\
+          $ZUI[PREV_CURRENT_IDX] -eq $ZUI[CURRENT_IDX_HIST_BKP] ]]&&\
+            ZUI[PREV_CURRENT_IDX]=${${ZUI[CURRENT_IDX_PVIEW_BKP$QPATH]:#0#}:-5}
+    elif ((ZUI[GEN_B_IDX]==0+2));then
+        [[ $ZUI[PREV_CURRENT_IDX] -eq $ZUI[CURRENT_IDX_PVIEW_BKP$QPATH] ||\
+          $ZUI[PREV_CURRENT_IDX] -eq $ZUI[CURRENT_IDX_MAIN_BKP] ]]&&\
+            ZUI[PREV_CURRENT_IDX]=${${ZUI[CURRENT_IDX_HIST_BKP]:#0#}:-5}
+    fi
+    if ((IN!=ZUI[PREV_CURRENT_IDX]));then
+        ZUI[CURRENT_IDX]=$ZUI[PREV_CURRENT_IDX]
+        -zui_list_verify_vars
+        ZUI[redraw]=1
+    fi
+    if ((!ZUI[UNIQ_MODE]&&!$#ZUI[SEARCH_BUFFER]&&\
+            ZUI[CURRENT_IDX]<=${${(On)ZUILIST_NONSELECTABLE_ELEMENTS}[1]}));then
+        ZUI[CURRENT_IDX]=${${(On)ZUILIST_NONSELECTABLE_ELEMENTS}[1]}
+        ZUI[redraw]=1
+    fi
+}
+
+iqinst_cmd_synh_switch(){
+    ((ZUI[SRC_HIGHLIGHT]=1-ZUI[SRC_HIGHLIGHT]))
+    ZUI[SRC_HIGHLIGHT_SWITCHED]=1
+    if iqinst_hub;then
+        ((ZUI[SRC_HIGHLIGHT]))&&local txt=" ON"||local txt=" OFF"
+        iqw "Syntax highlighting switched" $txt
+    fi
+}
+
+iqinst_cmd_next(){
+    integer q=${1##<->/} qq=${1%%/<->} in=$ZUI[GEN_B_IDX]
+
+    # Three kind of args, first: num0/num1
+    if ((q!=qq));then
+        ((ZUI[GEN_B_IDX]==q))&&ZUI[GEN_B_IDX]=$qq||\
+            {((ZUI[GEN_B_IDX]==qq))&&ZUI[GEN_B_IDX]=$q||ZUI[GEN_B_IDX]=qq;}
+    # Second: num
+    elif (($#1));then
+        ZUI[GEN_B_IDX]=$q
+    # Third: no-arg
+    else
+        ((ZUI[GEN_B_IDX]=(1+ZUI[GEN_B_IDX])%3))
+    fi
+    iqinst_view_switch $in $ZUI[GEN_B_IDX]
+    iqinst_set_prompt
+    iqinst_hub
+    return 0
+}
+
+iqinst_view_switch(){
+    integer in=$2 in0=$1
+    ZUI[VIEW_CHANGE]=1
+    local QPATH=${ZUI[QPATH]:+_$ZUI[QPATH]} QTXT
+    ZUI[PREV_GEN_B_IDX]=$in0
+
+    noglob iqinst_util_swap4 $in $in0 \
+        ZUI[SEARCH_BUFFER_GLOBAL] \
+        ZUI[SEARCH_BUFFER_PREVIEW]\
+        ZUI[SEARCH_BUFFER_GIT]\
+        ZUI[SEARCH_BUFFER]
+
+    local -a qt=(·file·\  ·preview·\  ·history·\ )
+    local Q=$qt[ZUI[GEN_B_IDX]+1]
+    ((ZUI[IN_QUERY]))&&iqw "[${(U)Q%%[ ]##}] " "Restored previous " $Q search
+
+    buffer=$ZUI[SEARCH_BUFFER]
+    if ((in0==1));then
+        ZUI[CURRENT_IDX_PVIEW_BKP$QPATH]=$ZUI[CURRENT_IDX]
+    elif ((in0==2));then
+        ZUI[CURRENT_IDX_HIST_BKP]=$ZUI[CURRENT_IDX]
+    elif ((in0==0));then
+        ZUI[CURRENT_IDX_MAIN_BKP]=$ZUI[CURRENT_IDX]
+    fi
+    ZUI[PREV_CURRENT_IDX]=$ZUI[CURRENT_IDX]
+}
+
+iqinst_exec_command_cb() {
+    ZUI[COMMAND]=$ZUI[QUERY_BUFFER]
+    if ((ZUI[GEN_B_IDX]==2&&(ZUI[IN_QUERY]!=3||!$#ZUI[QUERY_BUFFER])));then
+        ZUI[COMMAND]=$__list[ZUI[CURRENT_IDX]]
+    fi
+    if [[ $ZUI[COMMAND] != $~galiases[WRONGSTR] ]];then
+        builtin print -r -- $ZUI[COMMAND]>>!$NCCHIST
+    else
+        iqw "No command entered, " "" "" "cannot execute"
+        return 1
+    fi
+    ZUI[QUERY_BUFFER]=
+    iqinst_reset_hist
+    iqinst_hub
+}
+
+iqinst_query_change_cb(){
+    iqinst_set_prompt ${1%e}
+    ZUI[VIEW_CHANGE]=1
+}
+
+iqinst_reset_hist(){
+    ok/qlnum -U $NCCHIST&&ZUI[CMD_NO]=$((REPLY+1))
+    ok/qlnum -U $NCSHIST&&ZUI[SEARCH_NO]=$((REPLY+1))
+}
+
+iqinst_create_histories(){
+    : ${NCCHIST:=${XDG_CACHE HOME:-$HOME/.cache/n-commodore}/n-commmodore-cmd.hst}
+    : ${NCSHIST:=${XDG_CACHE HOME:-$HOME/.cache/n-commodore}/n-commmodore-srch.hst}
+    command mkdir -p $NCCHIST:h $NCSHIST:h||return
+    [[ ! -f $NCCHIST ]]&&builtin print -n>!$NCCHIST
+    [[ ! -f $NCSHIST ]]&&builtin print -n>!$NCSHIST
+    iqinst_reset_hist
+    return 0
+}
+
+iqinst_hist(){
+    local TPE=$1 QDIR=$2 FILE
+    [[ $TPE == CMD ]]&&FILE=$NCCHIST||FILE=$NCSHIST
+    int/nc::read-all-sys -d$FILE
+    local -aU h=(${(Oa)reply})
+    h=(${(Oa)h})
+    ((!$#h))&&{iqw "Command history empty, no change done";return 0;}
+    : ${ZUI[${TPE}_NO]:=$#h}
+    if ((QDIR));then
+        ((++ZUI[${TPE}_NO],ZUI[${TPE}_NO]>$#h+1?(ZUI[${TPE}_NO]=$#h+1):1))
+    else
+        ((--ZUI[${TPE}_NO],ZUI[${TPE}_NO]<0?(ZUI[${TPE}_NO]=0):1))
+    fi
+    local ITEM=$h[ZUI[${TPE}_NO]]
+    if ((ZUI[${TPE}_NO]<1||ZUI[${TPE}_NO]>$#h));then
+        ITEM=
+        local D=top
+        ((QDIR))&&D=bottom
+        iqw "At $D of history"
+    else
+        [[ $ITEM == $~galiases[WRONGSTR] && $ZUI[${TPE}_NO] -ne 1 ]]&&\
+            {iqw "Unknown problem with history occurred…";return 1;}
+    fi
+    ZUI[QUERY_BUFFER]=$ITEM buffer=$ITEM
+}
+
+iqinst_hist_top(){
+    local T D=$1
+    if ((ZUI[IN_QUERY]==1));then
+        T=SEARCH
+    elif ((ZUI[IN_QUERY]==3));then
+        T=CMD
+    fi
+    (($#T))&&iqinst_hist $T $D
+}
+
+iqinst_set_prompt(){
+    local C=${1:-$ZUI[IN_QUERY]}
+    if ((C==0));then
+        ZUI[QUERY_PROMPT]=
+    elif ((C==1));then
+        iqinst_search_prompt
+    elif ((C==3));then
+        iqinst_exec_prompt
+    else
+        iqw "Internal error, please report"
+    fi
+}
+
+iqinst_search_prompt(){
+    local T=files
+    ((ZUI[GEN_B_IDX]==0))&&T=command\ output
+    ((ZUI[GEN_B_IDX]==1))&&T=file\ contents
+    ((ZUI[GEN_B_IDX]==2))&&T=command\ history
+ 
+    ZUI[QUERY_PROMPT]="Search $T: " ZUI[IN_QUERY]=1 in_query=1
+    ZUI[VIEW_CHANGE]=1
+}
+
+iqinst_exec_prompt(){
+    ZUI[QUERY_PROMPT]="$PWD/:> "
+    ZUI[IN_QUERY]=3; typeset -g in_query=3
+}
+
+separ() {
+    REPLY="$ZUI[YELLOW]${(l:COLUMNS*3::—:):-}$ZUI[FMT_END]";
+}
+
+# Utils
+cmd-ret(){print Press enter to continue…; read -k1;}
+cmd-hide(){zcurses end;}
+cmd-show(){zcurses refresh;}
+cmd-synh-switch(){iqinst_cmd_synh_switch;}
+
+# Views
+cmd-command-history-view(){iqinst_cmd_next 2;}
+cmd-contents-view(){iqinst_cmd_next 1;}
+cmd-main-view(){iqinst_cmd_next 0;}
+cmd-set-view(){local -A Qe=(main 0 preview 1 hist 2 "" 0);iqinst_next $Qe[$1];}
+
+# Commands
+cmd-open-cmd(){zcurses end;eval "$@";-zui_glib_refresh;}
+cmd-open-tig(){curses end;command tig "$@";-zui_glib_refresh;}
+cmd-commit(){zcurses end;command git commit -v "$@";cmd-ret;-zui_glib_refresh;}
+cmd-push(){zcurses end;command git push "$@";cmd-ret;-zui_glib_refresh;}
+cmd-pull(){zcurses end;command git pull "$@";cmd-ret;-zui_glib_refresh;}
+cmd-stage-line(){iqinst_stage_line;}
+
+# Prompt states
+cmd-exec-prompt(){iqinst_exec_prompt;}
+cmd-search-prompt(){iqinst_search_prompt;}
+
+# Histories
+cmd-exec-prev-hist(){iqinst_hist CMD 0;}
+cmd-exec-next-hist(){iqinst_hist CMD 1;}
+cmd-search-next-hist(){iqinst_hist SEARCH 1;}
+cmd-search-prev-hist(){iqinst_hist SEARCH 0;}
+cmd-next-hist(){iqinst_hist_top 1;}
+cmd-prev-hist(){iqinst_hist_top 0;}
+cmd-next-command(){iqinst_command_top 1;}
+cmd-prev-command(){iqinst_command_top 0;}
+
+# Directories
+cmd-pwd-up(){if builtin cd -q -- ..;then iqinst_cmd_next 0; else iqw "Cannot change directory to: " "" "" ..;fi;}
+cmd-cd(){if builtin cd -q -- "$1";then iqinst_cmd_next 0;else iqw "Cannot change directory to: " "" "" $1;fi;}
+
+if ((!$+Opts[--refresh])); then
+    ok/qnstr $PWD&&local APP=$REPLY
+    ZUI[SRC_HIGHLIGHT]=1
+    -zui_glib_cleanup deserialize:"iqinst_$APP"
+    -zui_glib_init app:"iqinst_$APP" app_name:"°Open° Console"
+    emulate -L zsh -o extendedglob -o typesetsilent -o warncreateglobal -o combiningchars -o rcquotes
+    -zui_glib_init2 # after emulate
+    ZUI[GEN_B_IDX]=0 ZUI[PREVIEW_FILE_TYPE]=
+
+    ZUI[SPECIAL_COMMAND_CALLBACK]=iqinst_exec_command_cb
+    ZUI[QUERY_CHANGE_CALLBACK]=iqinst_query_change_cb
+
+    # Needed for immediate output from coprocesses (disables buffering).
+    ((${+commands[stdbuf]}))&& \
+        local -a stdbuf1=( stdbuf -o0 -i0 ) stdbuf2=( stdbuf -o0 -i0 )
+    ((${+commands[gstdbuf]}))&& \
+        local -a stdbuf1=( gstdbuf -o0 -i0 ) stdbuf2=( gstdbuf -o0 -i0 )
+
+    ZUI[COLORING_MATCH_MULTIPLE]=1
+    ZUI[COLORING_COLOR]=$ZUI[BOLD]$ZUI[YELLOW]
+
+    -zui_glib_store_default_app_config b:instant_search 1
+    -zui_glib_store_default_app_config s:select_mode "quit"   # Quit event loop on text-selection
+    -zui_glib_store_default_app_config b:text_bar "[F1 jump/res.][F2 view][F3 diff][F4 Tig][F5 commit][F6 push][F7 pull][F8 SynH]"
+    -zui_glib_store_default_app_config b:status_size 6
+    -zui_glib_store_default_app_config b:status_pointer 1
+    -zui_glib_store_default_app_config b:text_select 1        # Allow selection of text
+    -zui_glib_store_default_app_config s:timeout 25
+    -zui_glib_store_default_app_config s:mark "white MAGENTA reverse"
+    -zui_glib_store_default_app_config s:text_mode all
+    -zui_glib_store_default_app_config b:top_anchors 0
+    ZUI[UNIQ_MODE]=0
+    [[ $1 == open ]]&&shift
+    [[ -n $* ]]&&ZUI[SEARCH_BUFFER]=$*
+    ZUI[START_IN_QUERY]=3
+
+    ZUI[GEN_B_IDX]=0
+
+    local -a qitems iq0items q0input q0inputp
+    integer Q0_SAVE_PIPE
+    if read -k -t -u0; then
+        ZUI[FIRST_0_INPUT]=$REPLY
+        ZUI[HAVE_0_INPUT]=1
+        exec {Q0_SAVE_PIPE}<&0
+    fi
+    iqinst_create_histories
+    cmd-exec-prompt
+fi
+ 
+builtin source -- $NCCFG
+
+#    zui::bindkey F3 "{print q:$ZUI[mark]}"
+zui::bindkey F9 '{print \\n cmdno:$ZUI[CMD_NO], query:$ZUI[IN_QUERY], qbuf: $ZUI[QUERY_BUFFER], view:$ZUI[SEARCH_BUFFER_PREVIEW], gl:$ZUI[SEARCH_BUFFER_GLOBAL], sbuff:$ZUI[SEARCH_BUFFER], current:$ZUI[CURRENT_IDX], PVIEW_Q:$ZUI[CURRENT_IDX_PVIEW_BKP_$ZUI[QPATH]], PVIEW:$ZUI[CURRENT_IDX_PVIEW_BKP], main:$ZUI[CURRENT_IDX_MAIN_BKP] sptr:$ZUI[status_pointer]|tee -a /tmp/reply;}'
+zui::bindkey F10 '{builtin source $NC_CON_DIR/iqinst --refresh||\
+                    iqw -r "Reload finished with error: " $?;}'
+
+iqinst_hub(){
+    integer EC
+    local -a gener=(iqinst_fill_cmd iqinst_fill_preview iqinst_fill_history)
+    $gener[1+(ZUI[GEN_B_IDX]%3)]
+    EC=$?
+    ((${3:-0}))||{-zui_glib_fly_array_refresh 1;}
+
+    return EC
+}
+
+iqinst_fill_history(){
+    int/nc::read-all-sys -d$NCCHIST||{iqw "Error reading history…";return 1;}
+    ZUI[COLORING_PATTERN]='(#s)[^[:space:]]##~(*[·–—]*)'
+    qitems=(${(u)reply}) reply=()
+    -zui_glib_special_text "·Command history·"
+    separ
+    typeset -ga -U ZUILIST_NONSELECTABLE_ELEMENTS=(4 3 2 1)
+    qitems=("$REPLY[3,-1]" "$reply[-1]" "$REPLY[3,-1]" "$qitems[@]")
+    ZUI[IN_QUERY]=1
+    in_query=1
+}
+
+iqinst_fill_preview(){
+    local QPATH QTXT
+    ZUI[text_mode]=all
+    ZUI[COLORING_PATTERN]="·[^·]##·"
+    ZUI[COLORING_MATCH_MULTIPLE]=1
+    ZUI[COLORING_COLOR]=$ZUI[BOLD]$ZUI[YELLOW]
+    if ((ZUI[CURRENT_IDX]>0&&ZUI[SRC_HIGHLIGHT_SWITCHED]==0&&ZUI[PREV_GEN_B_IDX]==0));then
+        QPATH=$__list[ZUI[CURRENT_IDX]]
+        ZUI[QPATH]=$QPATH
+    else
+        QPATH=$ZUI[QPATH]
+    fi
+
+    {
+        qitems=() iq0items=()
+        if [[ -f $QPATH ]];then
+            QTXT="Contents of file: ·$QPATH·"\
+" located at: ·${${${(M)QPATH##/*}:+$QPATH:h}:-$PWD}/·"
+            ((ZUI[SRC_HIGHLIGHT]))||return 0
+            int/nc::get-file-type -s -q $QPATH||\
+                THROW  "Unknown file type, no syntax highlighting"
+            local TPE=$REPLY
+            int/nc::get-stx-cmd -q $TPE||\
+                THROW "Error: no highlighter command found (bat, {src-,}highlight)"
+            local -a qcmd=("$reply[@]" "$QPATH")
+            iq0items=("${(@f)$($qcmd[@])}")
+            iqw "Showed file: " "\`$QPATH:t\`" ", of type: " $TPE
+        else
+            QTXT="!NO FILE SELECTED, PRESS F2 TO SHOW FILE TREE!"
+        fi
+    } always {
+        if CATCH -c \* || [[ $iq0items == $~galiases[WRONGSTR] ]];then
+            [[ -n $CAUGHT ]]&&{iqw $CAUGHT;CAUGHT=;}
+            [[ -f $QPATH ]]&&iq0items=("${(@f)$(<$QPATH)}")
+        fi
+        if [[ $iq0items != $~galiases[WRONGSTR] ]];then
+            qitems=("$iq0items[@]")
+        else
+            [[ ! -f $QFILE ]]&&qitems=("No such file")||\
+                {[[ ! -s $QFILE ]]&&qitems=("File is empty");}
+        fi
+
+        reply=()
+        -zui_glib_special_text $QTXT
+        separ
+        typeset -ga -U ZUILIST_NONSELECTABLE_ELEMENTS=(4 3 2 1)
+        qitems=("$REPLY" "$reply[1]" "$REPLY" "$qitems[@]")
+    }
+}
+
+iqinst_fill_cmd(){
+    local -a cmd
+    ZUI[text_mode]=all
+    ZUI[COLORING_PATTERN]="(((([^\/—\]\[[:space:]])(#c2,)))|·[^·]##·)"
+    ZUI[COLORING_MATCH_MULTIPLE]=1
+    ZUI[COLORING_COLOR]=$ZUI[BOLD]$ZUI[YELLOW]
+    ZUI[QIDX]=0 ZUI[SRC_HIGHLIGHT_SWITCHED]=0
+    reply=()
+    if [[ -n ${ZUI[COMMAND]:=$ANGEL_INST_DEFAULT_COMMAND} ]];then
+        cmd=("${(z@)ZUI[COMMAND]}")
+        ZUI[COMMAND_PREV]=$ZUI[COMMAND]
+        -zui_glib_special_text "Output of cmd: ·$ZUI[COMMAND]·"
+        ZUI[TMP]=$(mktemp)
+        eval "$cmd[@]">!$ZUI[TMP]
+        iq0items=("${(@f)$(<$ZUI[TMP])}")
+        ZUI[RET]=$?
+        ZUI[redraw]=1
+        builtin unset 'ZUI[COMMAND]' 'ZUI[TMP]'
+        if [[ $cmd[1] == cd || $cmd[1] == builtin && $cmd[2] == cd ]];then
+            iqinst_fill_cmd
+        fi
+    else
+        -zui_glib_special_text "Showing files in: ·$PWD·"
+        iq0items=(**/*~*~(N.,@))
+    fi
+    (($+Opts[-s]))&&qitems=("${(@on)qitems}")
+    (($+Opts[-R]))&&qitems=("${(a@nO)qitems}")
+
+    typeset -ga -U ZUILIST_NONSELECTABLE_ELEMENTS=(4 3 2 1)
+    separ
+    qitems=("$REPLY" "$reply[1]" "$REPLY" "$iq0items[@]")
+}
+
+# Read & publish Configure/make output
+-zui-standard-timeout-callback(){
+    local TM=$ZUI[text_mode]
+    ((ZUI[GEN_B_IDX]==2))&&ZUI[text_mode]=off||ZUI[text_mode]=all
+    ZUI[VIEW_CHANGE]=$((ZUI[VIEW_CHANGE]+${#${TM:#$ZUI[text_mode]}}))
+    ZUI[VIEW_CHANGE]=$((ZUI[VIEW_CHANGE]+${${ZUI[COMMAND]:+1}:-0}))
+    typeset -ga -U ZUILIST_NONSELECTABLE_ELEMENTS=(4 3 2 1)
+    ((!ZUI[HAVE_0_INPUT]&&!ZUI[VIEW_CHANGE]))&&return
+
+    if ((ZUI[HAVE_0_INPUT]));then
+        int/nc::read-all -u$Q0_SAVE_PIPE -t0 -x100
+        local ql had_read=0
+        integer q0idx=$#q0input+1
+        if ((!$#q0input));then
+            q0input[q0idx]=$ZUI[FIRST_0_INPUT]$reply[1]
+            shift reply
+        fi
+        local -a qreply=()
+        foreach QE ("$reply[@]")
+            int/nc::prune-esc -T -b -- $QE
+            qreply+=("$REPLY")
+        end
+        q0input+=("$qreply[@]")
+        q0inputp=("$q0input[@]")
+        (($+Opts[-s]))&&q0inputp=("${(@on)q0inputp}")
+        (($+Opts[-R]))&&q0inputp=("${(a@nO)q0inputp}")
+        if ((ZUI[GEN_B_IDX]%3==0));then
+            reply=()
+            -zui_glib_special_text "·Below are entries read from input·"
+            separ
+            local -a q0items=("$qitems[@]")
+            qitems=($REPLY "$reply[1]" $REPLY "$q0inputp[@]")
+            [[ -n ${qitems:|q0items} ]] && -zui_glib_fly_array_refresh 1
+        fi
+    fi
+
+    ((ZUI[VIEW_CHANGE]))||return 0
+    if [[ -n $ZUI[COMMAND] ]];then
+        local CMD=$ZUI[COMMAND]
+        ZUI[GEN_B_IDX]=0
+        iqinst_hub
+        iqw "Executed command: " \`$CMD\` " which returned: " $ZUI[RET]
+    fi
+    builtin unset 'ZUI[COMMAND]'
+    iqinst_util_set_current_idx
+    ZUI[VIEW_CHANGE]=0
+    return 0
+}
+
+if (($+Opts[--refresh])); then
+    iqw "Reload went OK, status normal"
+    return 0
+fi
+
+## Start application ##
+-zui_glib_msg "" "@@@ " "Welcome to " "NC System " "°open° console!" " @@@";
+integer EC
+iqinst_hub 1 1 1
+while (( 1 )); do
+    ZUI[VIEW_CHANGE]=1
+    builtin print -rn -- $terminfo[smcup]$termcap[ti]
+    zui-event-loop a:qitems
+    builtin print -rn -- $terminfo[rmcup]$termcap[te]
+    # exit?
+    [[ -z $REPLY ]]&&break
+    local QFILE= REPLY_SAVE=$REPLY; integer QIDX=0
+    [[ $ZUI[SEARCH_BUFFER] != $~galiases[WRONGSTR] ]]&&
+        {iqinst_create_histories; builtin print $ZUI[SEARCH_BUFFER]>>!$NCSHIST;}
+
+    # no search selection?
+    # …from diff?
+    if [[ -z $ZUI[SEARCH_BUFFER] ]];then
+        # …from preview?
+        if ((ZUI[GEN_B_IDX]%3==1));then
+            QFILE=$ZUI[QPATH]
+            QIDX=ZUI[USER_CURRENT_IDX]
+            iqw "Opening " $QFILE " scrolled to line: " "#$QIDX"
+        # …tree?
+        elif [[ $ZUI[GEN_B_IDX] == (0|2) && $REPLY_SAVE != *(·|–|—)* ]];then
+            QFILE=$REPLY_SAVE
+        fi
+    # search selection?
+    else
+        # prepare the list var that's needed by -zui_sys_get_match_line
+        repeat 1; do typeset +U -ga __slist=("$__qlist[@]");done
+        if -zui_sys_get_match_line QIDX; then
+            # preview?
+            if ((ZUI[GEN_B_IDX]%3==1));then
+                QFILE=$ZUI[QPATH]
+                iqw "Opening " "${QFILE:-error ↔ not found}"\
+                        " scrolled to line: " "#$QIDX"
+            # or normal?
+            elif [[ $ZUI[GEN_B_IDX] == (0|2) && $REPLY_SAVE != *(·|–|—)* ]];then
+                QFILE=$REPLY_SAVE
+                QIDX=0
+            fi
+        fi
+    fi
+
+    if ((ZUI[GEN_B_IDX]==2));then
+        ZUI[COMMAND]=$QFILE
+        ZUI[VIEW_CHANGE]=1
+    elif [[ -f $QFILE || -f **/*/${QFILE:t}(#qNY1) ]];then
+        [[ -f $QFILE ]]||{QFILE=(**/*/$QFILE:t(#qNY1));QFILE=$QFILE[1];}
+        REPLY=
+        if [[ -n $ANGEL_OPEN_CMD ]];then
+            REPLY=$ANGEL_OPEN_CMD
+        elif ! int/nc::get-editor;then
+            EC+=$?
+            iqw "" "" "" 'ERROR: Couldn''t find editor, tried '\
+                "\$VISUAL (=$VISUAL) " then "" " \$EDITOR (=$EDITOR)"
+            ZUI[IN_QUERY]=0
+        fi
+        [[ -n $REPLY ]]&&\
+            (
+                # Run the editor in $REPLY, first cd-ing into project's directory
+                int/nc::run-command -C $PWD \
+                    "$REPLY" ${${QIDX:#0##}:++$QIDX} -- $QFILE
+            )
+        EC+=$?
+    elif [[ -d $QFILE || -d **/*/$QFILE(#qNY1/) ]];then
+        [[ -d $QFILE ]]||{QFILE=(/**/*/$QFILE(#qNY1/));QFILE=$QFILE]1];}
+        iqw "Changing directory to: " ${QFILE##$PWD/}
+        builtin cd -q -- $QFILE&&iqinst_fill_cmd||iqw "" "" "" \
+            "Problem during changing the directory occurred, current PWD is: " \
+            $PWD
+    fi
+    builtin zcurses clear main redraw
+    builtin zcurses clear status redraw
+done
+
+-zui_glib_cleanup serialize
+builtin print -n $terminfo[rmcup]$termcap[te]
+return 0
+}
+iqinst "$@"
+
+# vim:ft=zsh:tw=80:sw=4:sts=4:et:foldmarker=[[[,]]]
