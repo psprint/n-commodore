@@ -25,11 +25,12 @@ if [[ ! -d $NCAES && ! -d $Opts[--path] ]];then
     return 1
 fi
 
-local DIR dirs=($Opts[--path](/N) $NCAES $NCAES/*(/N) $NCTXT(/N))
+local DIR dirs=($Opts[--path](/N) $NCAES $NCAES/*(/N) $NCTXT(/N) $NCSTRDB(/N))
 for DIR ($dirs);do
     # Set up aliases (global, suffix and the proper ones)
     [[ -f $DIR/*[^~](#qNY1.,@) ]]&&for REPLY in $DIR/*[^~](N.,@);do
-        if [[ $REPLY != $NCTXT/* ]];then
+        if [[ $REPLY != $NCTXT/* && $REPLY != $NCSTRDB/* ]]
+        then
             REPLY="$REPLY:t=$(<$REPLY)"
             local KEY=${(M)REPLY##[^=]##}
             alias "${${REPLY#*=}%%:*}" \

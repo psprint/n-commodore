@@ -1,1 +1,1 @@
--g:^([[:cntrl:][:space:][:INCOMPLETE:][:INVALID:]]#|*[[:INCOMPLETE:][:INVALID:]]*|[[:cntrl:]]#|0#|[^[:print:][:alnum:]]#)
+^([[:cntrl:][:space:][:INCOMPLETE:][:INVALID:]]#|*[[:INCOMPLETE:][:INVALID:]]*|[[:cntrl:]]#|0#|[^[:print:][:alnum:]]#)

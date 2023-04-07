@@ -1,1 +1,1 @@
--g:^([[:space:][:INCOMPLETE:][:INVALID:]$'\e']#|*[[:INCOMPLETE:][:INVALID:]]*)
+^([[:space:][:INCOMPLETE:][:INVALID:]$'\e']#|*[[:INCOMPLETE:][:INVALID:]]*)

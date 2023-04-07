@@ -40,7 +40,8 @@ Plugins[ANGEL_IQ_SYSTEM_DIR]="${0:h:h}"
 export NCDIR="${0:h:h}" \
        NCAES="${0:h:h}"/aliases \
        NCLOG="${0:h:h}"/io.log \
-       NCNICK=${NCNICK:-Angel-NC} \
+       NCNICK=${NCNICK:-N-Commodore} \
+       NCSTRDB="${0:h:h}"/strdb \
        NCTXT="${0:h:h}/share/txt" \
        NCOCFG="${XDG_CONFIG_HOME:-$HOME/.config}/n-commodore/n-commmodore-open.cfg" \
        NCCFG="${XDG_CONFIG_HOME:-$HOME/.config}/n-commodore/n-commmodore.cfg" \
@@ -103,7 +104,7 @@ local NCHD=$NC[head-txt]
 # Remaining tasks: aliases and vars reset
 #
 # Set up aliases
-if ! nc::setup-aliases;then
+if ! nc::setup-aliases || [[ -z $NC[WRONGSTR] ]];then
     EC+=$?
     builtin print -P -- $NCHD ${(%)NC[Q1_ALIASES_NOT_SETUP]}
 fi

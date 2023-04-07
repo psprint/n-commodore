@@ -1,1 +1,1 @@
--g:[[:print:][:alnum:]]#
+[[:print:][:alnum:]]#

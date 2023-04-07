@@ -1,1 +1,1 @@
--g:^(*[[:INCOMPLETE:][:INVALID:]]*)
+^(*[[:INCOMPLETE:][:INVALID:]]*)
