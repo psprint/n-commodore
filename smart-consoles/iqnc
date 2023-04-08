@@ -446,6 +446,8 @@ iqnc_fill_cmd(){
 -zui-standard-timeout-callback(){
     local TM=$ZUI[text_mode]
     ((ZUI[GEN_B_IDX]==2))&&ZUI[text_mode]=off||ZUI[text_mode]=all
+    # Ensure cursor is visible
+    ((ZUI[CURRENT_IDX]<5))&&{ZUI[CURRENT_IDX]=5;-zui_list_verify_vars;ZUI[redraw]=1;}
     ZUI[VIEW_CHANGE]=$((ZUI[VIEW_CHANGE]+${#${TM:#$ZUI[text_mode]}}))
     ZUI[VIEW_CHANGE]=$((ZUI[VIEW_CHANGE]+${${ZUI[COMMAND]:+1}:-0}))
     typeset -ga -U ZUILIST_NONSELECTABLE_ELEMENTS=(4 3 2 1)
