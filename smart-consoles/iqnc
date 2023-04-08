@@ -288,7 +288,7 @@ if ((!$+Opts[--refresh])); then
     emulate -L zsh -o extendedglob -o typesetsilent -o warncreateglobal -o combiningchars -o rcquotes
     -zui_glib_init2 # after emulate
     ZUI[GEN_B_IDX]=0 ZUI[PREVIEW_FILE_TYPE]=
-
+    typeset -g ZUILIST_TRACK_SEGMENTS=1
     ZUI[SPECIAL_COMMAND_CALLBACK]=iqnc_exec_command_cb
     ZUI[QUERY_CHANGE_CALLBACK]=iqnc_query_change_cb
 

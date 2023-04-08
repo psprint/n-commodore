@@ -737,7 +737,7 @@ while (( 1 )); do
         (( ${ZUI[UNIQ_MODE]} + ${${ZUI[SEARCH_BUFFER]:+1}:-0} )) && selectable=1
         if (( selectable == 0 )) || ! -zui_glib_decode "${__segments[${ZUI[CURRENT_SEGMENT]}]}"; then
             reply=( "$selectable" $ZUI[UNIQ_MODE] "${${ZUI[SEARCH_BUFFER]:+1}:-0}"
-                    "${__list[${ZUI[CURRENT_IDX]}]}" "${__segments[${ZUI[CURRENT_SEGMENT]}]}" )
+                    "${__list[${ZUI[CURRENT_IDX]}]}" "${__segments[${ZUI[CURRENT_SEGMENT]:-1}]}" )
             REPLY=0
         else
             reply[1,0]=( "$selectable" $ZUI[UNIQ_MODE] "${${ZUI[SEARCH_BUFFER]:+1}:-0}"
