@@ -340,6 +340,7 @@ iqnc_hub(){
     integer EC
     local -a gener=(iqnc_fill_cmd iqnc_fill_preview iqnc_fill_history)
     $gener[1+(ZUI[GEN_B_IDX]%3)]
+    ((ZUI[CURRENT_IDX]<5))&&{ZUI[CURRENT_IDX]=5;-zui_list_verify_vars;}
     EC=$?
     ((${3:-0}))||{-zui_glib_fly_array_refresh 1;}
 
