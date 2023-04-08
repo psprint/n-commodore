@@ -34,12 +34,12 @@
                             Opts opts "$@"||return 7
     set -- "$reply[@]"
     local CMD=$1
+    [[ $CMD == (|inst) ]]&&{set -- inst inst;CMD=console;}
     if (($+Opts[-h]||$+Opts[--help]));then
         CMD=help
     else
         (($#&&$#CMD))&&shift||CMD=help
     fi
-    [[ $CMD == (feat|open|con|inst) ]]&&{set -- $CMD "$@";CMD=console;}
     if [[ -s $NCDIR/libexec/$CMD ]];then
         local FBKP=$functions[$CMD]
         builtin unset -f $CMD&>>!$NCNUL

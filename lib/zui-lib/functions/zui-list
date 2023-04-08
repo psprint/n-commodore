@@ -29,10 +29,12 @@ trap "REPLY=-2; reply=(); return 1" TERM INT QUIT
 -zui_list_status_msg() {
     integer indent=2 line=$ZUI[status_border]
 
+    local color=${(M)1:#(magenta|yellow|blue|cyan|white|green)}
+    [[ -n $color ]]&&shift||color=magenta
     zcurses move "$__wname_status" $line $indent
     zcurses clear "$__wname_status" eol
     zcurses move "$__wname_status" $line $indent
-    zcurses attr "$__wname_status" +bold "magenta/${ZUI[status_colorpair]#*/}"
+    zcurses attr "$__wname_status" +bold "$color/${ZUI[status_colorpair]#*/}"
     zcurses string "$__wname_status" "$1"
     zcurses attr "$__wname_status" "$wrk_stbold" $ZUI[status_colorpair]
     zcurses string "$__wname_status" "$2"
@@ -758,9 +760,9 @@ while (( 1 )); do
                     $ZUI[USER_CURRENT_IDX] $ZUI[USER_LAST_ELEMENT]
 
         if ((ZUI[IN_QUERY]==3));then
-            -zui_list_status_msg "$ZUI[QUERY_PROMPT]" $ZUI[QUERY_BUFFER]
+            -zui_list_status_msg green "$ZUI[QUERY_PROMPT]" $ZUI[QUERY_BUFFER]
         elif ((ZUI[IN_QUERY]==1)); then
-            -zui_list_status_msg "$ZUI[QUERY_PROMPT]" ${ZUI[SEARCH_BUFFER]// / + }
+            -zui_list_status_msg cyan "$ZUI[QUERY_PROMPT]" ${ZUI[SEARCH_BUFFER]// / + }
         fi
 
         [[ $ZUI[status_border] = 1 ]] && {
