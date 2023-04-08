@@ -22,7 +22,7 @@ THROW(){
 # script.
 
 # The following must not be local.
-typeset -g EXCEPTION="$*"
+typeset -ag EXCEPTION=("$@")
 readonly THROW
 if (( TRY_BLOCK_ERROR == 0 )); then
   # We are throwing an exception from the middle of an always-block.

@@ -42,7 +42,7 @@ CATCH() {
 
     if [[ $TRY_BLOCK_ERROR -gt 0 && $EXCEPTION == $~PAT ]]; then
         ((TRY_BLOCK_ERROR=QF))
-        typeset -g CAUGHT="$EXCEPTION"
+        typeset -ag CAUGHT=("$EXCEPTION[@]")
         unset EXCEPTION
         if ((QR));then
             builtin trap "eval ${(q)CODE};return $QC" EXIT

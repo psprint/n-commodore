@@ -191,7 +191,7 @@ iqopen_exec_cmd(){
 
 iqopen_exec_command_cb() {
     ZUI[COMMAND]=$ZUI[QUERY_BUFFER]
-    if [[ $ZUI[COMMAND] != $~galiases[WRONGSTR] ]];then
+    if [[ $ZUI[COMMAND] != $~NC[WRONGSTR] ]];then
         builtin print $ZUI[COMMAND]>>!$NCCHIST
     else
         iqw "No command entered, " "" "" "cannot execute"
@@ -229,7 +229,7 @@ iqopen_hist(){
         ((QDIR))&&D=bottom
         iqw "At $D of history"
     else
-        [[ $ITEM == $~galiases[WRONGSTR] && $ZUI[${TPE}_NO] -ne 1 ]]&&\
+        [[ $ITEM == $~NC[WRONGSTR] && $ZUI[${TPE}_NO] -ne 1 ]]&&\
             {iqw "Problem with history occurred…";return 1;}
     fi
     ZUI[QUERY_BUFFER]=$ITEM buffer=$ITEM
@@ -355,11 +355,11 @@ iqopen_fill_view_preview(){
             QTXT="!NO FILE SELECTED, PRESS F2 TO SHOW FILE TREE!"
         fi
     } always {
-        if CATCH -c \* || [[ $iq0items == $~galiases[WRONGSTR] ]];then
+        if CATCH -c \* || [[ $iq0items == $~NC[WRONGSTR] ]];then
             [[ -n $CAUGHT ]]&&{iqw $CAUGHT;CAUGHT=;}
             [[ -f $QPATH ]]&&iq0items=("${(@f)$(<$QPATH)}")
         fi
-        if [[ $iq0items != $~galiases[WRONGSTR] ]];then
+        if [[ $iq0items != $~NC[WRONGSTR] ]];then
             qitems=("$iq0items[@]")
         else
             qitems=("No such file")
@@ -480,7 +480,7 @@ while (( 1 )); do
     builtin print -rn -- $terminfo[rmcup]$termcap[te]
     # exit?
     [[ -z $REPLY ]]&&break
-    [[ $ZUI[SEARCH_BUFFER] != $~galiases[WRONGSTR] ]]&&
+    [[ $ZUI[SEARCH_BUFFER] != $~NC[WRONGSTR] ]]&&
         {iqopen_create_histories; builtin print $ZUI[SEARCH_BUFFER]>>!$NCSHIST;}
 
     local QFILE= REPLY_SAVE=$REPLY; integer QIDX=0

@@ -19,7 +19,7 @@ int/nc::get-stx-cmd() {
     (($+commands[bat]))&&reply=(command bat --color=always 
                             --decorations=never -l$QTYPE)
 
-    if [[ $reply == $~galiases[WRONGSTR] ]]; then
+    if [[ $reply == $~NC[WRONGSTR] ]]; then
         iqwarn -Q ${+Opts[-q]+-q} ${Opts[-q]+-q} $NC[Q30_NO_HILIGHT_CMD]
         return 1
     fi

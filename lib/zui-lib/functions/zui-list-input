@@ -661,7 +661,7 @@ done
 ((!FOUND))&&\
 case "$key" in
     ($'\n'|ENTER)
-        if ((in_query==3))&&[[ $ZUI[QUERY_BUFFER] != $~galiases[WRONGSTR] ]];then
+        if ((in_query==3))&&[[ $ZUI[QUERY_BUFFER] != $~NC[WRONGSTR] ]];then
             special_cmd=query-accept
             -zui_list_cursor_visibility status 0
         elif ((ZUI[instant_select]));then
@@ -878,7 +878,12 @@ case "$key" in
         if [[ $#key == 1 && $((#key)) -lt 31 ]]; then
             # ignore all other control keys
         else
-            buffer+="$key"
+            if ((ZUI[cursor]==1));then
+                buffer[ZUI[cursor],0]=$key
+            else
+                buffer[ZUI[cursor]-1]+="$key"
+            fi
+            ((ZUI[cursor]++))
         fi
         ;;
 esac

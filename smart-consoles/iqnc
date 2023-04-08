@@ -117,20 +117,32 @@ iqnc_view_switch(){
     ZUI[PREV_CURRENT_IDX]=$ZUI[CURRENT_IDX]
 }
 
-iqnc_exec_command_cb() {
+iqnc_exec_command_cb(){
+    integer QEXISTS
+    local CMD=${(Q@)${(@)${(@zA)ZUI[QUERY_BUFFER]}[1]}}
     ZUI[COMMAND]=$ZUI[QUERY_BUFFER]
     if ((ZUI[GEN_B_IDX]==2&&(ZUI[IN_QUERY]!=3||!$#ZUI[QUERY_BUFFER])));then
         ZUI[COMMAND]=$__list[ZUI[CURRENT_IDX]]
     fi
-    if [[ $ZUI[COMMAND] != $~galiases[WRONGSTR] ]];then
-        builtin print -r -- $ZUI[COMMAND]>>!$NCCHIST
-    else
-        iqw "No command entered, " "" "" "cannot execute"
-        return 1
-    fi
-    ZUI[QUERY_BUFFER]=
-    iqnc_reset_hist
-    iqnc_hub
+    {
+        if [[ $ZUI[COMMAND] != $~NC[WRONGSTR] ]];then
+            builtin print -r -- $ZUI[COMMAND]>>!$NCCHIST
+        elif [[ $ZUI[COMMAND] == $~NC[WRONGSTR] ]];then
+            THROW "No command entered, " "" "" "cannot execute"
+        fi
+        # No such command?
+        type $CMD&>/dev/null||THROW "No such command" ": " "" $CMD
+    } always {
+        if CATCH \*;then
+            iqw "$CAUGHT[@]"
+            TRY_BLOCK_ERROR=0
+        else
+            iqnc_reset_hist
+            iqnc_hub
+            iqw "Executed command: " \`$CMD\` " which returned: " $ZUI[RET]
+        fi
+    }
+    ZUI[QUERY_BUFFER]= ZUI[COMMAND]=
 }
 
 iqnc_query_change_cb(){
@@ -173,7 +185,7 @@ iqnc_hist(){
         ((QDIR))&&D=bottom
         iqw "At $D of history"
     else
-        [[ $ITEM == $~galiases[WRONGSTR] && $ZUI[${TPE}_NO] -ne 1 ]]&&\
+        [[ $ITEM == $~NC[WRONGSTR] && $ZUI[${TPE}_NO] -ne 1 ]]&&\
             {iqw "Unknown problem with history occurred…";return 1;}
     fi
     ZUI[QUERY_BUFFER]=$ITEM buffer=$ITEM
@@ -217,7 +229,7 @@ iqnc_exec_prompt(){
     ZUI[IN_QUERY]=3; typeset -g in_query=3
 }
 
-separ() {
+separ(){
     REPLY="$ZUI[YELLOW]${(l:COLUMNS*3::—:):-}$ZUI[FMT_END]";
 }
 
@@ -258,6 +270,15 @@ cmd-prev-command(){iqnc_command_top 0;}
 # Directories
 cmd-pwd-up(){if builtin cd -q -- ..;then iqnc_cmd_next 0; else iqw "Cannot change directory to: " "" "" ..;fi;}
 cmd-cd(){if builtin cd -q -- "$1";then iqnc_cmd_next 0;else iqw "Cannot change directory to: " "" "" $1;fi;}
+
+cmd-cursor-left(){ZUI[cursor]=$((ZUI[cursor]-1));}
+cmd-cursor-right(){ZUI[cursor]=$((ZUI[cursor]+1));}
+cmd-cursor-word-left(){
+    ZUI[cursor]=$((ZUI[cursor]-=
+        ${#${(M)buffer[1,ZUI[cursor]-1]%%[[:space:]]#[^[:space:]]##}}));}
+cmd-cursor-word-right(){
+    ZUI[cursor]=$((ZUI[cursor]+=
+        ${#${(M)buffer[ZUI[cursor],-1]##[[:space:]]#[^[:space:]]##}}));}
 
 if ((!$+Opts[--refresh])); then
     ok/qnstr $PWD&&local APP=$REPLY
@@ -311,7 +332,7 @@ fi
 builtin source -- $NCCFG
 
 #    zui::bindkey F3 "{print q:$ZUI[mark]}"
-zui::bindkey F9 '{print \\n cmdno:$ZUI[CMD_NO], query:$ZUI[IN_QUERY], qbuf: $ZUI[QUERY_BUFFER], view:$ZUI[SEARCH_BUFFER_PREVIEW], gl:$ZUI[SEARCH_BUFFER_GLOBAL], sbuff:$ZUI[SEARCH_BUFFER], current:$ZUI[CURRENT_IDX], PVIEW_Q:$ZUI[CURRENT_IDX_PVIEW_BKP_$ZUI[QPATH]], PVIEW:$ZUI[CURRENT_IDX_PVIEW_BKP], main:$ZUI[CURRENT_IDX_MAIN_BKP] sptr:$ZUI[status_pointer]|tee -a /tmp/reply;}'
+zui::bindkey F9 '{print \\n cursor:$ZUI[cursor], cmdno:$ZUI[CMD_NO], query:$ZUI[IN_QUERY], qbuf: $ZUI[QUERY_BUFFER], view:$ZUI[SEARCH_BUFFER_PREVIEW], gl:$ZUI[SEARCH_BUFFER_GLOBAL], sbuff:$ZUI[SEARCH_BUFFER], current:$ZUI[CURRENT_IDX], PVIEW_Q:$ZUI[CURRENT_IDX_PVIEW_BKP_$ZUI[QPATH]], PVIEW:$ZUI[CURRENT_IDX_PVIEW_BKP], main:$ZUI[CURRENT_IDX_MAIN_BKP] sptr:$ZUI[status_pointer]|tee -a /tmp/reply;}'
 zui::bindkey F10 '{builtin source $NC_CON_DIR/iqnc --refresh||\
                     iqw -r "Reload finished with error: " $?;}'
 
@@ -368,11 +389,11 @@ iqnc_fill_preview(){
             QTXT="!NO FILE SELECTED, PRESS F2 TO SHOW FILE TREE!"
         fi
     } always {
-        if CATCH -c \* || [[ $iq0items == $~galiases[WRONGSTR] ]];then
+        if CATCH -c \* || [[ $iq0items == $~NC[WRONGSTR] ]];then
             [[ -n $CAUGHT ]]&&{iqw $CAUGHT;CAUGHT=;}
             [[ -f $QPATH ]]&&iq0items=("${(@f)$(<$QPATH)}")
         fi
-        if [[ $iq0items != $~galiases[WRONGSTR] ]];then
+        if [[ $iq0items != $~NC[WRONGSTR] ]];then
             qitems=("$iq0items[@]")
         else
             [[ ! -f $QFILE ]]&&qitems=("No such file")||\
@@ -461,7 +482,6 @@ iqnc_fill_cmd(){
         local CMD=$ZUI[COMMAND]
         ZUI[GEN_B_IDX]=0
         iqnc_hub
-        iqw "Executed command: " \`$CMD\` " which returned: " $ZUI[RET]
     fi
     builtin unset 'ZUI[COMMAND]'
     iqnc_util_set_current_idx
@@ -486,7 +506,7 @@ while (( 1 )); do
     # exit?
     [[ -z $REPLY ]]&&break
     local QFILE= REPLY_SAVE=$REPLY; integer QIDX=0
-    [[ $ZUI[SEARCH_BUFFER] != $~galiases[WRONGSTR] ]]&&
+    [[ $ZUI[SEARCH_BUFFER] != $~NC[WRONGSTR] ]]&&
         {iqnc_create_histories; builtin print $ZUI[SEARCH_BUFFER]>>!$NCSHIST;}
 
     # no search selection?
