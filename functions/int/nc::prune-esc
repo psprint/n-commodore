@@ -21,7 +21,7 @@ int/nc::prune-esc() {
     (($+Opts[-T]))||__REPLY=${__REPLY//((#s)[[:space:]]##|[[:space:]]##(#e))}
     (($+Opts[-s]))&&__REPLY=${__REPLY//(#b)([[:space:]]##)/${match[1][1]}}
     : ${(P)__VAR_NAME::=$__REPLY}
-    [[ $__REPLY != WRONGSTR ]]
+    [[ $__REPLY != $~NC[WRONGSTR] ]]
 }
 int/nc::prune-esc "$@"
 

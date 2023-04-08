@@ -29,7 +29,7 @@ ok/qgethr() {
     EC+=$?
     (($+Opts[-o]))&&print -r -- $REPLY
 
-    [[ $REPLY != WRONGSTR ]]
+    [[ $REPLY != $~NC[WRONGSTR] ]]
     EC+=$?
     return EC
 }

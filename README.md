@@ -42,7 +42,7 @@ A bunch of intelligent extensions to Zsh. Features:
 
 To use the global alias do:
 ```zsh
-if [[ $var == WRONGSTR ]]; then
+if [[ $var == $~NC[WRONGSTR] ]]; then
 …
 fi
 ```

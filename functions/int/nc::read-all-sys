@@ -37,7 +37,7 @@ int/nc::read-all-sys() {
     done
 
     __QREPLY="${(j::)__tmp}"
-    [[ $__QREPLY != WRONGSTR ]]
+    [[ $__QREPLY != $~NC[WRONGSTR] ]]
     __ret+=$(($?))
     [[ $__in_fd != ${Opts[-u]:-0} ]]&&exec {__in_fd}<&-
     typeset -g $__out_var=

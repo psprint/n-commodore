@@ -367,7 +367,7 @@ local MBEGIN MEND MATCH
 local -a mbegin mend match
 local -a __segments
 local -a bufs=('ZUI[SEARCH_BUFFER]' '' 'ZUI[QUERY_BUFFER]')
-integer __nseg
+integer __nseg status_msg_strlen=0 status_cursor
 
 local -A __cursor_state
 __cursor_state=( main 1 status 0 field 0 )
@@ -731,7 +731,7 @@ while (( 1 )); do
         zcurses attr "$__wname_status" "$wrk_stbold" $ZUI[status_colorpair]
 
         reply=()
-        local selectable=1 tpe=-1 status_msg_strlen=0
+        local selectable=1 tpe=-1
         [[ -n "${ZUILIST_NONSELECTABLE_ELEMENTS[(r)${ZUI[CURRENT_IDX]}]}" ]] && selectable=0
         (( ${ZUI[UNIQ_MODE]} + ${${ZUI[SEARCH_BUFFER]:+1}:-0} )) && selectable=1
         if (( selectable == 0 )) || ! -zui_glib_decode "${__segments[${ZUI[CURRENT_SEGMENT]}]}"; then
@@ -771,7 +771,7 @@ while (( 1 )); do
         }
 
         # status_msg_strlen is being set in -zui_list_status_msg()
-        zcurses move "$__wname_status" $ZUI[status_border] $(( status_msg_strlen + 2 ))
+        zcurses move "$__wname_status" $ZUI[status_border] $(( status_msg_strlen + status_cursor + 2 ))
         ((!ZUI[IN_QUERY]))&&-zui_list_cursor_visibility status 0||-zui_list_cursor_visibility status 1
         zcurses refresh "$__wname_status"
     }

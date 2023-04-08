@@ -231,7 +231,7 @@ cmd-synh-switch(){iqnc_cmd_synh_switch;}
 cmd-command-history-view(){iqnc_cmd_next 2;}
 cmd-contents-view(){iqnc_cmd_next 1;}
 cmd-main-view(){iqnc_cmd_next 0;}
-cmd-set-view(){local -A Qe=(main 0 preview 1 hist 2 "" 0);iqnc_next $Qe[$1];}
+cmd-set-view(){local -A Qe=(main 0 preview 1 hist 2 "" 0);iqnc_cmd_next $Qe[$1];}
 
 # Commands
 cmd-open-cmd(){zcurses end;eval "$@";-zui_glib_refresh;}
@@ -363,7 +363,7 @@ iqnc_fill_preview(){
                 THROW "Error: no highlighter command found (bat, {src-,}highlight)"
             local -a qcmd=("$reply[@]" "$QPATH")
             iq0items=("${(@f)$($qcmd[@])}")
-            iqw "Showed file: " "\`$QPATH:t\`" ", of type: " $TPE
+            iqw "Showing file: " "\`$QPATH:t\`" ", of type: " $TPE
         else
             QTXT="!NO FILE SELECTED, PRESS F2 TO SHOW FILE TREE!"
         fi

@@ -14,7 +14,7 @@ int/nc::get-file-type() {
     local QPATH=$1
     local -a qc
 
-    [[ $QPATH == WRONGSTR ]]&&{iqerr incorrect or missing path to file;return 13;}
+    [[ $QPATH == $~NC[WRONGSTR] ]]&&{iqerr incorrect or missing path to file;return 13;}
     [[ ! -r $QPATH ]]&&unset 'Opts[-s]' 'Opts[--scan]'
 
     if (($+Opts[-s]));then
@@ -29,7 +29,7 @@ int/nc::get-file-type() {
         REPLY=$QPATH:e reply=($QPATH:e)
     fi
  
-    if [[ $REPLY == WRONGSTR ]]; then
+    if [[ $REPLY == $~NC[WRONGSTR] ]]; then
         iqwarn -Q ${+Opts[-q]+-q} ${Opts[-q]+-q} $NC[Q27_FILETYPE_UNRECOGNIZED]
         return 1
     fi

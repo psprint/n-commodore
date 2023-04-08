@@ -33,7 +33,7 @@ int/nc::read-all() {
     done
     __RET+=$?
     local __QREPLY=${(F)reply}$'\n'
-    [[ $__QREPLY != WRONGSTR ]]
+    [[ $__QREPLY != $~NC[WRONGSTR] ]]
     __RET+=$?
     [[ $__I != ${Opts[-u]:-0} ]]&&{exec {__I}<&-;__RET+=$?;}
     : ${(P)__out_var::=$__QREPLY}

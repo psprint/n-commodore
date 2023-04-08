@@ -31,7 +31,7 @@ int/nc::get-prj-dir() {
     done
 
     REPLY=$REPLY:h
-    if [[ $PRJ == WRONGSTR ]]; then
+    if [[ $PRJ == $~NC[WRONGSTR] ]]; then
         iqwarn -Q ${Opts[-q]+-q} $NC[Q10_NO_PROJECT_DIR_FOUND]
         return 1
     fi

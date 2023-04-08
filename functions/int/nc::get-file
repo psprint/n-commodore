@@ -15,7 +15,7 @@ int/nc::get-file() {
 
     # Verify input
     local url=$1 out=${2:-$1:t}
-    if [[ $url == WRONGSTR || $out == WRONGSTR ]];then
+    if [[ $url == $~NC[WRONGSTR] || $out == $~NC[WRONGSTR] ]];then
         iqerr no or incorrect url given, cannot download…
         return 13
     fi

@@ -48,7 +48,7 @@ IFS= read -s -r -k1 </dev/tty;\
         READ_SOURCE_TEXT=$REPLY
         ((NC[notify-zle]))&&builtin zle -I
         builtin zle -F $FD; exec {FD}<&-
-        [[ $READ_SOURCE_TEXT == WRONGSTR ]]&&return 18
+        [[ $READ_SOURCE_TEXT == $~NC[WRONGSTR] ]]&&return 18
         builtin eval $READ_SOURCE_TEXT
         return 0
     }
