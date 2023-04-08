@@ -17,7 +17,7 @@ prj-dir() {
 
     if int/nc::get-prj-dir $opts;then
         if (($+Opts[--verbose]));then
-            iqnotice -Q found project at {path}$REPLY{%}, it was one \
+            iqnotice -Q found project at {dir}$REPLY{%}, it was one \
                 of {num}$#reply{%} candidates
         elif ((!$+Opts[--quiet]));then
                 builtin print -r -- $REPLY

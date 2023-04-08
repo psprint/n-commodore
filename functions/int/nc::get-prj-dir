@@ -6,14 +6,15 @@ int/nc::get-prj-dir() {
         0=${${${(M)${0::=${(%):-%x}}:#/*}:-$PWD/$0}:A}
 
     local -a opts; local -A Opts
-    int/nc::parse-opts "q -quiet" Opts opts "$@"||return 7
+    int/nc::parse-opts "v -verbose q -quiet" Opts opts "$@"||return 7
     set -- "$reply[@]"
-    int/nc::opt-cascade Opts -q --quiet
+    int/nc::opt-cascade Opts -q --quiet -v --verbose
     int/nc::reset
     integer retval
 
     tmp/nc::up-find-dir() {
         local W=$1
+        (($+Opts[--verbose]))&&iqnotice "looking up {dir}$W{%} in {path}../…"
         reply=($PWD/(../)#$~W(N.,@,/))
         reply=(${(@On)reply})
         # Fix path's ../,etc.

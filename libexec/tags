@@ -39,7 +39,7 @@ tags() {
     if ((!$+Opts[-c]||$+Opts[-z]));then
         local -a qcmd=(command ctags -a -R  $eopt -G $exc --totals
                     --options=$NCDIR/share/zsh.ctags
-                    --languages=zsh,zsh3,make)
+                    --languages=zsh,zsh3,make --extras=+r)
         iqmsg -h "$TXT {type}Zsh{%} and {type}Make{%}…"
         local QDIR
         int/nc::get-prj-dir&&QDIR=$REPLY||QDIR=$PWD
