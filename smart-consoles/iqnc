@@ -5,7 +5,7 @@
 
 # Run as script? Or as a function? Supports both ways.
 
-iqinst()
+iqnc()
 {
 # Preamble – emulate & 0=…
 eval "${SNIP_EMULATE_OPTIONS_ZERO:-false}"||\
@@ -22,7 +22,7 @@ iqw(){
     -zui_glib_msg "$@"
 }
 
-iqinst_util_swap4(){
+iqnc_util_swap4(){
     local Q=$1 Q0=$2
     shift 0+2
     local -a vars=("$@")
@@ -31,7 +31,7 @@ iqinst_util_swap4(){
     : ${(P)vars[4]::=${(P)vars[Q+1]}}
 }
 
-iqinst_util_set_current_idx(){
+iqnc_util_set_current_idx(){
     integer IN=ZUI[PREV_CURRENT_IDX]
     local QPATH=${ZUI[QPATH]:+_$ZUI[QPATH]}
     # Tree
@@ -61,16 +61,16 @@ iqinst_util_set_current_idx(){
     fi
 }
 
-iqinst_cmd_synh_switch(){
+iqnc_cmd_synh_switch(){
     ((ZUI[SRC_HIGHLIGHT]=1-ZUI[SRC_HIGHLIGHT]))
     ZUI[SRC_HIGHLIGHT_SWITCHED]=1
-    if iqinst_hub;then
+    if iqnc_hub;then
         ((ZUI[SRC_HIGHLIGHT]))&&local txt=" ON"||local txt=" OFF"
         iqw "Syntax highlighting switched" $txt
     fi
 }
 
-iqinst_cmd_next(){
+iqnc_cmd_next(){
     integer q=${1##<->/} qq=${1%%/<->} in=$ZUI[GEN_B_IDX]
 
     # Three kind of args, first: num0/num1
@@ -84,19 +84,19 @@ iqinst_cmd_next(){
     else
         ((ZUI[GEN_B_IDX]=(1+ZUI[GEN_B_IDX])%3))
     fi
-    iqinst_view_switch $in $ZUI[GEN_B_IDX]
-    iqinst_set_prompt
-    iqinst_hub
+    iqnc_view_switch $in $ZUI[GEN_B_IDX]
+    iqnc_set_prompt
+    iqnc_hub
     return 0
 }
 
-iqinst_view_switch(){
+iqnc_view_switch(){
     integer in=$2 in0=$1
     ZUI[VIEW_CHANGE]=1
     local QPATH=${ZUI[QPATH]:+_$ZUI[QPATH]} QTXT
     ZUI[PREV_GEN_B_IDX]=$in0
 
-    noglob iqinst_util_swap4 $in $in0 \
+    noglob iqnc_util_swap4 $in $in0 \
         ZUI[SEARCH_BUFFER_GLOBAL] \
         ZUI[SEARCH_BUFFER_PREVIEW]\
         ZUI[SEARCH_BUFFER_GIT]\
@@ -117,7 +117,7 @@ iqinst_view_switch(){
     ZUI[PREV_CURRENT_IDX]=$ZUI[CURRENT_IDX]
 }
 
-iqinst_exec_command_cb() {
+iqnc_exec_command_cb() {
     ZUI[COMMAND]=$ZUI[QUERY_BUFFER]
     if ((ZUI[GEN_B_IDX]==2&&(ZUI[IN_QUERY]!=3||!$#ZUI[QUERY_BUFFER])));then
         ZUI[COMMAND]=$__list[ZUI[CURRENT_IDX]]
@@ -129,31 +129,31 @@ iqinst_exec_command_cb() {
         return 1
     fi
     ZUI[QUERY_BUFFER]=
-    iqinst_reset_hist
-    iqinst_hub
+    iqnc_reset_hist
+    iqnc_hub
 }
 
-iqinst_query_change_cb(){
-    iqinst_set_prompt ${1%e}
+iqnc_query_change_cb(){
+    iqnc_set_prompt ${1%e}
     ZUI[VIEW_CHANGE]=1
 }
 
-iqinst_reset_hist(){
+iqnc_reset_hist(){
     ok/qlnum -U $NCCHIST&&ZUI[CMD_NO]=$((REPLY+1))
     ok/qlnum -U $NCSHIST&&ZUI[SEARCH_NO]=$((REPLY+1))
 }
 
-iqinst_create_histories(){
+iqnc_create_histories(){
     : ${NCCHIST:=${XDG_CACHE HOME:-$HOME/.cache/n-commodore}/n-commmodore-cmd.hst}
     : ${NCSHIST:=${XDG_CACHE HOME:-$HOME/.cache/n-commodore}/n-commmodore-srch.hst}
     command mkdir -p $NCCHIST:h $NCSHIST:h||return
     [[ ! -f $NCCHIST ]]&&builtin print -n>!$NCCHIST
     [[ ! -f $NCSHIST ]]&&builtin print -n>!$NCSHIST
-    iqinst_reset_hist
+    iqnc_reset_hist
     return 0
 }
 
-iqinst_hist(){
+iqnc_hist(){
     local TPE=$1 QDIR=$2 FILE
     [[ $TPE == CMD ]]&&FILE=$NCCHIST||FILE=$NCSHIST
     int/nc::read-all-sys -d$FILE
@@ -179,30 +179,30 @@ iqinst_hist(){
     ZUI[QUERY_BUFFER]=$ITEM buffer=$ITEM
 }
 
-iqinst_hist_top(){
+iqnc_hist_top(){
     local T D=$1
     if ((ZUI[IN_QUERY]==1));then
         T=SEARCH
     elif ((ZUI[IN_QUERY]==3));then
         T=CMD
     fi
-    (($#T))&&iqinst_hist $T $D
+    (($#T))&&iqnc_hist $T $D
 }
 
-iqinst_set_prompt(){
+iqnc_set_prompt(){
     local C=${1:-$ZUI[IN_QUERY]}
     if ((C==0));then
         ZUI[QUERY_PROMPT]=
     elif ((C==1));then
-        iqinst_search_prompt
+        iqnc_search_prompt
     elif ((C==3));then
-        iqinst_exec_prompt
+        iqnc_exec_prompt
     else
         iqw "Internal error, please report"
     fi
 }
 
-iqinst_search_prompt(){
+iqnc_search_prompt(){
     local T=files
     ((ZUI[GEN_B_IDX]==0))&&T=command\ output
     ((ZUI[GEN_B_IDX]==1))&&T=file\ contents
@@ -212,7 +212,7 @@ iqinst_search_prompt(){
     ZUI[VIEW_CHANGE]=1
 }
 
-iqinst_exec_prompt(){
+iqnc_exec_prompt(){
     ZUI[QUERY_PROMPT]="$PWD/:> "
     ZUI[IN_QUERY]=3; typeset -g in_query=3
 }
@@ -225,13 +225,13 @@ separ() {
 cmd-ret(){print Press enter to continue…; read -k1;}
 cmd-hide(){zcurses end;}
 cmd-show(){zcurses refresh;}
-cmd-synh-switch(){iqinst_cmd_synh_switch;}
+cmd-synh-switch(){iqnc_cmd_synh_switch;}
 
 # Views
-cmd-command-history-view(){iqinst_cmd_next 2;}
-cmd-contents-view(){iqinst_cmd_next 1;}
-cmd-main-view(){iqinst_cmd_next 0;}
-cmd-set-view(){local -A Qe=(main 0 preview 1 hist 2 "" 0);iqinst_next $Qe[$1];}
+cmd-command-history-view(){iqnc_cmd_next 2;}
+cmd-contents-view(){iqnc_cmd_next 1;}
+cmd-main-view(){iqnc_cmd_next 0;}
+cmd-set-view(){local -A Qe=(main 0 preview 1 hist 2 "" 0);iqnc_next $Qe[$1];}
 
 # Commands
 cmd-open-cmd(){zcurses end;eval "$@";-zui_glib_refresh;}
@@ -239,37 +239,37 @@ cmd-open-tig(){curses end;command tig "$@";-zui_glib_refresh;}
 cmd-commit(){zcurses end;command git commit -v "$@";cmd-ret;-zui_glib_refresh;}
 cmd-push(){zcurses end;command git push "$@";cmd-ret;-zui_glib_refresh;}
 cmd-pull(){zcurses end;command git pull "$@";cmd-ret;-zui_glib_refresh;}
-cmd-stage-line(){iqinst_stage_line;}
+cmd-stage-line(){iqnc_stage_line;}
 
 # Prompt states
-cmd-exec-prompt(){iqinst_exec_prompt;}
-cmd-search-prompt(){iqinst_search_prompt;}
+cmd-exec-prompt(){iqnc_exec_prompt;}
+cmd-search-prompt(){iqnc_search_prompt;}
 
 # Histories
-cmd-exec-prev-hist(){iqinst_hist CMD 0;}
-cmd-exec-next-hist(){iqinst_hist CMD 1;}
-cmd-search-next-hist(){iqinst_hist SEARCH 1;}
-cmd-search-prev-hist(){iqinst_hist SEARCH 0;}
-cmd-next-hist(){iqinst_hist_top 1;}
-cmd-prev-hist(){iqinst_hist_top 0;}
-cmd-next-command(){iqinst_command_top 1;}
-cmd-prev-command(){iqinst_command_top 0;}
+cmd-exec-prev-hist(){iqnc_hist CMD 0;}
+cmd-exec-next-hist(){iqnc_hist CMD 1;}
+cmd-search-next-hist(){iqnc_hist SEARCH 1;}
+cmd-search-prev-hist(){iqnc_hist SEARCH 0;}
+cmd-next-hist(){iqnc_hist_top 1;}
+cmd-prev-hist(){iqnc_hist_top 0;}
+cmd-next-command(){iqnc_command_top 1;}
+cmd-prev-command(){iqnc_command_top 0;}
 
 # Directories
-cmd-pwd-up(){if builtin cd -q -- ..;then iqinst_cmd_next 0; else iqw "Cannot change directory to: " "" "" ..;fi;}
-cmd-cd(){if builtin cd -q -- "$1";then iqinst_cmd_next 0;else iqw "Cannot change directory to: " "" "" $1;fi;}
+cmd-pwd-up(){if builtin cd -q -- ..;then iqnc_cmd_next 0; else iqw "Cannot change directory to: " "" "" ..;fi;}
+cmd-cd(){if builtin cd -q -- "$1";then iqnc_cmd_next 0;else iqw "Cannot change directory to: " "" "" $1;fi;}
 
 if ((!$+Opts[--refresh])); then
     ok/qnstr $PWD&&local APP=$REPLY
     ZUI[SRC_HIGHLIGHT]=1
-    -zui_glib_cleanup deserialize:"iqinst_$APP"
-    -zui_glib_init app:"iqinst_$APP" app_name:"°Open° Console"
+    -zui_glib_cleanup deserialize:"iqnc_$APP"
+    -zui_glib_init app:"iqnc_$APP" app_name:"°Open° Console"
     emulate -L zsh -o extendedglob -o typesetsilent -o warncreateglobal -o combiningchars -o rcquotes
     -zui_glib_init2 # after emulate
     ZUI[GEN_B_IDX]=0 ZUI[PREVIEW_FILE_TYPE]=
 
-    ZUI[SPECIAL_COMMAND_CALLBACK]=iqinst_exec_command_cb
-    ZUI[QUERY_CHANGE_CALLBACK]=iqinst_query_change_cb
+    ZUI[SPECIAL_COMMAND_CALLBACK]=iqnc_exec_command_cb
+    ZUI[QUERY_CHANGE_CALLBACK]=iqnc_query_change_cb
 
     # Needed for immediate output from coprocesses (disables buffering).
     ((${+commands[stdbuf]}))&& \
@@ -304,7 +304,7 @@ if ((!$+Opts[--refresh])); then
         ZUI[HAVE_0_INPUT]=1
         exec {Q0_SAVE_PIPE}<&0
     fi
-    iqinst_create_histories
+    iqnc_create_histories
     cmd-exec-prompt
 fi
  
@@ -312,12 +312,12 @@ builtin source -- $NCCFG
 
 #    zui::bindkey F3 "{print q:$ZUI[mark]}"
 zui::bindkey F9 '{print \\n cmdno:$ZUI[CMD_NO], query:$ZUI[IN_QUERY], qbuf: $ZUI[QUERY_BUFFER], view:$ZUI[SEARCH_BUFFER_PREVIEW], gl:$ZUI[SEARCH_BUFFER_GLOBAL], sbuff:$ZUI[SEARCH_BUFFER], current:$ZUI[CURRENT_IDX], PVIEW_Q:$ZUI[CURRENT_IDX_PVIEW_BKP_$ZUI[QPATH]], PVIEW:$ZUI[CURRENT_IDX_PVIEW_BKP], main:$ZUI[CURRENT_IDX_MAIN_BKP] sptr:$ZUI[status_pointer]|tee -a /tmp/reply;}'
-zui::bindkey F10 '{builtin source $NC_CON_DIR/iqinst --refresh||\
+zui::bindkey F10 '{builtin source $NC_CON_DIR/iqnc --refresh||\
                     iqw -r "Reload finished with error: " $?;}'
 
-iqinst_hub(){
+iqnc_hub(){
     integer EC
-    local -a gener=(iqinst_fill_cmd iqinst_fill_preview iqinst_fill_history)
+    local -a gener=(iqnc_fill_cmd iqnc_fill_preview iqnc_fill_history)
     $gener[1+(ZUI[GEN_B_IDX]%3)]
     EC=$?
     ((${3:-0}))||{-zui_glib_fly_array_refresh 1;}
@@ -325,7 +325,7 @@ iqinst_hub(){
     return EC
 }
 
-iqinst_fill_history(){
+iqnc_fill_history(){
     int/nc::read-all-sys -d$NCCHIST||{iqw "Error reading history…";return 1;}
     ZUI[COLORING_PATTERN]='(#s)[^[:space:]]##~(*[·–—]*)'
     qitems=(${(u)reply}) reply=()
@@ -337,7 +337,7 @@ iqinst_fill_history(){
     in_query=1
 }
 
-iqinst_fill_preview(){
+iqnc_fill_preview(){
     local QPATH QTXT
     ZUI[text_mode]=all
     ZUI[COLORING_PATTERN]="·[^·]##·"
@@ -387,7 +387,7 @@ iqinst_fill_preview(){
     }
 }
 
-iqinst_fill_cmd(){
+iqnc_fill_cmd(){
     local -a cmd
     ZUI[text_mode]=all
     ZUI[COLORING_PATTERN]="(((([^\/—\]\[[:space:]])(#c2,)))|·[^·]##·)"
@@ -406,7 +406,7 @@ iqinst_fill_cmd(){
         ZUI[redraw]=1
         builtin unset 'ZUI[COMMAND]' 'ZUI[TMP]'
         if [[ $cmd[1] == cd || $cmd[1] == builtin && $cmd[2] == cd ]];then
-            iqinst_fill_cmd
+            iqnc_fill_cmd
         fi
     else
         -zui_glib_special_text "Showing files in: ·$PWD·"
@@ -460,11 +460,11 @@ iqinst_fill_cmd(){
     if [[ -n $ZUI[COMMAND] ]];then
         local CMD=$ZUI[COMMAND]
         ZUI[GEN_B_IDX]=0
-        iqinst_hub
+        iqnc_hub
         iqw "Executed command: " \`$CMD\` " which returned: " $ZUI[RET]
     fi
     builtin unset 'ZUI[COMMAND]'
-    iqinst_util_set_current_idx
+    iqnc_util_set_current_idx
     ZUI[VIEW_CHANGE]=0
     return 0
 }
@@ -477,7 +477,7 @@ fi
 ## Start application ##
 -zui_glib_msg "" "@@@ " "Welcome to " "NC System " "°open° console!" " @@@";
 integer EC
-iqinst_hub 1 1 1
+iqnc_hub 1 1 1
 while (( 1 )); do
     ZUI[VIEW_CHANGE]=1
     builtin print -rn -- $terminfo[smcup]$termcap[ti]
@@ -487,7 +487,7 @@ while (( 1 )); do
     [[ -z $REPLY ]]&&break
     local QFILE= REPLY_SAVE=$REPLY; integer QIDX=0
     [[ $ZUI[SEARCH_BUFFER] != $~galiases[WRONGSTR] ]]&&
-        {iqinst_create_histories; builtin print $ZUI[SEARCH_BUFFER]>>!$NCSHIST;}
+        {iqnc_create_histories; builtin print $ZUI[SEARCH_BUFFER]>>!$NCSHIST;}
 
     # no search selection?
     # …from diff?
@@ -543,7 +543,7 @@ while (( 1 )); do
     elif [[ -d $QFILE || -d **/*/$QFILE(#qNY1/) ]];then
         [[ -d $QFILE ]]||{QFILE=(/**/*/$QFILE(#qNY1/));QFILE=$QFILE]1];}
         iqw "Changing directory to: " ${QFILE##$PWD/}
-        builtin cd -q -- $QFILE&&iqinst_fill_cmd||iqw "" "" "" \
+        builtin cd -q -- $QFILE&&iqnc_fill_cmd||iqw "" "" "" \
             "Problem during changing the directory occurred, current PWD is: " \
             $PWD
     fi
@@ -555,6 +555,6 @@ done
 builtin print -n $terminfo[rmcup]$termcap[te]
 return 0
 }
-iqinst "$@"
+iqnc "$@"
 
 # vim:ft=zsh:tw=80:sw=4:sts=4:et:foldmarker=[[[,]]]

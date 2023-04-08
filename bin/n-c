@@ -34,7 +34,7 @@
                             Opts opts "$@"||return 7
     set -- "$reply[@]"
     local CMD=$1
-    [[ $CMD == (|inst) ]]&&{set -- inst inst;CMD=console;}
+    [[ $CMD == (|nc) ]]&&{set -- nc nc;CMD=console;}
     if (($+Opts[-h]||$+Opts[--help]));then
         CMD=help
     else

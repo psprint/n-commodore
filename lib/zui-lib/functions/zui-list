@@ -33,7 +33,6 @@ trap "REPLY=-2; reply=(); return 1" TERM INT QUIT
     [[ -n $color ]]&&shift||color=magenta
     zcurses move "$__wname_status" $line $indent
     zcurses clear "$__wname_status" eol
-    zcurses move "$__wname_status" $line $indent
     zcurses attr "$__wname_status" +bold "$color/${ZUI[status_colorpair]#*/}"
     zcurses string "$__wname_status" "$1"
     zcurses attr "$__wname_status" "$wrk_stbold" $ZUI[status_colorpair]
