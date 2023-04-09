@@ -5,7 +5,7 @@
 #
 
 nc::format-dbg() {
-        0=${${${(M)${0::=${(%):-%x}}:#/*}:-$PWD/$0}:A}
+    0=${${${(M)${0::=${(%):-%x}}:#/*}:-$PWD/$0}:A}
 
     # Parse -o, -l options
     local -A Opts; local -a opts

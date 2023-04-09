@@ -1,7 +1,7 @@
 #!/usr/bin/env zsh
 # Display cURL progress bar on a single line
 int/nc::single-line() {
-        0=${${${(M)${0::=${(%):-%x}}:#/*}:-$PWD/$0}:A}
+    0=${${${(M)${0::=${(%):-%x}}:#/*}:-$PWD/$0}:A}
 
     local n=$'\n' r=$'\r' zero=$'\0' line
 

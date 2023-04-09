@@ -28,10 +28,8 @@ zmodload zsh/terminfo zsh/termcap zsh/system zsh/datetime
 local QC
 (($+Opts[--cleanup]))&&QC="print -n $terminfo[rmcup]$termcap[te]"
 # Unset helper function on exit
-(($+Opts[--fun]))&&builtin trap 'builtin unset -f -m tmp/\*&>>|$NCNUL;
-            builtin unset NCHD&>>|$NCNUL;'$QC EXIT
-
-EC+=$?
+(($+Opts[--fun]))&&{builtin trap 'builtin unset -f -m tmp/\*&>>|$NCNUL;
+            builtin unset NCHD&>>|$NCNUL;'$QC EXIT;EC+=$?;}
 
 # Standard hash `Plugins` for plugins, to not pollute the namespace
 # NC is a hash for iqmsg color theme and for the body of all aliases
@@ -59,8 +57,8 @@ typeset -g -a reply match mbegin mend
 typeset -g REPLY MATCH; integer MBEGIN MEND
 
 # fpath-saving for main script sourcing
-if (($+ZINIT&&!$+Opts[--fun]))&&\
-    [[ $ZERO == */n-commodore.plugin.zsh ]]
+if ((!$+Opts[--fun]||$+Opts[--script]))&&\
+        [[ $ZERO == */n-commodore.plugin.zsh ]]
 then
     local -Ua fpath_save=($fpath)
 fi
@@ -76,6 +74,7 @@ fi
 if (($+Opts[--fun]));then
     local -Uxa fpath=($NCDIR/{bin,functions,libexec} $fpath) \
                 path=($NCDIR/{bin,functions,libexec} $path)
+    local -x FPATH PATH
 elif [[ $ZERO == */n-commodore.plugin.zsh ]];then
     # Unconditionally extend path for plugin source
     fpath[1,0]=($NCDIR/{bin,functions,libexec})
@@ -89,6 +88,7 @@ autoload -z $NCDIR/functions/*~(*~|*/THROW|*/CATCH)(.N:t) \
             $NCDIR/functions/*/*~(*~|*/ok/qlocal)(.N:t2) \
             $NCDIR/bin/*~*~(.N:t)
 
+# Special functions that need direct loading
 builtin autoload +zX ok/qlocal THROW CATCH
 
 #
@@ -104,14 +104,15 @@ local NCHD=$NC[head-txt]
 # Remaining tasks: aliases and vars reset
 #
 # Set up aliases
-if ! nc::setup-aliases || [[ -z $NC[WRONGSTR] ]];then
-    EC+=$?
-    builtin print -P -- $NCHD ${(%)NC[Q1_ALIASES_NOT_SETUP]}
-fi
+[[ -z $NC[WRONGSTR] || $(type -w 2>&1 int/nc::reset) == *:\ none ]]&&\
+    if ! nc::setup-aliases || [[ -z $NC[WRONGSTR] ]];then
+        EC+=!$?
+        builtin print -P -- $NCHD ${(%)NC[Q1_ALIASES_NOT_SETUP]}
+    fi
 
 # Test autoload by resetting work vars
 if ! int/nc::reset;then
-    EC=EC+$?
+    EC+=$?
     builtin print -P -- $NCHD ${(%)NC[Q3_AUTOLOAD_NOT_CORRECT]}
 fi
 

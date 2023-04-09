@@ -2,7 +2,7 @@
 
 int/nc::get-file-type() {
     # Preamble – emulate & 0=…
-        0=${${${(M)${0::=${(%):-%x}}:#/*}:-$PWD/$0}:A}
+    0=${${${(M)${0::=${(%):-%x}}:#/*}:-$PWD/$0}:A}
 
     local -a opts; local -A Opts
     int/nc::parse-opts "s -scan q -quiet" Opts opts "$@"||return 15

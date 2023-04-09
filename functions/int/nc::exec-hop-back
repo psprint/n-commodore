@@ -15,7 +15,7 @@
 # nc::exec-hop-back  @sleep:5.5 "BUFFER='The time has passed, sorry for replacing your command line ;)'"
 
 int/nc::exec-hop-back() {
-        0=${${${(M)${0::=${(%):-%x}}:#/*}:-$PWD/$0}:A}
+    0=${${${(M)${0::=${(%):-%x}}:#/*}:-$PWD/$0}:A}
 
     local QMESSAGE_SCRIPT="(){emulate -L zsh -o promptsubst;\
 POSTDISPLAY=$'\n'%TXT%;zle -R;\

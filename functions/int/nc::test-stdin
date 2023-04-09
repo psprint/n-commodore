@@ -6,7 +6,7 @@
 
 int/nc::test-stdin() {
 
-        0=${${${(M)${0::=${(%):-%x}}:#/*}:-$PWD/$0}:A}
+    0=${${${(M)${0::=${(%):-%x}}:#/*}:-$PWD/$0}:A}
 
     integer EC QF;[[ -f $0 ]];EC+=$?
     local VAR_NAME=$1 VAR_NAME3=$2

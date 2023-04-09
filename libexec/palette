@@ -2,7 +2,7 @@
 
 palette() {
     # Preamble – emulate & 0=…
-        0=${${${(M)${0::=${(%):-%x}}:#/*}:-$PWD/$0}:A}
+    0=${${${(M)${0::=${(%):-%x}}:#/*}:-$PWD/$0}:A}
     source $0:h:h/share/preamble.inc.zsh --fun||return 3
     local -a opts; local -A Opts
     int/nc::parse-opts "O" Opts opts "$@"||return 7

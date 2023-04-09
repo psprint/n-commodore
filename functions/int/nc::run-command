@@ -2,7 +2,7 @@
 
 # Copyright (c) 2023 Sebastian Gniazdowski
 int/nc::run-command() {
-        0=${${${(M)${0::=${(%):-%x}}:#/*}:-$PWD/$0}:A}
+    0=${${${(M)${0::=${(%):-%x}}:#/*}:-$PWD/$0}:A}
 
     # Input/options
     local -A Opts;local -a opts

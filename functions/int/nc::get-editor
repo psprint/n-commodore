@@ -1,7 +1,7 @@
 #!/usr/bin/env zsh
 
 int/nc::get-editor() {
-        0=${${${(M)${0::=${(%):-%x}}:#/*}:-$PWD/$0}:A}
+    0=${${${(M)${0::=${(%):-%x}}:#/*}:-$PWD/$0}:A}
 
     # Input/options
     local -A Opts

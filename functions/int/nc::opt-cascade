@@ -6,7 +6,7 @@
 
 int/nc::opt-cascade() {
     # Preamble – emulate & 0=…
-        0=${${${(M)${0::=${(%):-%x}}:#/*}:-$PWD/$0}:A}
+    0=${${${(M)${0::=${(%):-%x}}:#/*}:-$PWD/$0}:A}
     local VARNAME=$1 VARSTRQ VARSTRP Q P VALQ VALP
     shift
     integer EC

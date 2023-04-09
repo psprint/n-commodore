@@ -5,7 +5,7 @@
 
 int/nc::read-all-sys() {
     # Preamble – emulate & 0=…
-        0=${${${(M)${0::=${(%):-%x}}:#/*}:-$PWD/$0}:A}
+    0=${${${(M)${0::=${(%):-%x}}:#/*}:-$PWD/$0}:A}
 
     local -A Opts; local -a opts
     int/nc::parse-opts "r: t: d: u:" Opts opts "$@"||return 1

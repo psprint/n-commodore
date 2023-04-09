@@ -1,7 +1,7 @@
 #!/usr/bin/env zsh
 # Copyright (c) 2023 Sebastian Gniazdowski
 int/nc::run-cmd-compact() {
-        0=${${${(M)${0::=${(%):-%x}}:#/*}:-$PWD/$0}:A}
+    0=${${${(M)${0::=${(%):-%x}}:#/*}:-$PWD/$0}:A}
     # Input/options
     local -A Opts;local -a opts
     int/nc::parse-opts "-ex p o E s 0: 2: 1:" Opts opts "$@"||return 7
