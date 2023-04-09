@@ -12,7 +12,6 @@ builtin emulate -L zsh -o extendedglob -o noshortloops \
                         -o nopromptsubst -o rcquotes
 
 # Preamble – emulate & 0=…
-eval "${SNIP_EMULATE_OPTIONS_ZERO:-false}"||\
     0=${${${(M)${0::=${(%):-%x}}:#/*}:-$PWD/$0}:A}
 
 # The color theme → customize via theme file or NC global, first testing it

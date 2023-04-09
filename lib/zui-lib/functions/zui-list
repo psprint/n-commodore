@@ -735,13 +735,13 @@ while (( 1 )); do
         local selectable=1 tpe=-1
         [[ -n "${ZUILIST_NONSELECTABLE_ELEMENTS[(r)${ZUI[CURRENT_IDX]}]}" ]] && selectable=0
         (( ${ZUI[UNIQ_MODE]} + ${${ZUI[SEARCH_BUFFER]:+1}:-0} )) && selectable=1
-        if (( selectable == 0 )) || ! -zui_glib_decode "${__segments[${ZUI[CURRENT_SEGMENT]}]}"; then
+        if (( selectable == 0 )) || ! -zui_glib_decode "${__segments[${ZUI[CURRENT_SEGMENT]:-1}]}"; then
             reply=( "$selectable" $ZUI[UNIQ_MODE] "${${ZUI[SEARCH_BUFFER]:+1}:-0}"
                     "${__list[${ZUI[CURRENT_IDX]}]}" "${__segments[${ZUI[CURRENT_SEGMENT]:-1}]}" )
             REPLY=0
         else
             reply[1,0]=( "$selectable" $ZUI[UNIQ_MODE] "${${ZUI[SEARCH_BUFFER]:+1}:-0}"
-                         "${__list[${ZUI[CURRENT_IDX]}]}" "${__segments[${ZUI[CURRENT_SEGMENT]}]}" )
+                         "${__list[${ZUI[CURRENT_IDX]}]}" "${__segments[${ZUI[CURRENT_SEGMENT]:-1}]}" )
             REPLY=1
         fi
         (( ${+functions[-zui-standard-status-callback]} )) && (( (ZUI[IGNORE_MSG] + ZUI[IN_QUERY]) == 0 )) && {
@@ -812,7 +812,8 @@ while (( 1 )); do
         fi
 
         if [[ -n "$__final_key" && "$__final_key" != "<timeout>" ]]; then
-            integer track_cur_idx=$ZUI[CURRENT_IDX]
+            integer track_cur_idx=ZUI[CURRENT_IDX]
+            ((!track_cur_idx))&&track_cur_idx=1
             [[ -z $ZUI[SEARCH_BUFFER] ]]&&\
                 ZUI[PREV_IDX_NO_SEARCH]=$ZUI[CURRENT_IDX]
             local BUF= VAR=$bufs[ZUI[IN_QUERY]]

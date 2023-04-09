@@ -1,7 +1,6 @@
 #!/usr/bin/env zsh
 
 x-tract() {
-    eval "${SNIP_EMULATE_OPTIONS_ZERO:-false}"||\
         0=${${${(M)${0::=${(%):-%x}}:#/*}:-$PWD/$0}:A}
     source $0:h:h/share/preamble.inc.zsh --fun
 

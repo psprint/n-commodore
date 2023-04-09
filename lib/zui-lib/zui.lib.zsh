@@ -4,7 +4,6 @@
 #
 # to ~/.zshrc.
 #
-eval "${SNIP_EMULATE_OPTIONS_ZERO:-false}"||\
     0="${${${(M)${0::=${(%):-%x}}:#/*}:-$PWD/$0}:A}"
 
 typeset -gx ZUI_REPO_DIR="$0:h"

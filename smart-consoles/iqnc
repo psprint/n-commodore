@@ -8,7 +8,6 @@
 iqnc()
 {
 # Preamble – emulate & 0=…
-eval "${SNIP_EMULATE_OPTIONS_ZERO:-false}"||\
     0=${${${(M)${0::=${(%):-%x}}:#/*}:-$PWD/$0}:A}
 
 source $0:h:h/share/preamble.inc.zsh --script --fun --cleanup
@@ -340,7 +339,10 @@ iqnc_hub(){
     integer EC
     local -a gener=(iqnc_fill_cmd iqnc_fill_preview iqnc_fill_history)
     $gener[1+(ZUI[GEN_B_IDX]%3)]
-    ((ZUI[CURRENT_IDX]<5))&&{ZUI[CURRENT_IDX]=5;-zui_list_verify_vars;}
+    if ((ZUI[CURRENT_IDX]<5&&!$#ZUI[SEARCH_BUFFER]&&!ZUI[UNIQ_MODE]));then
+        ((__last_element>=5))&&\
+            {ZUI[CURRENT_IDX]=5;-zui_list_verify_vars;ZUI[redraw]=1;}
+    fi
     EC=$?
     ((${3:-0}))||{-zui_glib_fly_array_refresh 1;}
 
@@ -447,7 +449,11 @@ iqnc_fill_cmd(){
     local TM=$ZUI[text_mode]
     ((ZUI[GEN_B_IDX]==2))&&ZUI[text_mode]=off||ZUI[text_mode]=all
     # Ensure cursor is visible
-    ((ZUI[CURRENT_IDX]<5))&&{ZUI[CURRENT_IDX]=5;-zui_list_verify_vars;ZUI[redraw]=1;}
+    if ((ZUI[CURRENT_IDX]<5&&!$#ZUI[SEARCH_BUFFER]&&!ZUI[UNIQ_MODE]));then
+        ((__last_element>=5))&&\
+            {ZUI[CURRENT_IDX]=5;-zui_list_verify_vars;ZUI[redraw]=1;}
+    fi
+
     ZUI[VIEW_CHANGE]=$((ZUI[VIEW_CHANGE]+${#${TM:#$ZUI[text_mode]}}))
     ZUI[VIEW_CHANGE]=$((ZUI[VIEW_CHANGE]+${${ZUI[COMMAND]:+1}:-0}))
     typeset -ga -U ZUILIST_NONSELECTABLE_ELEMENTS=(4 3 2 1)

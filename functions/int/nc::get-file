@@ -2,7 +2,6 @@
 
 int/nc::get-file() {
     # Preamble – emulate & 0=…
-    eval "${SNIP_EMULATE_OPTIONS_ZERO:-false}"||\
         0=${${${(M)${0::=${(%):-%x}}:#/*}:-$PWD/$0}:A}
 
     local -a opts; local -A Opts

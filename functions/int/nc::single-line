@@ -1,7 +1,6 @@
 #!/usr/bin/env zsh
 # Display cURL progress bar on a single line
 int/nc::single-line() {
-    eval "${SNIP_EMULATE_OPTIONS_ZERO:-false}"||\
         0=${${${(M)${0::=${(%):-%x}}:#/*}:-$PWD/$0}:A}
 
     local n=$'\n' r=$'\r' zero=$'\0' line
