@@ -26,7 +26,7 @@ integer QIDX=${@[(i)(--|-)]}
 
 zmodload zsh/terminfo zsh/termcap zsh/system zsh/datetime
 local QC
-(($+Opts[--cleanup]))&&QC="print -n $terminfo[rmcup]$termcap[te]"
+(($+Opts[--cleanup]))&&QC='print -n $terminfo[rmcup]$termcap[te]'
 # Unset helper function on exit
 (($+Opts[--fun]))&&{builtin trap 'builtin unset -f -m tmp/\*&>>|$NCNUL;
             builtin unset NCHD&>>|$NCNUL;'$QC EXIT;EC+=$?;}

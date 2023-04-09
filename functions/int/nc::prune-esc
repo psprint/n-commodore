@@ -5,10 +5,10 @@ int/nc::prune-esc() {
 
     # Input/options
     local -A Opts;local -a opts
-    int/nc::parse-opts "T -no-trim s -jspace b -bold v: -var:" Opts opts "$@"||\
+    int/nc::parse-opts "e -esc T -no-trim s -jspace b -bold v: -var:" Opts opts "$@"||\
         {iqerr bad option given to: {func}nc::prune-esc: $@;return 7;}
     set -- "$reply[@]"
-    int/nc::opt-cascade Opts -T --no-trim -s --jspace -b --bold -v --var
+    int/nc::opt-cascade Opts -e --esc -T --no-trim -s --jspace -b --bold -v --var
     int/nc::reset
     local qe=$'\x1b' __VAR_NAME=${Opts[-v]:-REPLY} __REPLY
     __REPLY=$*
@@ -17,6 +17,7 @@ int/nc::prune-esc() {
     else
         __REPLY=${__REPLY//$qe\[[0-9\;]#m}
     fi
+    (($+Opts[-e]))&&__REPLY=${__REPLY//[$'\001'-$'\037']/}
     (($+Opts[-T]))||__REPLY=${__REPLY//((#s)[[:space:]]##|[[:space:]]##(#e))}
     (($+Opts[-s]))&&__REPLY=${__REPLY//(#b)([[:space:]]##)/${match[1][1]}}
     : ${(P)__VAR_NAME::=$__REPLY}

@@ -46,8 +46,8 @@ command mkdir -p $ZUI[CACHE_DIR] $ZUIO:h $ZUI_CONFIG_DIR
 unset -f -m "(-|)zui[_-]*"
 fpath+=("${ZUI_REPO_DIR}/functions" "${ZUI_REPO_DIR}/demos")
 fpath=(${(u)fpath})
-autoload -Uz -- $ZUI_REPO_DIR/functions/*[a-z](N.:t) \
-                $ZUI_REPO_DIR/demos/*[a-z](N.:t)
+autoload -Uz -- $ZUI_REPO_DIR/functions/*[a-z0-9](N.:t) \
+                $ZUI_REPO_DIR/demos/*[a-z0-9](N.:t)
 
 #
 # Global parameters

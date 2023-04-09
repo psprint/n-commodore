@@ -223,25 +223,25 @@ trap "REPLY=-2; reply=(); return 1" TERM INT QUIT
         # Lets find interesting segment and mark it with \7...\31
     [[ -z $buf ]]&&{
 
-        zui-process-buffer "$elem"
-        integer size="${#ZUI_PB_WORDS}" i
+        zui-process-buffer2 "$elem"
+        integer size="${#ZUI_PB2_QWORDS}" i
         for (( i=1; i<=size; i++ )); do
             if [[ "$i" -eq "$active_segment" ]]; then
-                ZUI_PB_WORDS[i]=${ZUI_PB_WORDS[i]//$'\n'/\\n}
+                ZUI_PB2_QWORDS[i]=${ZUI_PB2_QWORDS[i]//$'\n'/\\n}
                 # Mark segment if marking always or non-hyperlink lines, or if the line contains any hyperlinks
                 if [[ $ZUI[text_mode] = (all|nohyp) ]] || -zui_glib_has_any_hyperlinks "$elem"; then
                     # No background color?
-                    if [[ $ZUI_PB_WORDS[i] != *[$'\020'-$'\030']* && -z $ZUI[current_tfield] ]]; then
-                        -zui_list_replace_color_marks_with $ZUI_PB_WORDS[i] $ZUI[MARK]
+                    if [[ $ZUI_PB2_QWORDS[i] != *[$'\020'-$'\030']* && -z $ZUI[current_tfield] ]]; then
+                        -zui_list_replace_color_marks_with $ZUI_PB2_QWORDS[i] $ZUI[MARK]
                     else
-                        -zui_list_replace_color_marks_with $ZUI_PB_WORDS[i] $ZUI[MARK2]
+                        -zui_list_replace_color_marks_with $ZUI_PB2_QWORDS[i] $ZUI[MARK2]
                     fi
-                    ZUI_PB_WORDS[i]="$REPLY"
+                    ZUI_PB2_QWORDS[i]="$REPLY"
                 fi
             fi
-            buf+="$ZUI_PB_SPACES[i]$ZUI_PB_WORDS[i]"
+            buf+="$ZUI_PB2_QSPACES[i]$ZUI_PB2_QWORDS[i]"
         done
-        buf+="$ZUI_PB_SPACES[i]"
+        buf+="$ZUI_PB2_QSPACES[i]"
     }
         # Remove hyperlinks
         buf="${buf//(#b)$'\01'[^$'\01']#$'\01'[^$'\01']#$'\01'[^$'\01']#$'\01'[^$'\01']#$'\01'[^$'\02']#$'\02'([^$'\02']#)$'\02'/${(Q)match[1]}}"

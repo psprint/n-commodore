@@ -6,13 +6,14 @@
 
 int/nc::test-stdin() {
 
+    integer EC QF
     0=${${${(M)${0::=${(%):-%x}}:#/*}:-$PWD/$0}:A}
-
-    integer EC QF;[[ -f $0 ]];EC+=$?
+    [[ -f $0 ]];EC+=$?
     local VAR_NAME=$1 VAR_NAME3=$2
     int/nc::reset
     if read -k -t -u0; then
-        : ${VAR_NAME3::=$REPLY}
+        local __REPLY=$REPLY
+        : ${(P)VAR_NAME3::=$__REPLY}
         exec {QF}<&0
         : ${VAR_NAME::=$QF}
     fi
