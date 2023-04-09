@@ -412,17 +412,18 @@ iqnc_fill_preview(){
 }
 
 iqnc_fill_cmd(){
-    local -a cmd
+    local TXT cmd=()
     ZUI[text_mode]=all
-    ZUI[COLORING_PATTERN]= # "(((([^\/—\]\[[:space:]])(#c2,)))|·[^·]##·)"
+    ZUI[COLORING_PATTERN]="·[^·]##·"
     ZUI[COLORING_MATCH_MULTIPLE]=1
     ZUI[COLORING_COLOR]=$ZUI[BOLD]$ZUI[YELLOW]
     ZUI[QIDX]=0 ZUI[SRC_HIGHLIGHT_SWITCHED]=0
     reply=()
-    if [[ -n ${ZUI[COMMAND]:=$ANGEL_INST_DEFAULT_COMMAND} ]];then
+    if [[ -n ${ZUI[COMMAND]:=${NC_DEFAULT_LS_COMMAND:-$NC_DEFAULT_COMMAND}} ]];then
         cmd=("${(z@)ZUI[COMMAND]}")
         ZUI[COMMAND_PREV]=$ZUI[COMMAND]
         -zui_glib_special_text "Output of cmd: ·$ZUI[COMMAND]·"
+        TXT=$reply[1]
         ZUI[TMP]=$(mktemp)
         eval "$cmd[@]">!$ZUI[TMP]
         iq0items=("${(@f)$(<$ZUI[TMP])}")
@@ -434,6 +435,7 @@ iqnc_fill_cmd(){
         fi
     else
         -zui_glib_special_text "Showing files in: ·$PWD·"
+        TXT=$reply[1]
         iq0items=(**/*~*~(N.,@))
     fi
     (($+Opts[-s]))&&qitems=("${(@on)qitems}")
@@ -441,7 +443,7 @@ iqnc_fill_cmd(){
 
     typeset -ga -U ZUILIST_NONSELECTABLE_ELEMENTS=(4 3 2 1)
     separ
-    qitems=("$REPLY" "$reply[1]" "$REPLY" "$iq0items[@]")
+    qitems=("$REPLY" "$TXT" "$REPLY" "$iq0items[@]")
 }
 
 # Read & publish Configure/make output
@@ -549,6 +551,8 @@ while (( 1 )); do
     fi
 
     int/nc::prune-esc -eT -v QFILE $QFILE
+    QFILE=${QFILE%%/##}
+
     if ((ZUI[GEN_B_IDX]==2));then
         ZUI[COMMAND]=$QFILE
         ZUI[VIEW_CHANGE]=1

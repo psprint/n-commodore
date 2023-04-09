@@ -50,7 +50,7 @@ export NCDIR="${0:h:h}" \
        NCDBG=/tmp/reply
 
 [[ ! -f $NCCFG ]]&&\
-    {command mkdir -p -- $NCCFG:h;cp -vf "$NCDIR/n-commodore.cfg" "$NCCFG";}
+    {command mkdir -p -- $NCCFG:h;cp -vf "$NCDIR/n-commodore.rc" "$NCCFG";}
 
 # Standard work variables
 typeset -g -a reply match mbegin mend
