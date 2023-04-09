@@ -5,20 +5,30 @@
 #
 
 int/nc::test-stdin() {
-
-    integer EC QF
+    integer EC QF QTM
     0=${${${(M)${0::=${(%):-%x}}:#/*}:-$PWD/$0}:A}
     [[ -f $0 ]];EC+=$?
-    local VAR_NAME=$1 VAR_NAME3=$2
+    local -A Opts; local -a opts
+    int/nc::parse-opts "t: -timeout:" Opts opts "$@"||\
+        {iqerr incorrect options given to {func}$0:t{%} fun; return EC+17;}
+    set -- "$reply[@]"
+    int/nc::opt-cascade Opts -t --timeout
+    EC+=$?
+    # 1:FD, 2:REPLY-like var
+    local VAR_NAME=$1 VAR_NAME3=$2 __REPLY
+    if ((!$+Opts[-t]));then
+        [[ ! -t 0 ]]&&QTM=4
+    else
+        QTM=$Opts[-t]
+    fi
     int/nc::reset
-    if read -k -t -u0; then
-        local __REPLY=$REPLY
-        : ${(P)VAR_NAME3::=$__REPLY}
+    if read -k -t$QTM -u0 __REPLY; then
         exec {QF}<&0
-        : ${VAR_NAME::=$QF}
+        : ${(P)VAR_NAME::=$QF}
+        : ${(P)VAR_NAME3::=$__REPLY}
     fi
 
-    [[ -n $REPLY ]]
+    [[ -n $__REPLY ]]
     EC+=$?
     return EC
 }

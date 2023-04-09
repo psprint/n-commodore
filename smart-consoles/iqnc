@@ -318,22 +318,23 @@ if ((!$+Opts[--refresh])); then
     ZUI[GEN_B_IDX]=0
 
     local -a qitems iq0items q0input q0inputp
-    integer Q0_SAVE_PIPE
-    if read -k -t -u0; then
+    integer Q0_SAVE_PIPE tmout
+    if int/nc::test-stdin Q0_SAVE_PIPE REPLY;then
         ZUI[FIRST_0_INPUT]=$REPLY
         ZUI[HAVE_0_INPUT]=1
-        exec {Q0_SAVE_PIPE}<&0
     fi
     iqnc_create_histories
     cmd-exec-prompt
 fi
- 
-builtin source -- $NCCFG
 
 #    zui::bindkey F3 "{print q:$ZUI[mark]}"
 zui::bindkey F9 '{print \\n cursor:$ZUI[cursor], cmdno:$ZUI[CMD_NO], query:$ZUI[IN_QUERY], qbuf: $ZUI[QUERY_BUFFER], view:$ZUI[SEARCH_BUFFER_PREVIEW], gl:$ZUI[SEARCH_BUFFER_GLOBAL], sbuff:$ZUI[SEARCH_BUFFER], current:$ZUI[CURRENT_IDX], PVIEW_Q:$ZUI[CURRENT_IDX_PVIEW_BKP_$ZUI[QPATH]], PVIEW:$ZUI[CURRENT_IDX_PVIEW_BKP], main:$ZUI[CURRENT_IDX_MAIN_BKP] sptr:$ZUI[status_pointer]|tee -a /tmp/reply;}'
 zui::bindkey F10 '{builtin source $NC_CON_DIR/iqnc --refresh||\
                     iqw -r "Reload finished with error: " $?;}'
+
+unsetopt warncreateglobal
+builtin source -- $NCCFG
+setopt warncreateglobal
 
 iqnc_hub(){
     integer EC
@@ -419,9 +420,13 @@ iqnc_fill_cmd(){
     ZUI[COLORING_COLOR]=$ZUI[BOLD]$ZUI[YELLOW]
     ZUI[QIDX]=0 ZUI[SRC_HIGHLIGHT_SWITCHED]=0
     reply=()
-    if [[ -n ${ZUI[COMMAND]:=${NC_DEFAULT_LS_COMMAND:-$NC_DEFAULT_COMMAND}} ]];then
-        cmd=("${(z@)ZUI[COMMAND]}")
+    ((!ZUI[HAVE_0_INPUT]))&&\
+        : ${ZUI[COMMAND]:=${NC_DEFAULT_LS_COMMAND:-$NC_DEFAULT_COMMAND}}
+    if [[ -n $ZUI[COMMAND] ]];then
+        [[ -e $ZUI[QPATH] ]]&&ZUI[COMMAND]=${ZUI[COMMAND]//\%s/${(qqq)ZUI[QPATH]}}
+        [[ -e $ZUI[QPATH] ]]||ZUI[COMMAND]=${ZUI[COMMAND]//\%s/}
         ZUI[COMMAND_PREV]=$ZUI[COMMAND]
+        cmd=("${(z@)ZUI[COMMAND]}")
         -zui_glib_special_text "Output of cmd: ·$ZUI[COMMAND]·"
         TXT=$reply[1]
         ZUI[TMP]=$(mktemp)
@@ -429,7 +434,8 @@ iqnc_fill_cmd(){
         iq0items=("${(@f)$(<$ZUI[TMP])}")
         ZUI[RET]=$?
         ZUI[redraw]=1
-        builtin unset 'ZUI[COMMAND]' 'ZUI[TMP]'
+        rm -f $ZUI[TMP]
+        ZUI[COMMAND]= ZUI[TMP]=
         if [[ $cmd[1] == cd || $cmd[1] == builtin && $cmd[2] == cd ]];then
             iqnc_fill_cmd
         fi

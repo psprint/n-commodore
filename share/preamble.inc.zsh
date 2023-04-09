@@ -41,8 +41,7 @@ export NCDIR="${0:h:h}" \
        NCNICK=${NCNICK:-N-Commodore} \
        NCSTRDB="${0:h:h}"/strdb \
        NCTXT="${0:h:h}/share/txt" \
-       NCOCFG="${XDG_CONFIG_HOME:-$HOME/.config}/n-commodore/n-commmodore-open.cfg" \
-       NCCFG="${XDG_CONFIG_HOME:-$HOME/.config}/n-commodore/n-commmodore.cfg" \
+       NCCFG="${XDG_CONFIG_HOME:-$HOME/.config}/n-commodore/n-commodore.rc" \
        NCCHIST="${XDG_CACHE_HOME:-$HOME/.config}/n-commodore/n-commmodore-cmd.hst" \
        NCSHIST="${XDG_CACHE_HOME:-$HOME/.config}/n-commodore/n-commmodore-srch.hst" \
        \

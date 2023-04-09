@@ -12,7 +12,7 @@ ok/qlocal() {
     local TEXT
 
     # Options and arguments
-    local -A Opts; local -a opts tmoutop
+    local -A Opts; local -a opts
     int/nc::parse-opts "r -reply a -arrays m -match" Opts opts "$@"||\
         {iqerr incorrect options given to {func}$0:t{%} fun; return EC+17;}
     set -- "$reply[@]"
