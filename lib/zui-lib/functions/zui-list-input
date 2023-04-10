@@ -858,8 +858,15 @@ case "$key" in
     #
 
     ($'\b'|$'\C-?'|BACKSPACE)
-        buffer="${buffer%?}"
+        if ((ZUI[cursor]>1));then
+            buffer[ZUI[cursor]-1]=
+            ((ZUI[cursor]--))
+        fi
         ;;
+    (DC)
+        buffer[ZUI[cursor]]=
+        ;;
+ 
     ($'\C-W')
         [[ "$buffer" = "${buffer% *}" ]] && buffer="" || buffer="${buffer% *}"
         ;;
