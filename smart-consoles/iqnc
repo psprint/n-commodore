@@ -375,6 +375,7 @@ iqnc_fill_preview(){
         QPATH=$ZUI[QPATH]
     fi
 
+    int/nc::prune-esc -T $QPATH -v QPATH
     {
         qitems=() iq0items=()
         if [[ -f $QPATH ]];then
@@ -390,7 +391,7 @@ iqnc_fill_preview(){
             iq0items=("${(@f)$($qcmd[@])}")
             iqw "Showing file: " "\`$QPATH:t\`" ", of type: " $TPE
         else
-            QTXT="!NO FILE SELECTED, PRESS F2 TO SHOW FILE TREE!"
+            QTXT="$ZUI[BOLD]$ZUI[RED]!NO SUCH FILE, F1 FOR TREE$ZUI[FMT_END]"
         fi
     } always {
         if CATCH -c \* || [[ $iq0items == $~NC[WRONGSTR] ]];then
