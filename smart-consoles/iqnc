@@ -587,6 +587,7 @@ while (( 1 )); do
         builtin cd -q -- $QFILE&&iqnc_fill_cmd||iqw "" "" "" \
             "Problem during changing the directory occurred, current PWD is: " \
             $PWD
+        iqnc_exec_prompt
     fi
     builtin zcurses clear main redraw
     builtin zcurses clear status redraw

@@ -1,6 +1,9 @@
 #!/usr/bin/env zsh
 
 NC_DEFAULT_LS_COMMAND="command ls --color=always %s|ok/qcolreduce -o"
+# you can use exa
+#NC_DEFAULT_LS_COMMAND="command exa --color=always %s|ok/qcolreduce -o"
+
 zui::bindkey F1 cmd-main-view
 zui::bindkey F2 cmd-contents-view
 zui::bindkey F3 cmd-command-history-view
