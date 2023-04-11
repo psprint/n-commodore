@@ -373,6 +373,7 @@ iqnc_hub(){
             {ZUI[CURRENT_IDX]=5;-zui_list_verify_vars;ZUI[redraw]=1;}
     fi
     EC=$?
+    iqnc_set_prompt
     ((${3:-0}))||{-zui_glib_fly_array_refresh 1;}
 
     return EC
@@ -628,8 +629,8 @@ while (( 1 )); do
             iqw "" "" "" \
                 "Cannot change to the directory, current PWD is: " $PWD
         fi
-        iqnc_exec_prompt
     fi
+    iqnc_set_prompt
     builtin zcurses clear main redraw
     builtin zcurses clear status redraw
 done
