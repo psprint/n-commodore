@@ -7,7 +7,12 @@ setopt typesetsilent extendedglob
 
 # Compute first to show index - exact page
 -zui_listin_compute_first_to_show_idx() {
-    from_what_idx_list_is_shown=0+((current_idx-1)/page_height)*page_height+1
+    if ((current_idx>page_height/2));then
+        from_what_idx_list_is_shown=current_idx-page_height/2
+    else
+        from_what_idx_list_is_shown=1
+    fi
+    #from_what_idx_list_is_shown=0+((current_idx-1)/page_height)*page_height+1
 }
 
 # Conditional, fully robust page-to-show computation
@@ -16,7 +21,7 @@ setopt typesetsilent extendedglob
     if [[ "$from_what_idx_list_is_shown" -lt "1" ||
         "$from_what_idx_list_is_shown" -gt "$last_element" ]]
     then
-        from_what_idx_list_is_shown=0+((current_idx-1)/page_height)*page_height+1
+        -zui_listin_compute_first_to_show_idx
     fi
 }
 
@@ -866,7 +871,12 @@ case "$key" in
     (DC)
         buffer[ZUI[cursor]]=
         ;;
- 
+    (F273)
+        ZUI[cursor]=1
+        ;;
+    (F268)
+        ZUI[cursor]=$#buffer+1
+        ;;
     ($'\C-W')
         [[ "$buffer" = "${buffer% *}" ]] && buffer="" || buffer="${buffer% *}"
         ;;
