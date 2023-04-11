@@ -238,12 +238,22 @@ cmd-hide(){zcurses end;}
 cmd-show(){zcurses refresh;}
 cmd-synh-switch(){iqnc_cmd_synh_switch;}
 
+# navigation
+cmd-page-down(){
+    current_idx=current_idx+page_height/2
+    [[ "$current_idx" -gt "$last_element" ]] && current_idx=last_element;
+    -zui_listin_compute_first_to_show_idx
+}
+cmd-page-up(){
+    current_idx=current_idx-page_height/2
+    [[ "$current_idx" -lt 1 ]] && current_idx=1;
+    -zui_listin_compute_first_to_show_idx
+}
 # Views
 cmd-command-history-view(){iqnc_cmd_next 2;}
 cmd-contents-view(){iqnc_cmd_next 1;}
 cmd-main-view(){iqnc_cmd_next 0;}
 cmd-set-view(){local -A Qe=(main 0 preview 1 hist 2 "" 0);iqnc_cmd_next $Qe[$1];}
-
 cmd-show-stdin(){ZUI[HAVE_0_INPUT]=1;iqnc_hub;}
 # Commands
 cmd-open-cmd(){zcurses end;eval "$@";-zui_glib_refresh;}

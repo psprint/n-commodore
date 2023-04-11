@@ -423,14 +423,8 @@ case "$key" in
         -zui_listin_compute_first_to_show_idx
         ;;
     ($'\C-U')
-        current_idx=current_idx-page_height/2
-        [[ "$current_idx" -lt 1 ]] && current_idx=1;
-        -zui_listin_compute_first_to_show_idx
         ;;
     ($'\C-D')
-        current_idx=current_idx+page_height/2
-        [[ "$current_idx" -gt "$last_element" ]] && current_idx=last_element;
-        -zui_listin_compute_first_to_show_idx
         ;;
     (HOME|g)
         current_idx=1

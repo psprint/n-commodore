@@ -27,7 +27,8 @@ zui::bindkey F305 cmd-pwd-up
 zui::bindkey SR cmd-pwd-up
 zui::bindkey F264 cmd-prev-pwd
 zui::bindkey SF cmd-prev-pwd
-zui::bindkey $'\C-d' cmd-cd ~/github/z
+zui::bindkey $'\C-d' cmd-page-down
+zui::bindkey $'\C-u' cmd-page-up
 zui::bindkey SRIGHT cmd-cursor-right
 zui::bindkey SLEFT cmd-cursor-left
 zui::bindkey F283 cmd-cursor-word-left
