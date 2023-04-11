@@ -38,7 +38,7 @@ CATCH() {
     # remove any option
     [[ $1 == -* ]]&&shift
     # $2 is any code to evaluate?
-    local PAT=$1 CODE=$2
+    local PAT=$1 CODE=${(j[ ])@[2,-1]}
 
     if [[ $TRY_BLOCK_ERROR -gt 0 && $EXCEPTION == $~PAT ]]; then
         ((TRY_BLOCK_ERROR=QF))

@@ -244,6 +244,7 @@ cmd-contents-view(){iqnc_cmd_next 1;}
 cmd-main-view(){iqnc_cmd_next 0;}
 cmd-set-view(){local -A Qe=(main 0 preview 1 hist 2 "" 0);iqnc_cmd_next $Qe[$1];}
 
+cmd-show-stdin(){ZUI[HAVE_0_INPUT]=1;iqnc_hub;}
 # Commands
 cmd-open-cmd(){zcurses end;eval "$@";-zui_glib_refresh;}
 cmd-open-tig(){curses end;command tig "$@";-zui_glib_refresh;}
@@ -266,10 +267,12 @@ cmd-prev-hist(){iqnc_hist_top 0;}
 cmd-next-command(){iqnc_command_top 1;}
 cmd-prev-command(){iqnc_command_top 0;}
 
-# Directories
-cmd-pwd-up(){if builtin cd -q -- ..;then iqnc_cmd_next 0; else iqw "Cannot change directory to: " "" "" ..;fi;}
+# directories
+cmd-pwd-up(){local PPWD=$PWD;if builtin cd -q -- $PWD:h;then iqnc_push_pwd $PPWD; iqw "Current PWD is: " "" "" $PWD(D);iqnc_cmd_next 0; else iqw "Cannot change directory to: " "" "" ..;fi;}
 cmd-cd(){if builtin cd -q -- "$1";then iqnc_cmd_next 0;else iqw "Cannot change directory to: " "" "" $1;fi;}
+cmd-prev-pwd(){iqnc_pop_pwd; cmd-cd "$REPLY";}
 
+# cursor
 cmd-cursor-left(){ZUI[cursor]=$((ZUI[cursor]-1));}
 cmd-cursor-right(){ZUI[cursor]=$((ZUI[cursor]+1));}
 cmd-cursor-word-left(){
@@ -336,8 +339,19 @@ unsetopt warncreateglobal
 builtin source -- $NCCFG
 setopt warncreateglobal
 
-iqnc_get_command() {
+iqnc_get_command(){
     REPLY=${NC_DEFAULT_LS_COMMAND:-$NC_DEFAULT_COMMAND}
+}
+
+iqnc_push_pwd(){
+    ZUI[PWD_HISTORY]+=" ${(q)${1:-$PWD}}"
+}
+
+iqnc_pop_pwd(){
+    local -a h=(${(Q)${(z@)ZUI[PWD_HISTORY]}})
+    REPLY=$h[-1]
+    ZUI[PWD_HISTORY]=${(j[ ])${(q)h[1,-2]}}
+    print -r -- $REPLY / $ZUI[PWD_HISTORY]>>/tmp/reply
 }
 
 iqnc_hub(){
@@ -378,7 +392,6 @@ iqnc_fill_preview(){
     else
         QPATH=$ZUI[QPATH]
     fi
-
     int/nc::prune-esc -T $QPATH -v QPATH
     {
         qitems=() iq0items=()
@@ -444,6 +457,8 @@ iqnc_fill_cmd(){
         rm -f $ZUI[TMP]
         ZUI[COMMAND]= ZUI[TMP]=
         if [[ $cmd[1] == cd || $cmd[1] == builtin && $cmd[2] == cd ]];then
+            iqw "Changing directory to: " "" "" "$cmd[-1]"
+            iqnc_push_pwd 
             iqnc_fill_cmd
         fi
     else
@@ -595,6 +610,7 @@ while (( 1 )); do
     elif [[ -d $QFILE || -d **/*/$QFILE(#qNY1/) ]];then
         [[ -d $QFILE ]]||{QFILE=(/**/*/$QFILE(#qNY1/));QFILE=$QFILE]1];}
         iqw "Changing directory to: " ${QFILE##$PWD/}
+        iqnc_push_pwd
         if builtin cd -q -- $QFILE;then
             iqnc_get_command
             iqnc_fill_cmd $REPLY
