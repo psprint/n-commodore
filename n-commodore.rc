@@ -22,6 +22,8 @@ zui::bindkey F8 cmd-synh-switch
 zui::bindkey F304 cmd-prev-hist
 zui::bindkey F263 cmd-next-hist
 zui::bindkey $'\C-u' cmd-pwd-up
+zui::bindkey F305 cmd-pwd-up
+zui::bindkey F264 cmd-prev-pwd
 zui::bindkey $'\C-d' cmd-cd ~/github/z
 zui::bindkey SRIGHT cmd-cursor-right
 zui::bindkey SLEFT cmd-cursor-left

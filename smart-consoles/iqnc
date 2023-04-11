@@ -336,6 +336,10 @@ unsetopt warncreateglobal
 builtin source -- $NCCFG
 setopt warncreateglobal
 
+iqnc_get_command() {
+    REPLY=${NC_DEFAULT_LS_COMMAND:-$NC_DEFAULT_COMMAND}
+}
+
 iqnc_hub(){
     integer EC
     local -a gener=(iqnc_fill_cmd iqnc_fill_preview iqnc_fill_history)
@@ -386,7 +390,7 @@ iqnc_fill_preview(){
                 THROW  "Unknown file type, no syntax highlighting"
             local TPE=$REPLY
             int/nc::get-stx-cmd -q $TPE||\
-                THROW "Error: no highlighter command found (bat, {src-,}highlight)"
+               THROW "Error: no highlighter command found (bat, {src-,}highlight)"
             local -a qcmd=("$reply[@]" "$QPATH")
             iq0items=("${(@f)$($qcmd[@])}")
             iqw "Showing file: " "\`$QPATH:t\`" ", of type: " $TPE
@@ -395,7 +399,7 @@ iqnc_fill_preview(){
         fi
     } always {
         if CATCH -c \* || [[ $iq0items == $~NC[WRONGSTR] ]];then
-            [[ -n $CAUGHT ]]&&{iqw $CAUGHT;CAUGHT=;}
+            [[ -n $CAUGHT ]]&&{iqw "$CAUGHT[@]";CAUGHT=;}
             [[ -f $QPATH ]]&&iq0items=("${(@f)$(<$QPATH)}")
         fi
         if [[ $iq0items != $~NC[WRONGSTR] ]];then
@@ -421,8 +425,10 @@ iqnc_fill_cmd(){
     ZUI[COLORING_COLOR]=$ZUI[BOLD]$ZUI[YELLOW]
     ZUI[QIDX]=0 ZUI[SRC_HIGHLIGHT_SWITCHED]=0
     reply=()
-    ((!ZUI[HAVE_0_INPUT]))&&\
-        : ${ZUI[COMMAND]:=${NC_DEFAULT_LS_COMMAND:-$NC_DEFAULT_COMMAND}}
+
+    ZUI[COMMAND]=${1:-$ZUI[COMMAND]}
+    [[ $ZUI[COMMAND] != $~NC[WRONGSTR] ]] && ZUI[HAVE_0_INPUT]=0
+    : ${ZUI[COMMAND]:=${NC_DEFAULT_LS_COMMAND:-$NC_DEFAULT_COMMAND}}
     if [[ -n $ZUI[COMMAND] ]];then
         [[ -e $ZUI[QPATH] ]]&&ZUI[COMMAND]=${ZUI[COMMAND]//\%s/${(qqq)ZUI[QPATH]}}
         [[ -e $ZUI[QPATH] ]]||ZUI[COMMAND]=${ZUI[COMMAND]//\%s/}
@@ -453,6 +459,34 @@ iqnc_fill_cmd(){
     qitems=("$REPLY" "$TXT" "$REPLY" "$iq0items[@]")
 }
 
+iqnc_fill_0(){
+    int/nc::read-all -u$Q0_SAVE_PIPE -t0 -x100
+    local ql had_read=0
+    integer q0idx=$#q0input+1
+    if ((!$#q0input));then
+        q0input[q0idx]=$ZUI[FIRST_0_INPUT]$reply[1]
+        shift reply
+    fi
+    local -a qreply=()
+    foreach QE ("$reply[@]")
+        int/nc::prune-esc -T -b -- $QE
+        qreply+=("$REPLY")
+    end
+    q0input+=("$qreply[@]")
+    q0inputp=("$q0input[@]")
+    (($+Opts[-s]))&&q0inputp=("${(@on)q0inputp}")
+    (($+Opts[-R]))&&q0inputp=("${(a@nO)q0inputp}")
+    if ((ZUI[GEN_B_IDX]%3==0));then
+        reply=()
+        -zui_glib_special_text "·Below are entries read from input·"
+        separ
+        local -a q0items=("$qitems[@]")
+        qitems=($REPLY "$reply[1]" $REPLY "$q0inputp[@]")
+        [[ -n ${qitems:|q0items} ]] && -zui_glib_fly_array_refresh 1
+    fi
+
+}
+
 # Read & publish Configure/make output
 -zui-standard-timeout-callback(){
     local TM=$ZUI[text_mode]
@@ -469,30 +503,7 @@ iqnc_fill_cmd(){
     ((!ZUI[HAVE_0_INPUT]&&!ZUI[VIEW_CHANGE]))&&return
 
     if ((ZUI[HAVE_0_INPUT]));then
-        int/nc::read-all -u$Q0_SAVE_PIPE -t0 -x100
-        local ql had_read=0
-        integer q0idx=$#q0input+1
-        if ((!$#q0input));then
-            q0input[q0idx]=$ZUI[FIRST_0_INPUT]$reply[1]
-            shift reply
-        fi
-        local -a qreply=()
-        foreach QE ("$reply[@]")
-            int/nc::prune-esc -T -b -- $QE
-            qreply+=("$REPLY")
-        end
-        q0input+=("$qreply[@]")
-        q0inputp=("$q0input[@]")
-        (($+Opts[-s]))&&q0inputp=("${(@on)q0inputp}")
-        (($+Opts[-R]))&&q0inputp=("${(a@nO)q0inputp}")
-        if ((ZUI[GEN_B_IDX]%3==0));then
-            reply=()
-            -zui_glib_special_text "·Below are entries read from input·"
-            separ
-            local -a q0items=("$qitems[@]")
-            qitems=($REPLY "$reply[1]" $REPLY "$q0inputp[@]")
-            [[ -n ${qitems:|q0items} ]] && -zui_glib_fly_array_refresh 1
-        fi
+        iqnc_fill_0
     fi
 
     ((ZUI[VIEW_CHANGE]))||return 0
@@ -584,9 +595,13 @@ while (( 1 )); do
     elif [[ -d $QFILE || -d **/*/$QFILE(#qNY1/) ]];then
         [[ -d $QFILE ]]||{QFILE=(/**/*/$QFILE(#qNY1/));QFILE=$QFILE]1];}
         iqw "Changing directory to: " ${QFILE##$PWD/}
-        builtin cd -q -- $QFILE&&iqnc_fill_cmd||iqw "" "" "" \
-            "Problem during changing the directory occurred, current PWD is: " \
-            $PWD
+        if builtin cd -q -- $QFILE;then
+            iqnc_get_command
+            iqnc_fill_cmd $REPLY
+        else
+            iqw "" "" "" \
+                "Cannot change to the directory, current PWD is: " $PWD
+        fi
         iqnc_exec_prompt
     fi
     builtin zcurses clear main redraw
