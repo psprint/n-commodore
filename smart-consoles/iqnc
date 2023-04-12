@@ -363,7 +363,7 @@ iqnc_pop_pwd(){
     local -a h=(${(Q)${(z@)ZUI[PWD_HISTORY]}})
     REPLY=$h[-1]
     ZUI[PWD_HISTORY]=${(j[ ])${(q)h[1,-2]}}
-    print -r -- $REPLY / $ZUI[PWD_HISTORY]>>/tmp/reply
+    [[ $REPLY == $~NC[WRONGSTR] ]]&&REPLY=$HOME
 }
 
 iqnc_hub(){
@@ -618,11 +618,24 @@ while (( 1 )); do
 
     int/nc::prune-esc -eT -v QFILE $QFILE
     QFILE=${QFILE%%/##}
+    if ((ZUI[GEN_B_IDX]!=2))&&\
+        [[ ! -f **/$QFILE(#qNY1) && ! -d **/$QFILE(#qNY1/) ]]
+    then
+        if n-c prj-dir -q && [[ -e $REPLY ]];then
+            if [[ -e $REPLY/**/$QFILE(#qNY1) ]];then
+                QFILE=($REPLY/**/$QFILE(#qNY1));QFILE=$QFILE[1]
+            elif [[ -e $REPLY/**/$QFILE:t(#qNY1) ]];then
+                QFILE=($REPLY/**/$QFILE:t(#qNY1));QFILE=$QFILE[1]
+            fi
+        fi
+    fi
 
+    # history
     if ((ZUI[GEN_B_IDX]==2));then
         ZUI[COMMAND]=$QFILE
         ZUI[VIEW_CHANGE]=1
-    elif [[ -f **/$QFILE(#qNY1) ]];then
+    fi
+    if [[ -f **/$QFILE(#qNY1) ]];then
         [[ -f $QFILE ]]||{QFILE=(**/$QFILE(#qNY1));QFILE=$QFILE[1];}
         REPLY=
         if [[ -n $NC_OPEN_CMD ]];then
@@ -638,8 +651,9 @@ while (( 1 )); do
             int/nc::run-command -C $PWD \
                 "$REPLY" ${${QIDX:#0##}:++$QIDX} -- $QFILE
         EC+=$?
-    elif [[ -d **/$QFILE(#qNY1/) ]];then
-        [[ -d $QFILE ]]||{QFILE=(**/$QFILE(#qNY1/));QFILE=$QFILE]1];}
+    fi
+    if [[ -d **/$QFILE(#qNY1/) ]];then
+        [[ -d $QFILE ]]||{QFILE=(**/$QFILE(#qNY1/));QFILE=$QFILE[1];}
         iqw "Changing directory to: " ${QFILE##$PWD/}
         iqnc_push_pwd
         if builtin cd -q -- $QFILE;then
@@ -647,8 +661,10 @@ while (( 1 )); do
             iqnc_fill_cmd $REPLY
         else
             iqw "" "" "" \
-                "Cannot change to the directory, current PWD is: " $PWD
+                "Cannot CD to dir, PWD is: " $PWD
         fi
+    elif [[ $QFILE != $~NC[WRONGSTR] ]];then
+        iqw "" "" "" "NO SUCH FILE OR DIRECTORY: " $QFILE
     fi
     iqnc_set_prompt
     builtin zcurses clear main redraw
