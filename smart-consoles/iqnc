@@ -126,11 +126,12 @@ iqnc_exec_command_cb(){
     {
         if [[ $ZUI[COMMAND] != $~NC[WRONGSTR] ]];then
             builtin print -r -- $ZUI[COMMAND]>>!$NCCHIST
-        elif [[ $ZUI[COMMAND] == $~NC[WRONGSTR] ]];then
+        else
             THROW "No command entered, " "" "" "cannot execute"
         fi
         # No such command?
-        type $CMD&>/dev/null||THROW "No such command" ": " "" $CMD
+        type $CMD&>/dev/null||\
+            THROW "No such command" ": " "" $CMD
     } always {
         if CATCH \*;then
             iqw "$CAUGHT[@]"
@@ -266,6 +267,7 @@ cmd-stage-line(){iqnc_stage_line;}
 # Prompt states
 cmd-exec-prompt(){iqnc_exec_prompt;}
 cmd-search-prompt(){iqnc_search_prompt;}
+cmd-toggle-prompt(){zui::toggle-prompt;}
 
 # Histories
 cmd-exec-prev-hist(){iqnc_hist CMD 0;}
@@ -442,7 +444,7 @@ iqnc_fill_preview(){
 }
 
 iqnc_fill_cmd(){
-    local TXT cmd=()
+    local TXT cmd=() CMD_PT
     ZUI[text_mode]=all
     ZUI[COLORING_PATTERN]="·[^·]##·"
     ZUI[COLORING_MATCH_MULTIPLE]=1
@@ -458,6 +460,17 @@ iqnc_fill_cmd(){
         [[ -e $ZUI[QPATH] ]]||ZUI[COMMAND]=${ZUI[COMMAND]//\%s/}
         ZUI[COMMAND_PREV]=$ZUI[COMMAND]
         cmd=("${(z@)ZUI[COMMAND]}")
+        CMD_PT="(${(~j.|.)${=NC_LS_LIKE_COMMANDS}})"
+        if [[ -n $NC_DEFAULT_LS_LIKE_OPTS && ($cmd[1] == $~CMD_PT ||\
+            $cmd[1] == (command|noglob) && $cmd[2] == $~CMD_PT) ]]
+        then
+            if [[ $cmd[1] == $~CMD_PT ]];then
+                cmd[2,0]=($=NC_DEFAULT_LS_LIKE_OPTS)
+            elif [[ $cmd[2] == $~CMD_PT ]];then
+                cmd[3,0]=($=NC_DEFAULT_LS_LIKE_OPTS)
+            fi
+        fi
+
         -zui_glib_special_text "Output of cmd: ·$ZUI[COMMAND]·"
         TXT=$reply[1]
         ZUI[TMP]=$(mktemp)
@@ -471,14 +484,16 @@ iqnc_fill_cmd(){
             iqw "Changing directory to: " "" "" "$cmd[-1]"
             iqnc_push_pwd 
             iqnc_fill_cmd
+            return
         fi
     else
         -zui_glib_special_text "Showing files in: ·$PWD·"
         TXT=$reply[1]
         iq0items=(**/*~*~(N.,@))
     fi
-    (($+Opts[-s]))&&qitems=("${(@on)qitems}")
-    (($+Opts[-R]))&&qitems=("${(a@nO)qitems}")
+    (($+Opts[-s]))&&iq0items=("${(@on)iq0items}")
+    (($+Opts[-R]))&&iq0items=("${(a@nO)iq0items}")
+    [[ -n $iq0items[1,3] ]]&&ok/qcolreduce "$iq0items[@]"&&iq0items=("$reply[@]")
 
     typeset -ga -U ZUILIST_NONSELECTABLE_ELEMENTS=(4 3 2 1)
     separ
@@ -493,11 +508,18 @@ iqnc_fill_0(){
         q0input[q0idx]=$ZUI[FIRST_0_INPUT]$reply[1]
         shift reply
     fi
+
+    # work on newly read lines
     local -a qreply=()
+    integer QFLAG
     foreach QE ("$reply[@]")
         int/nc::prune-esc -T -b -- $QE
         qreply+=("$REPLY")
+        QFLAG=1
     end
+
+    ((QFLAG))&&ok/qcolreduce "$qreply[@]"&&qreply=("$reply[@]")
+
     q0input+=("$qreply[@]")
     q0inputp=("$q0input[@]")
     (($+Opts[-s]))&&q0inputp=("${(@on)q0inputp}")
@@ -600,26 +622,24 @@ while (( 1 )); do
     if ((ZUI[GEN_B_IDX]==2));then
         ZUI[COMMAND]=$QFILE
         ZUI[VIEW_CHANGE]=1
-    elif [[ -f $QFILE || -f **/*/${QFILE:t}(#qNY1) ]];then
-        [[ -f $QFILE ]]||{QFILE=(**/*/$QFILE:t(#qNY1));QFILE=$QFILE[1];}
+    elif [[ -f **/$QFILE(#qNY1) ]];then
+        [[ -f $QFILE ]]||{QFILE=(**/$QFILE(#qNY1));QFILE=$QFILE[1];}
         REPLY=
-        if [[ -n $ANGEL_OPEN_CMD ]];then
-            REPLY=$ANGEL_OPEN_CMD
+        if [[ -n $NC_OPEN_CMD ]];then
+            REPLY=$NC_OPEN_CMD
         elif ! int/nc::get-editor;then
             EC+=$?
             iqw "" "" "" 'ERROR: Couldn''t find editor, tried '\
                 "\$VISUAL (=$VISUAL) " then "" " \$EDITOR (=$EDITOR)"
             ZUI[IN_QUERY]=0
         fi
+        # Run the editor in $REPLY, first cd-ing into project's directory
         [[ -n $REPLY ]]&&\
-            (
-                # Run the editor in $REPLY, first cd-ing into project's directory
-                int/nc::run-command -C $PWD \
-                    "$REPLY" ${${QIDX:#0##}:++$QIDX} -- $QFILE
-            )
+            int/nc::run-command -C $PWD \
+                "$REPLY" ${${QIDX:#0##}:++$QIDX} -- $QFILE
         EC+=$?
-    elif [[ -d $QFILE || -d **/*/$QFILE(#qNY1/) ]];then
-        [[ -d $QFILE ]]||{QFILE=(/**/*/$QFILE(#qNY1/));QFILE=$QFILE]1];}
+    elif [[ -d **/$QFILE(#qNY1/) ]];then
+        [[ -d $QFILE ]]||{QFILE=(**/$QFILE(#qNY1/));QFILE=$QFILE]1];}
         iqw "Changing directory to: " ${QFILE##$PWD/}
         iqnc_push_pwd
         if builtin cd -q -- $QFILE;then

@@ -1,14 +1,29 @@
 #!/usr/bin/env zsh
 
-NC_DEFAULT_LS_COMMAND="command ls --color=always %s|ok/qcolreduce -o"
-# you can use exa
+#
+# Variables
+#
+
+# you can use exa, fd, etc.
+NC_DEFAULT_LS_COMMAND="fd ."
 #NC_DEFAULT_LS_COMMAND="command exa --color=always %s|ok/qcolreduce -o"
+#NC_DEFAULT_LS_COMMAND="command ls --color=always %s|ok/qcolreduce -o"
+# editor will be found anyway
+#NC_OPEN_CMD=${VISIAL:-${EDITOR:-$PAGER}}
+NC_DEFAULT_LS_LIKE_OPTS="--color=always"
+NC_LS_LIKE_COMMANDS="ls fd exa"
+
+#
+# Bindkeys
+#
 
 zui::bindkey F1 cmd-main-view
 zui::bindkey F2 cmd-contents-view
 zui::bindkey F3 cmd-command-history-view
 zui::bindkey F4 cmd-exec-prompt
 zui::bindkey F5 cmd-search-prompt
+zui::bindkey $'\C-_' cmd-toggle-prompt
+
 # Strictly preview view
 zui::bindkey F14 cmd-toggle-view preview
 zui::bindkey $'\C-e' cmd-set-view hist

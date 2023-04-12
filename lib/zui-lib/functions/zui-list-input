@@ -189,7 +189,7 @@ setopt typesetsilent extendedglob
 # found (this implies update of current_segment)
 #
 # $1 - direction: 0 - left, other - right
--zui_listin_set_next_hyperlink() {
+-zui_listin_set_next_hyperlink(){
     local -a segments
     segments=("${(Pz@)list_var_current}")
 
@@ -226,6 +226,13 @@ setopt typesetsilent extendedglob
     }
 
     return 1
+}
+
+zui::toggle-prompt(){
+    ((in_query==1))&&in_query=3||in_query=1
+    [[ -n $ZUI[QUERY_CHANGE_CALLBACK] ]]&&\
+        eval $ZUI[QUERY_CHANGE_CALLBACK] $in_query
+    -zui_list_cursor_visibility status 1
 }
 
 typeset -ga reply
@@ -422,10 +429,6 @@ case "$key" in
         [[ "$current_idx" -gt "$last_element" ]] && current_idx=last_element;
         -zui_listin_compute_first_to_show_idx
         ;;
-    ($'\C-U')
-        ;;
-    ($'\C-D')
-        ;;
     (HOME|g)
         current_idx=1
         -zui_listin_compute_first_to_show_idx
@@ -476,14 +479,6 @@ case "$key" in
         ;;
     (q|Q)
         reply=(-1 QUIT)
-        ;;
-    (/|$'\e'/)
-        if [[ "$disable_search" = "0" ]]; then
-            in_query=1
-            [[ -n $ZUI[QUERY_CHANGE_CALLBACK] ]]&&\
-                eval $ZUI[QUERY_CHANGE_CALLBACK] 1
-            -zui_list_cursor_visibility status 1
-        fi
         ;;
     ($'\C-L')
         reply=(-1 REDRAW)
@@ -722,16 +717,6 @@ case "$key" in
         ;;
     (NPAGE)
         current_idx=current_idx+page_height
-        [[ "$current_idx" -gt "$last_element" ]] && current_idx=last_element;
-        -zui_listin_compute_first_to_show_idx
-        ;;
-    ($'\C-U')
-        current_idx=current_idx-page_height/2
-        [[ "$current_idx" -lt 1 ]] && current_idx=1;
-        -zui_listin_compute_first_to_show_idx
-        ;;
-    ($'\C-D')
-        current_idx=current_idx+page_height/2
         [[ "$current_idx" -gt "$last_element" ]] && current_idx=last_element;
         -zui_listin_compute_first_to_show_idx
         ;;
