@@ -48,4 +48,8 @@ zui::bindkey SRIGHT cmd-cursor-right
 zui::bindkey SLEFT cmd-cursor-left
 zui::bindkey F283 cmd-cursor-word-left
 zui::bindkey F298 cmd-cursor-word-right
+zui::bindkey $'\C-x' cmd-push-screen
+zui::bindkey F284 cmd-prev-screen
+zui::bindkey F299 cmd-next-screen
+zui::bindkey F8 cmd-remove-screen
  

@@ -17,7 +17,15 @@ int/nc::init-sm-con Opts opts "$@"||{print QE>>/tmp/reply;return 13}
 set -- "$reply[@]"
 eval "$REPLY"
 
-iqw(){
+zmodload zsh/db/gdbm&>>$NCLOG||\
+    iqw "No zsh/db/gdbm module" "" "," " no screen saving available…"
+command mkdir -p $NCSCRDB:h
+[[ -f $NCSCRDB ]]||\
+  (){local -A Screens;zmodload zsh/db/gdbm&&builtin ztie -d db/gdbm -f $NCSCRDB Screens;}
+
+command touch $NCSCRDB
+
+iqw(){ 
     -zui_glib_msg "$@"
 }
 
@@ -103,7 +111,7 @@ iqnc_view_switch(){
 
     local -a qt=(·file·\  ·preview·\  ·history·\ )
     local Q=$qt[ZUI[GEN_B_IDX]+1]
-    ((ZUI[IN_QUERY]))&&iqw "[${(U)Q%%[ ]##}] " "Restored previous " $Q search
+    ((ZUI[IN_QUERY]==1&&in!=in0))&&iqw "[${(U)Q%%[ ]##}] " "Restored previous " $Q search
 
     buffer=$ZUI[SEARCH_BUFFER]
     if ((in0==1));then
@@ -281,7 +289,8 @@ cmd-prev-command(){iqnc_command_top 0;}
 
 # directories
 cmd-pwd-up(){local PPWD=$PWD;if builtin cd -q -- $PWD:h;then iqnc_push_pwd $PPWD; iqw "Current PWD is: " "" "" $PWD(D);iqnc_cmd_next 0; else iqw "Cannot change directory to: " "" "" ..;fi;}
-cmd-cd(){if builtin cd -q -- "$1";then iqnc_cmd_next 0;else iqw "Cannot change directory to: " "" "" $1;fi;}
+cmd-cd(){local Q=${(M)1:#-*};[[ $1 == -* ]]&&shift;if builtin cd -q -- "$1";then [[ $Q != -q
+  ]]&&{iqw "PWD dir changed to: " "" "" $PWD; iqnc_cmd_next 0;};else iqw "Cannot change directory to: " "" "" $1;fi;}
 cmd-prev-pwd(){iqnc_pop_pwd; cmd-cd "$REPLY";}
 
 # cursor
@@ -293,6 +302,51 @@ cmd-cursor-word-left(){
 cmd-cursor-word-right(){
     ZUI[cursor]=$((ZUI[cursor]+=
         ${#${(M)buffer[ZUI[cursor],-1]##[[:space:]]#[^[:space:]]##}}));}
+
+# screens
+cmd-push-screen(){
+    local -A WScreens
+    builtin ztie -d db/gdbm -f $NCSCRDB WScreens&>>$NCLOG||\
+        {iqw "Error:" "" "" " cannot open DB";return 1;}
+    integer QIDX=${(M)${${(kOn)WScreens[(I)SCREEN_<->]}[1]}%%<->}
+    print °°°$QIDX>>/tmp/reply
+    QIDX+=1
+    WScreens[SCREEN_$QIDX]=${(F)qitems}
+    WScreens[SCREEN_PWD_$QIDX]=$PWD
+    ((WScreens[SCREEN_NO]==QIDX-1&&WScreens[SCREEN_NO]++))
+    iqw "" "Screen " "#$QIDX " pushed, " PWD is: " ${PWD/$HOME/\~}
+}
+
+cmd-remove-screen(){
+    local -A WScreens
+    builtin ztie -d db/gdbm -f $NCSCRDB WScreens&>>$NCLOG||\
+        {iqw "Error:" "" "" " cannot open DB";return 1;}
+    builtin unset "WScreens[SCREEN_${WScreens[SCREEN_NO]}]"
+    builtin unset "WScreens[SCREEN_PWD_${WScreens[SCREEN_NO]}]"
+    iqw "Screen " "#$WScreens[SCREEN_NO] " "removed"
+    ((WScreens[SCREEN_NO]=WScreens[SCREEN_NO]>1?WScreens[SCREEN_NO]-1:1))
+}
+
+cmd-prev-screen(){
+    local -A WScreens
+    builtin ztie -d db/gdbm -f $NCSCRDB WScreens||\
+        {iqw "Error:" "" "" " cannot open DB: " $NCSCRDB;return 1;}
+
+    ((WScreens[SCREEN_NO]=WScreens[SCREEN_NO]>1?WScreens[SCREEN_NO]-1:1))
+    integer QCNT=${#WScreens[(I)SCREEN_<->]}
+    iqnc_fill_screen $WScreens[SCREEN_NO]
+    -zui_glib_fly_array_refresh 1
+}
+
+cmd-next-screen(){
+    local -A WScreens
+    builtin ztie -d db/gdbm -f $NCSCRDB WScreens||\
+        {iqw "Error:" "" "" " cannot open DB: " $NCSCRDB;return 1;}
+    integer QCNT=${#WScreens[(I)SCREEN_<->]}
+    ((WScreens[SCREEN_NO]=WScreens[SCREEN_NO]<QCNT?WScreens[SCREEN_NO]+1:QCNT))
+    iqnc_fill_screen $WScreens[SCREEN_NO]
+    -zui_glib_fly_array_refresh 1
+}
 
 if ((!$+Opts[--refresh])); then
     ok/qnstr $PWD&&local APP=$REPLY
@@ -471,7 +525,7 @@ iqnc_fill_cmd(){
             fi
         fi
 
-        -zui_glib_special_text "Output of cmd: ·$ZUI[COMMAND]·"
+        -zui_glib_special_text "Output of cmd: ·$ZUI[COMMAND]· run in: ·$PWD·:"
         TXT=$reply[1]
         ZUI[TMP]=$(mktemp)
         eval "$cmd[@]">!$ZUI[TMP]
@@ -533,6 +587,15 @@ iqnc_fill_0(){
         [[ -n ${qitems:|q0items} ]] && -zui_glib_fly_array_refresh 1
     fi
 
+}
+
+iqnc_fill_screen(){
+    integer QIDX=$1
+    local SPWD spwd=()
+    qitems=("${(@f)WScreens[SCREEN_$QIDX]}")
+    [[ -n ${SPWD::=$WScreens[SCREEN_PWD_$QIDX]} ]]&&cmd-cd -q $SPWD
+    [[ -n $SPWD ]]&&spwd=(", PWD is: " "" "" ${SPWD//$HOME/\~})
+    iqw "" "Showing screen no: " "" "" "#$QIDX" "$spwd[@]"
 }
 
 # Read & publish Configure/make output
@@ -630,6 +693,7 @@ while (( 1 )); do
         fi
     fi
 
+    integer QFLAG=0
     # history
     if ((ZUI[GEN_B_IDX]==2));then
         ZUI[COMMAND]=$QFILE
@@ -650,7 +714,7 @@ while (( 1 )); do
         [[ -n $REPLY ]]&&\
             int/nc::run-command -C $PWD \
                 "$REPLY" ${${QIDX:#0##}:++$QIDX} -- $QFILE
-        EC+=$?
+        EC+=$? QFLAG=1
     fi
     if [[ -d **/$QFILE(#qNY1/) ]];then
         [[ -d $QFILE ]]||{QFILE=(**/$QFILE(#qNY1/));QFILE=$QFILE[1];}
@@ -663,7 +727,9 @@ while (( 1 )); do
             iqw "" "" "" \
                 "Cannot CD to dir, PWD is: " $PWD
         fi
-    elif [[ $QFILE != $~NC[WRONGSTR] ]];then
+        QFLAG=1
+    fi
+    if ((!QFLAG));then
         iqw "" "" "" "NO SUCH FILE OR DIRECTORY: " $QFILE
     fi
     iqnc_set_prompt
