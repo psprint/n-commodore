@@ -145,6 +145,7 @@ iqnc_exec_command_cb(){
             iqw "$CAUGHT[@]"
             TRY_BLOCK_ERROR=0
         else
+            cmd-push-screen
             iqnc_reset_hist
             iqnc_hub
             iqw "Executed command: " \`$CMD\` " which returned: " $ZUI[RET]
@@ -333,7 +334,7 @@ cmd-push-screen(){
         WScreens[SCREEN_$QIDX]=${(F)qitems}
         WScreens[SCREEN_PWD_$QIDX]=$PWD
     done
-    ((WScreens[SCREEN_NO]==QIDX-1&&WScreens[SCREEN_NO]++))
+    WScreens[SCREEN_NO]=$#WScreens[(I)SCREEN_<->]
     iqw "" "Screen " "#$#WScreens[(I)SCREEN_<->] " pushed, " PWD is: " ${PWD/$HOME/\~}
 }
 
@@ -557,6 +558,7 @@ iqnc_fill_cmd(){
         ZUI[COMMAND]= ZUI[TMP]=
         if [[ $cmd[1] == cd || $cmd[1] == builtin && $cmd[2] == cd ]];then
             iqw "Changing directory to: " "" "" "$cmd[-1]"
+            cmd-push-screen
             iqnc_push_pwd 
             iqnc_fill_cmd
             return
@@ -578,8 +580,8 @@ iqnc_fill_cmd(){
 iqnc_fill_0(){
     int/nc::read-all -u$Q0_SAVE_PIPE -t0 -x100
     local ql had_read=0
-    integer q0bidx=$#q0input+1
-    if ((!$#q0input));then
+    integer q0idx=$#q0input+1
+    if ((!$#q0input&&$#reply));then
         q0input[q0idx]=$ZUI[FIRST_0_INPUT]$reply[1]
         shift reply
     fi
@@ -607,7 +609,6 @@ iqnc_fill_0(){
         qitems=($REPLY "$reply[1]" $REPLY "$q0inputp[@]")
         [[ -n ${qitems:|q0items} ]] && -zui_glib_fly_array_refresh 1
     fi
-
 }
 
 iqnc_fill_screen(){
@@ -742,6 +743,7 @@ while (( 1 )); do
     if [[ -d **/$QFILE(#qNY1/) ]];then
         [[ -d $QFILE ]]||{QFILE=(**/$QFILE(#qNY1/));QFILE=$QFILE[1];}
         iqw "Changing directory to: " ${QFILE##$PWD/}
+        cmd-push-screen
         iqnc_push_pwd
         if builtin cd -q -- $QFILE;then
             iqnc_get_command

@@ -871,10 +871,12 @@ case "$key" in
         uniq_mode=1-uniq_mode
         ;;
     (*)
-        if [[ $#key == 1 && $((#key)) -lt 31 ]]; then
+        if [[ $#key -eq 1 && $((#key)) -lt 31 ]]; then
             # ignore all other control keys
         else
-            if ((ZUI[cursor]==1));then
+            if (($#key>1));then
+                iqw "Unbound sequence: " "" "" $key
+            elif ((ZUI[cursor]==1));then
                 buffer[ZUI[cursor],0]=$key
             else
                 buffer[ZUI[cursor]-1]+="$key"
