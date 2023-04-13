@@ -321,11 +321,13 @@ iqnc_cnt_idx_to_db_idx(){
     ((QCIDX<1))&&: ${WScreens[SCREEN_NO]::=${QCIDX::=1}}
     QIDX=${screens[QCIDX]#SCREEN_}
     REPLY=$QIDX
+}
+
 # screens
 cmd-push-screen(){
     local -A WScreens
     iqnc_db WScreens||return 1
-    integer QIDX=${(M)${${(kOn)WScreens[(I)SCREEN_<->]}[1]}%%<->}
+    integer QIDX=${${${(kOn)WScreens[(I)SCREEN_<->]}[1]}#SCREEN_}
     QIDX+=1
     repeat 1;do
         WScreens[SCREEN_$QIDX]=${(F)qitems}
