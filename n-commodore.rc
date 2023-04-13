@@ -5,7 +5,11 @@
 #
 
 # you can use exa, fd, etc.
-NC_DEFAULT_LS_COMMAND="fd ."
+if type fd&>/dev/null;then
+    NC_DEFAULT_LS_COMMAND="fd ."
+else
+    NC_DEFAULT_LS_COMMAND="command ls --color=always"
+fi 
 #NC_DEFAULT_LS_COMMAND="command exa --color=always %s|ok/qcolreduce -o"
 #NC_DEFAULT_LS_COMMAND="command ls --color=always %s|ok/qcolreduce -o"
 # editor will be found anyway
