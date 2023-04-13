@@ -341,7 +341,7 @@ cmd-push-screen(){
         WScreens[SCREEN_CUR_IDX_$QIDX]=$current_idx
         WScreens[SCREEN_FROM_$QIDX]=$from_what_idx_list_is_shown
         WScreens[SCREEN_CUR_SEG]=$current_segment
-
+        WScreens[SCREEN_CURSOR_$QIDX]=$ZUI[cursor]
     done
     WScreens[SCREEN_NO]=$#WScreens[(I)SCREEN_<->]
     iqw "" "Screen " "#$#WScreens[(I)SCREEN_<->] " pushed, " PWD is: " ${PWD/$HOME/\~}
@@ -378,6 +378,8 @@ cmd-next-screen(){
     ((WScreens[SCREEN_NO]=WScreens[SCREEN_NO]<QCNT?WScreens[SCREEN_NO]+1:QCNT))
     cmd-fetch-screen $WScreens[SCREEN_NO]
 }
+
+cmd-help(){iqnc_fill_help;}
 
 if ((!$+Opts[--refresh])); then
     ok/qnstr $PWD&&local APP=$REPLY
@@ -625,6 +627,7 @@ iqnc_fill_screen(){
     local SPWD spwd=()
     (($+WScreens))||local -A WScreens
     iqnc_db WScreens||return 1
+    ZUI[COLORING_PATTERN]="((·[^·]##·~(#s)·*)|(#s)· [^[:space:]]##)"
     qitems=("${(@f)WScreens[SCREEN_$QIDX]}")
     [[ -n ${SPWD::=$WScreens[SCREEN_PWD_$QIDX]} ]]&&cmd-cd -q $SPWD
     ZUI[GEN_B_IDX]=${WScreens[SCREEN_VIEW_$QIDX]:-0}
@@ -635,6 +638,7 @@ iqnc_fill_screen(){
     in_query=$WScreens[SCREEN_QUERY_$QIDX]
     ZUI[SEARCH_BUFFER]=$WScreens[SCREEN_SEARCH_$QIDX]
     ZUI[QUERY_BUFFER]=$WScreens[SCREEN_CMD_$QIDX]
+    ZUI[cursor]=$WScreens[SCREEN_CURSOR_$QIDX]
     if ((in_query==3));then
         buffer=$ZUI[QUERY_BUFFER]
     elif ((in_query==1));then
@@ -643,6 +647,31 @@ iqnc_fill_screen(){
     iqnc_set_prompt
     [[ -n $SPWD ]]&&spwd=(", PWD is: " "" "" ${SPWD//$HOME/\~})
     iqw "" "Showing screen no: " "" "" "#$QCIDX" "$spwd[@]"
+}
+
+iqnc_fill_help(){
+    ZUI[COLORING_PATTERN]="((·[^·]##·~(#s)·*)|(#s)· [^[:space:]]##)"
+    separ
+    qitems=("·N–Commodore help screen·" "$REPLY[3,-1]"
+            "· Shift-F1 – this (help) screen"
+            "· F1 – tree/command-output view"
+            "· F2 – syntax highlighted file contents preview"
+            "· F3/Ctrl-E – command history view"
+            "· Ctrl-/ – toggle command/execution and search/grep prompts"
+            "· F7 – toggle syntax highlighting"
+            "· Ctrl-Up/Down – go back and forward in history (of commands or search keywords)"
+            "· Ctrl-W – show standard input given on N-C's startup"
+            "· Shift-Up – go up one dir (·cd ..·) and run "\
+"· ·\$NC_DEFAULT_LS_COMMAND·"
+            "· Shift-Down – go back to previous PWD directory"
+            "· Shift-Left/Right – move cursor left/right in the current prompt"
+            "· Ctrl-Shift-Left/Right – move cursor word left/right in prompt"
+            "· Ctrl-X – capture save current screen for later retrieval"
+            "· Ctrl-Shift-Left/Right – retrieve saved previous/next screen"
+            "· F8 – remove the currently shown saved screen from the disk"
+
+    )
+    -zui_glib_fly_array_refresh 1
 }
 
 # Read & publish Configure/make output

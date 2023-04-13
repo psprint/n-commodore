@@ -24,24 +24,19 @@ NC_LS_LIKE_COMMANDS="ls fd exa"
 zui::bindkey F1 cmd-main-view
 zui::bindkey F2 cmd-contents-view
 zui::bindkey F3 cmd-command-history-view
-zui::bindkey F4 cmd-exec-prompt
-zui::bindkey F5 cmd-search-prompt
 zui::bindkey $'\C-_' cmd-toggle-prompt
 
 # Strictly preview view
-zui::bindkey F14 cmd-toggle-view preview
 zui::bindkey $'\C-e' cmd-set-view hist
 zui::bindkey F16 cmd-open-tig
 #zui::bindkey F5 cmd-commit
 #zui::bindkey F17 cmd-commit -av
 #zui::bindkey F6 cmd-push
 #zui::bindkey F7 cmd-pull
-zui::bindkey F8 cmd-synh-switch
-#zui::bindkey F15 cmd-stage-line
+zui::bindkey F7 cmd-synh-switch
 zui::bindkey F304 cmd-prev-hist
 zui::bindkey F263 cmd-next-hist
 zui::bindkey $'\C-w' cmd-show-stdin
-zui::bindkey $'\C-u' cmd-pwd-up
 zui::bindkey F305 cmd-pwd-up
 zui::bindkey SR cmd-pwd-up
 zui::bindkey F264 cmd-prev-pwd
@@ -56,4 +51,4 @@ zui::bindkey $'\C-x' cmd-push-screen
 zui::bindkey F284 cmd-prev-screen
 zui::bindkey F299 cmd-next-screen
 zui::bindkey F8 cmd-remove-screen
- 
+zui::bindkey F13 cmd-help
