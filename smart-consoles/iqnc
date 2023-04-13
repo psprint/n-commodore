@@ -237,6 +237,14 @@ iqnc_exec_prompt(){
     ZUI[IN_QUERY]=3; typeset -g in_query=3
 }
 
+iqnc_db(){
+    local VAR_NAME=$1
+    [[ -n ${(M)zgdbm_tied:#$VAR_NAME} ]]&&return 0
+    builtin ztie -d db/gdbm -f "$NCSCRDB" "$VAR_NAME" &>>$NCLOG||\
+        {iqw "Error:" "" "" " cannot open DB";return 1;}
+    return 0
+}
+
 separ(){
     REPLY="$ZUI[YELLOW]${(l:COLUMNS*3::—:):-}$ZUI[FMT_END]";
 }
@@ -303,49 +311,60 @@ cmd-cursor-word-right(){
     ZUI[cursor]=$((ZUI[cursor]+=
         ${#${(M)buffer[ZUI[cursor],-1]##[[:space:]]#[^[:space:]]##}}));}
 
+iqnc_cnt_idx_to_db_idx(){
+    integer QIDX QCIDX=$1
+    (($+WScreens))||local -A WScreens
+    iqnc_db WScreens||return 1
+    screens=("${(k@nM)WScreens:#SCREEN_<->}")
+    ((QCIDX==0))&&QCIDX=WScreens[SCREEN_NO]
+    ((QCIDX>$#screens))&&: ${WScreens[SCREEN_NO]::=${QCIDX::=$#screens}}
+    ((QCIDX<1))&&: ${WScreens[SCREEN_NO]::=${QCIDX::=1}}
+    QIDX=${screens[QCIDX]#SCREEN_}
+    REPLY=$QIDX
 # screens
 cmd-push-screen(){
     local -A WScreens
-    builtin ztie -d db/gdbm -f $NCSCRDB WScreens&>>$NCLOG||\
-        {iqw "Error:" "" "" " cannot open DB";return 1;}
+    iqnc_db WScreens||return 1
     integer QIDX=${(M)${${(kOn)WScreens[(I)SCREEN_<->]}[1]}%%<->}
-    print °°°$QIDX>>/tmp/reply
     QIDX+=1
-    WScreens[SCREEN_$QIDX]=${(F)qitems}
-    WScreens[SCREEN_PWD_$QIDX]=$PWD
+    repeat 1;do
+        WScreens[SCREEN_$QIDX]=${(F)qitems}
+        WScreens[SCREEN_PWD_$QIDX]=$PWD
+    done
     ((WScreens[SCREEN_NO]==QIDX-1&&WScreens[SCREEN_NO]++))
-    iqw "" "Screen " "#$QIDX " pushed, " PWD is: " ${PWD/$HOME/\~}
+    iqw "" "Screen " "#$#WScreens[(I)SCREEN_<->] " pushed, " PWD is: " ${PWD/$HOME/\~}
 }
 
 cmd-remove-screen(){
-    local -A WScreens
-    builtin ztie -d db/gdbm -f $NCSCRDB WScreens&>>$NCLOG||\
-        {iqw "Error:" "" "" " cannot open DB";return 1;}
-    builtin unset "WScreens[SCREEN_${WScreens[SCREEN_NO]}]"
-    builtin unset "WScreens[SCREEN_PWD_${WScreens[SCREEN_NO]}]"
-    iqw "Screen " "#$WScreens[SCREEN_NO] " "removed"
-    ((WScreens[SCREEN_NO]=WScreens[SCREEN_NO]>1?WScreens[SCREEN_NO]-1:1))
+    (($+WScreens))||local -A WScreens
+    iqnc_db WScreens||return 1
+    iqnc_cnt_idx_to_db_idx
+    builtin unset "WScreens[SCREEN_$REPLY]"
+    builtin unset "WScreens[SCREEN_PWD_$REPLY]"
+    iqw "Screen " "#$WScreens[SCREEN_NO] " "successfully " "removed"
+}
+
+cmd-fetch-screen(){
+    integer QCIDX=$1
+    iqnc_cnt_idx_to_db_idx $QCIDX
+    iqnc_fill_screen $REPLY $QCIDX
+    -zui_glib_fly_array_refresh 1
 }
 
 cmd-prev-screen(){
-    local -A WScreens
-    builtin ztie -d db/gdbm -f $NCSCRDB WScreens||\
-        {iqw "Error:" "" "" " cannot open DB: " $NCSCRDB;return 1;}
-
+    (($+WScreens))||local -A WScreens
+    iqnc_db WScreens||return 1
     ((WScreens[SCREEN_NO]=WScreens[SCREEN_NO]>1?WScreens[SCREEN_NO]-1:1))
-    integer QCNT=${#WScreens[(I)SCREEN_<->]}
-    iqnc_fill_screen $WScreens[SCREEN_NO]
-    -zui_glib_fly_array_refresh 1
+    cmd-fetch-screen $WScreens[SCREEN_NO]
 }
 
 cmd-next-screen(){
-    local -A WScreens
-    builtin ztie -d db/gdbm -f $NCSCRDB WScreens||\
-        {iqw "Error:" "" "" " cannot open DB: " $NCSCRDB;return 1;}
+    (($+WScreens))||local -A WScreens
+    iqnc_db WScreens||return 1
+
     integer QCNT=${#WScreens[(I)SCREEN_<->]}
     ((WScreens[SCREEN_NO]=WScreens[SCREEN_NO]<QCNT?WScreens[SCREEN_NO]+1:QCNT))
-    iqnc_fill_screen $WScreens[SCREEN_NO]
-    -zui_glib_fly_array_refresh 1
+    cmd-fetch-screen $WScreens[SCREEN_NO]
 }
 
 if ((!$+Opts[--refresh])); then
@@ -557,7 +576,7 @@ iqnc_fill_cmd(){
 iqnc_fill_0(){
     int/nc::read-all -u$Q0_SAVE_PIPE -t0 -x100
     local ql had_read=0
-    integer q0idx=$#q0input+1
+    integer q0bidx=$#q0input+1
     if ((!$#q0input));then
         q0input[q0idx]=$ZUI[FIRST_0_INPUT]$reply[1]
         shift reply
@@ -590,12 +609,14 @@ iqnc_fill_0(){
 }
 
 iqnc_fill_screen(){
-    integer QIDX=$1
+    integer QIDX=$1 QCIDX=$2
     local SPWD spwd=()
+    (($+WScreens))||local -A WScreens
+    iqnc_db WScreens||return 1
     qitems=("${(@f)WScreens[SCREEN_$QIDX]}")
     [[ -n ${SPWD::=$WScreens[SCREEN_PWD_$QIDX]} ]]&&cmd-cd -q $SPWD
     [[ -n $SPWD ]]&&spwd=(", PWD is: " "" "" ${SPWD//$HOME/\~})
-    iqw "" "Showing screen no: " "" "" "#$QIDX" "$spwd[@]"
+    iqw "" "Showing screen no: " "" "" "#$QCIDX" "$spwd[@]"
 }
 
 # Read & publish Configure/make output
