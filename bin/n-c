@@ -40,6 +40,9 @@
     else
         (($#&&$#CMD))&&shift||CMD=help
     fi
+    if [[ ! -s $NCDIR/libexec/$CMD ]];then
+        set -- nc nc;CMD=console
+    fi
     if [[ -s $NCDIR/libexec/$CMD ]];then
         local FBKP=$functions[$CMD]
         builtin unset -f $CMD&>>!$NCNUL

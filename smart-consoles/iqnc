@@ -628,6 +628,7 @@ iqnc_fill_screen(){
     (($+WScreens))||local -A WScreens
     iqnc_db WScreens||return 1
     ZUI[COLORING_PATTERN]="((·[^·]##·~(#s)·*)|(#s)· [^[:space:]]##)"
+
     qitems=("${(@f)WScreens[SCREEN_$QIDX]}")
     [[ -n ${SPWD::=$WScreens[SCREEN_PWD_$QIDX]} ]]&&cmd-cd -q $SPWD
     ZUI[GEN_B_IDX]=${WScreens[SCREEN_VIEW_$QIDX]:-0}
