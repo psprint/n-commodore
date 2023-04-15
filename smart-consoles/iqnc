@@ -782,6 +782,12 @@ while (( 1 )); do
         ZUI[VIEW_CHANGE]=1
         QFLAG=1
     fi
+
+    # compiler/grep output?
+    if [[ $QFILE == (#b)(#s)([^:]##):(<->):* && ! -e **/$QFILE(#qNY1) ]];then
+        QFILE=$match[1] QIDX=$match[2]
+    fi
+
     if [[ -f **/$QFILE(#qNY1) ]];then
         [[ -f $QFILE ]]||{QFILE=(**/$QFILE(#qNY1));QFILE=$QFILE[1];}
         REPLY=

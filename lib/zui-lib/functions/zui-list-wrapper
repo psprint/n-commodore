@@ -131,7 +131,8 @@ if [[ "$REPLY" != "-1" && "$REPLY" = -(#c0,1)[0-9]## ]]; then
     if [[ "${ZUI[text_mode]}" = (all|nohyp) ]] || -zui_glib_has_any_hyperlinks "$answer"; then
         local -a segments
         zui-list-process-buffer2 $answer
-        [[ "${ZUI[CURRENT_SEGMENT]}" -gt "${#segments}" ]] && ZUI[CURRENT_SEGMENT]="${#ZUI_PB2_QWORDS}"
+        ((ZUI[CURRENT_SEGMENT]>$#ZUI_PB2_QWORDS))&&\
+            ZUI[CURRENT_SEGMENT]="${#ZUI_PB2_QWORDS}"
         ZUILIST_WRAPPER_BIT="${ZUI_PB2_QWORDS[${ZUI[CURRENT_SEGMENT]}]}"
     fi
 else
