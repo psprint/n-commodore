@@ -562,9 +562,10 @@ iqnc_fill_cmd(){
         TXT=$reply[1]
         ZUI[TMP]=$(mktemp)
         eval "$cmd[@]">!$ZUI[TMP]
-        iq0items=("${(@f)$(<$ZUI[TMP])}")
         if [[ $cmd[1] == $~CMD_PT ]];then
-            iq0items=("${(@f)$(builtin print -C2 "$iq0items[@]")}")
+            iq0items=("${(@f)$(builtin print -C2 ${(@f)$(<$ZUI[TMP])})}")
+        else
+            iq0items=("${(@f)$(<$ZUI[TMP])}")
         fi
         ZUI[RET]=$?
         ZUI[redraw]=1

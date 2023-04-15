@@ -1,6 +1,13 @@
 #!/usr/bin/env zsh
 
 #
+# Aliases
+#
+
+alias rg="rg --color=always --line-number"
+alias ag="ag --color=always --numbers"
+
+#
 # Variables
 #
 
@@ -10,8 +17,9 @@ if type fd&>/dev/null;then
 else
     NC_DEFAULT_LS_COMMAND="command ls --color=always"
 fi 
-#NC_DEFAULT_LS_COMMAND="command exa --color=always %s|ok/qcolreduce -o"
-#NC_DEFAULT_LS_COMMAND="command ls --color=always %s|ok/qcolreduce -o"
+
+#NC_DEFAULT_LS_COMMAND="command exa --color=always|ok/qcolreduce -o"
+#NC_DEFAULT_LS_COMMAND="command ls --color=always|ok/qcolreduce -o"
 # editor will be found anyway
 #NC_OPEN_CMD=${VISIAL:-${EDITOR:-$PAGER}}
 NC_DEFAULT_LS_LIKE_OPTS="--color=always"
