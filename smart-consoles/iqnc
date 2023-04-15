@@ -784,7 +784,7 @@ while (( 1 )); do
     fi
 
     # compiler/grep output?
-    if [[ $QFILE == (#b)(#s)([^:]##):(<->):* && ! -e **/$QFILE(#qNY1) ]];then
+    if [[ $QFILE == (#b)(#s)((#B)(^:<->)##):(#b)((<->)(#c0,1)):* && ! -e **/$QFILE(#qNY1) ]];then
         QFILE=$match[1] QIDX=$match[2]
     fi
 
