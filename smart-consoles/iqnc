@@ -763,6 +763,15 @@ while (( 1 )); do
 
     int/nc::prune-esc -eT -v QFILE $QFILE
     QFILE=${QFILE%%/##}
+
+    # compiler/grep output?
+    if [[ ($QFILE == (#b)(#s)((#B)(^:<->)##):(#b)(<->):* ||
+            $QFILE == (#b)(#s)((#B)(^:<->)##):*) && \
+            ! -e **/$QFILE(#qNY1) ]]
+    then
+        QFILE=$match[1] QIDX=$match[2]
+    fi
+
     if ((ZUI[GEN_B_IDX]!=2))&&\
         [[ ! -f **/$QFILE(#qNY1) && ! -d **/$QFILE(#qNY1/) ]]
     then
@@ -781,11 +790,6 @@ while (( 1 )); do
         ZUI[COMMAND]=$QFILE
         ZUI[VIEW_CHANGE]=1
         QFLAG=1
-    fi
-
-    # compiler/grep output?
-    if [[ $QFILE == (#b)(#s)((#B)(^:<->)##):(#b)((<->)(#c0,1)):* && ! -e **/$QFILE(#qNY1) ]];then
-        QFILE=$match[1] QIDX=$match[2]
     fi
 
     if [[ -f **/$QFILE(#qNY1) ]];then

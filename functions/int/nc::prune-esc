@@ -15,7 +15,7 @@ int/nc::prune-esc() {
     if (($+Opts[-b]));then
         __REPLY=${__REPLY//(#m)$qe\[/${MATCH}1\;}
     else
-        __REPLY=${__REPLY//$qe\[[0-9\;]#m}
+        __REPLY=${__REPLY//$qe\[[0-9\;]#[mK]}
     fi
     (($+Opts[-e]))&&__REPLY=${__REPLY//[$'\001'-$'\037']/}
     (($+Opts[-T]))||__REPLY=${__REPLY//((#s)[[:space:]]##|[[:space:]]##(#e))}
