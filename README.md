@@ -14,7 +14,19 @@ Pressing `ENTER` on any line will open `$VISUAL` / `$EDITOR` / `$PAGER` scrolled
 that line (if in file preview, otherwise, if poiting to the file, it will just open the file in editor).
 
 Any view can be greped – `n-commodore` starts with search prompt active, so you
-can enter the search-keyword to have either files, file preview, or previous commands (views F1, F2, F3) filtered with it. Multiple keywords are allowed.
+can enter the search-keyword to have either files, file preview, or previous com
+ mands (views F1, F2, F3) filtered with it. Multiple keywords are allowed.
+
+# More in-depth explanation
+
+Basically it's about 3 factors:
+- panelize everything,
+- grep everything,
+- save everything.
+
+Panelization is known from Midnight Commander - it means to capture command output into a list that can be browsed. Grepping is known from fzf. Screen saving is a new paradigm
+
+You basically have new screen (a greppable panel) for each new command, which is saved to the disk (GDBM), and which can be fetched/navigated to, having also PWD dir and position in panel restored.
 
 # Asciicast
 
