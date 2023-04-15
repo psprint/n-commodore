@@ -762,7 +762,7 @@ while (( 1 )); do
         if ((ZUI[IN_QUERY]==3));then
             -zui_list_status_msg green "$ZUI[QUERY_PROMPT]" $ZUI[QUERY_BUFFER]
         elif ((ZUI[IN_QUERY]==1)); then
-            -zui_list_status_msg cyan "$ZUI[QUERY_PROMPT]" ${ZUI[SEARCH_BUFFER]// / + }
+            -zui_list_status_msg cyan "$ZUI[QUERY_PROMPT]" ${ZUI[SEARCH_BUFFER]// /+}
         fi
 
         [[ $ZUI[status_border] = 1 ]] && {

@@ -573,7 +573,11 @@ iqnc_fill_cmd(){
             iqnc_push_pwd 
             iqnc_fill_cmd
             return
+        elif [[ $iq0items == $~NC[WRONGSTR] ]];then
+            iqw "Command " "$cmd" " had no output"
+            return
         fi
+        
     else
         -zui_glib_special_text "Showing files in: ·$PWD·"
         TXT=$reply[1]
@@ -776,6 +780,7 @@ while (( 1 )); do
     if ((ZUI[GEN_B_IDX]==2));then
         ZUI[COMMAND]=$QFILE
         ZUI[VIEW_CHANGE]=1
+        QFLAG=1
     fi
     if [[ -f **/$QFILE(#qNY1) ]];then
         [[ -f $QFILE ]]||{QFILE=(**/$QFILE(#qNY1));QFILE=$QFILE[1];}
