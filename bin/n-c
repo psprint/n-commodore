@@ -34,14 +34,13 @@
                             Opts opts "$@"||return 7
     set -- "$reply[@]"
     local CMD=$1
-    [[ $CMD == (|nc) ]]&&{set -- nc nc;CMD=console;}
     if (($+Opts[-h]||$+Opts[--help]));then
         CMD=help
     else
-        (($#&&$#CMD))&&shift||CMD=help
+        (($#&&$#CMD))&&shift
     fi
-    if [[ ! -s $NCDIR/libexec/$CMD ]];then
-        set -- nc nc;CMD=console
+    if [[ ! -s $NCDIR/libexec/$CMD || -z $CMD ]];then
+        set -- nc $CMD "$@";CMD=console
     fi
     if [[ -s $NCDIR/libexec/$CMD ]];then
         local FBKP=$functions[$CMD]

@@ -40,7 +40,7 @@ each after the pattern applied. NON-GREEDY mode"
             x-tract    "extracts any archive, recognizes many types"
             palette    "shows the 256 color palette"
         )
-    [[ -z $1 ]]&&{iqnotice Available\ commands:;n-commodore qprint -q QMsg|\
+    [[ -z $1 ]]&&{iqnotice Available\ commands:;n-c qprint -q QMsg|\
         {
             local line
             while IFS= read line;do
