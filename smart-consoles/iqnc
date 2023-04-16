@@ -422,6 +422,7 @@ if ((!$+Opts[--refresh])); then
         ZUI[START_IN_QUERY]=1
     else
         ZUI[START_IN_QUERY]=3
+        ZUI[cursor]=$#ZUI[QUERY_BUFFER]+1
     fi
     iqnc_set_prompt $ZUI[START_IN_QUERY]
     ZUI[GEN_B_IDX]=0
