@@ -487,7 +487,8 @@ iqnc_fill_preview(){
     ZUI[COLORING_MATCH_MULTIPLE]=1
     ZUI[COLORING_COLOR]=$ZUI[BOLD]$ZUI[YELLOW]
     if ((ZUI[CURRENT_IDX]>0&&ZUI[SRC_HIGHLIGHT_SWITCHED]==0&&ZUI[PREV_GEN_B_IDX]==0));then
-        QPATH=$__list[ZUI[CURRENT_IDX]]
+        zui-process-buffer2 "$__list[ZUI[CURRENT_IDX]]"
+        QPATH=${ZUI_PB2_QWORDS[ZUI[CURRENT_SEGMENT]]}
         ZUI[QPATH]=$QPATH
     else
         QPATH=$ZUI[QPATH]
