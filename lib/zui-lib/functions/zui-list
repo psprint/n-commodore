@@ -812,7 +812,7 @@ while (( 1 )); do
         fi
 
         if [[ -n "$__final_key" && "$__final_key" != "<timeout>" ]]; then
-            integer track_cur_idx=ZUI[CURRENT_IDX]
+            integer track_cur_idx=ZUI[CURRENT_IDX] in_query_prev=ZUI[IN_QUERY]
             ((!track_cur_idx))&&track_cur_idx=1
             [[ -z $ZUI[SEARCH_BUFFER] ]]&&\
                 ZUI[PREV_IDX_NO_SEARCH]=$ZUI[CURRENT_IDX]
@@ -831,9 +831,9 @@ while (( 1 )); do
             ZUI[IN_QUERY]=$reply[7]
             [[ -z $reply[8] && -n $ZUI[SEARCH_BUFFER] ]]&&\
                 ZUI[CURRENT_IDX]=$ZUI[PREV_IDX_NO_SEARCH]
-            if ((ZUI[IN_QUERY]==1));then
+            if ((in_query_prev==1));then
                 ZUI[SEARCH_BUFFER]=$reply[8]
-            elif ((ZUI[IN_QUERY]==3));then
+            elif ((in_query_prev==3));then
                 ZUI[QUERY_BUFFER]=$reply[8]
             fi
             ZUI[UNIQ_MODE]=$reply[9]

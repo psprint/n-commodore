@@ -723,6 +723,7 @@ fi
 -zui_glib_msg "" "@@@ " "Welcome to " "NC System " "°open° console!" " @@@";
 integer EC
 iqnc_hub 1 1 1
+ZUI[redraw]=1
 cmd-push-screen
 while (( 1 )); do
     ZUI[VIEW_CHANGE]=1
