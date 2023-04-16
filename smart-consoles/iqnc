@@ -229,13 +229,15 @@ iqnc_search_prompt(){
     ((ZUI[GEN_B_IDX]==1))&&T=file\ contents
     ((ZUI[GEN_B_IDX]==2))&&T=command\ history
  
-    ZUI[QUERY_PROMPT]="Search $T: " ZUI[IN_QUERY]=1 in_query=1
+    ZUI[QUERY_PROMPT]="Search $T: " ZUI[IN_QUERY]=1
+    typeset -g in_query=1
     ZUI[VIEW_CHANGE]=1
 }
 
 iqnc_exec_prompt(){
     ZUI[QUERY_PROMPT]="$PWD/:> "
-    ZUI[IN_QUERY]=3; typeset -g in_query=3
+    ZUI[IN_QUERY]=3
+    typeset -g in_query=3
 }
 
 iqnc_db(){
@@ -414,9 +416,14 @@ if ((!$+Opts[--refresh])); then
     -zui_glib_store_default_app_config b:top_anchors 0
     ZUI[UNIQ_MODE]=0
     [[ $1 == open ]]&&shift
-    [[ -n $* ]]&&ZUI[SEARCH_BUFFER]=$*
-    ZUI[START_IN_QUERY]=3
-
+    if [[ -n $* ]];then
+        ZUI[SEARCH_BUFFER]=$*
+        ZUI[cursor]=$#ZUI[SEARCH_BUFFER]+1
+        ZUI[START_IN_QUERY]=1
+    else
+        ZUI[START_IN_QUERY]=3
+    fi
+    iqnc_set_prompt $ZUI[START_IN_QUERY]
     ZUI[GEN_B_IDX]=0
 
     local -a qitems iq0items q0input q0inputp
