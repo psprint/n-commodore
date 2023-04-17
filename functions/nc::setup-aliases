@@ -32,9 +32,10 @@ for DIR ($dirs);do
         if [[ $REPLY != $NCTXT/* && $REPLY != $NCSTRDB/* ]]
         then
             REPLY="$REPLY:t=$(<$REPLY)"
-            local KEY=${(M)REPLY##[^=]##}
-            alias "${${REPLY#*=}%%:*}" \
-                "${(M)REPLY##[^=]##}=${REPLY#*:}"
+            local KEY=${(M)REPLY##[^=]##} Q=${(M)REPLY##[^=]##}
+            if ((!$+NC_NO_NICK_COMMAND))||[[ $Q != nc ]]; then
+                    alias  ${${REPLY#*=}%%:*} "$Q=${REPLY#*:}"
+            fi
             NC[$KEY]=${REPLY#*:}
             [[ $KEY == SNIP_* ]]&&typeset -gx $KEY="${REPLY#*:}"
         else
