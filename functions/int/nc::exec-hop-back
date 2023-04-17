@@ -43,7 +43,7 @@ IFS= read -s -r -k1 </dev/tty;\
 
     [[ "$1" = <-> && $# -eq 1 ]] && {
         local FD=$1 READ_SOURCE_TEXT
-        int/nc::read-all -f -u$FD
+        int/nc::read-all -u$FD
         READ_SOURCE_TEXT=$REPLY
         ((NC[notify-zle]))&&builtin zle -I
         builtin zle -F $FD; exec {FD}<&-
@@ -54,7 +54,8 @@ IFS= read -s -r -k1 </dev/tty;\
 
     # Input/options
     local -A Opts;local -a opts
-    int/nc::parse-opts "i -zle-nt m -msg" Opts opts "$@"||return 7
+    int/nc::parse-opts "i -zle-nt m -msg" Opts opts "$@"||\
+        {iqerr bad option to $0:t;return 7;}
     builtin set -- "$reply[@]"
     int/nc::opt-cascade Opts -i --zle-nt --msg -m
 
