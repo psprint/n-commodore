@@ -5,7 +5,8 @@
 #
 
 alias rg="rg --color=always --line-number"
-alias ag="ag --color=always --numbers"
+alias ag="ag --color --numbers"
+alias bat="bat --color=always"
 
 #
 # Variables
