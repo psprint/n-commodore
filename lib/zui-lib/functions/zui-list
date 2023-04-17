@@ -829,7 +829,8 @@ while (( 1 )); do
             ZUI[FROM_WHAT_IDX_LIST_IS_SHOWN]="$reply[5]"
             ZUI[TEXT_OFFSET]="$reply[6]"
             ZUI[IN_QUERY]=$reply[7]
-            [[ -z $reply[8] && -n $ZUI[SEARCH_BUFFER] ]]&&\
+            [[ -z $reply[8] && -n $ZUI[SEARCH_BUFFER] &&\
+                    $ZUI[IN_QUERY] == 1 ]]&&\
                 ZUI[CURRENT_IDX]=$ZUI[PREV_IDX_NO_SEARCH]
             if ((in_query_prev==1));then
                 ZUI[SEARCH_BUFFER]=$reply[8]
