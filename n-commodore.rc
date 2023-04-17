@@ -61,3 +61,4 @@ zui::bindkey F284 cmd-prev-screen
 zui::bindkey F299 cmd-next-screen
 zui::bindkey F8 cmd-remove-screen
 zui::bindkey F13 cmd-help
+zui::bindkey F20 cmd-prune-screens

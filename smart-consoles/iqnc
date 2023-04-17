@@ -365,6 +365,14 @@ cmd-fetch-screen(){
     -zui_glib_fly_array_refresh 1
 }
 
+cmd-prune-screens(){
+    (($+WScreens))||local -A WScreens
+    iqnc_db WScreens||return 1
+    integer i cnt=$#WScreens[(I)SCREEN_<->]
+    for ((i=1;i<=cnt;i++));do
+        cmd-remove-screen $i
+    done
+}
 cmd-prev-screen(){
     (($+WScreens))||local -A WScreens
     iqnc_db WScreens||return 1
@@ -582,7 +590,6 @@ iqnc_fill_cmd(){
         ZUI[COMMAND]= ZUI[TMP]=
         if [[ $cmd[1] == cd || $cmd[1] == builtin && $cmd[2] == cd ]];then
             iqw "Changing directory to: " "" "" "$cmd[-1]"
-            cmd-push-screen
             iqnc_push_pwd 
             iqnc_fill_cmd
             return
@@ -604,6 +611,7 @@ iqnc_fill_cmd(){
     typeset -ga -U ZUILIST_NONSELECTABLE_ELEMENTS=(4 3 2 1)
     separ
     qitems=("$REPLY" "$TXT" "$REPLY" "$iq0items[@]")
+    ZUI[VIEW_CHANGE]=1
 }
 
 iqnc_fill_0(){
@@ -720,6 +728,7 @@ iqnc_fill_help(){
     fi
     builtin unset 'ZUI[COMMAND]'
     iqnc_util_set_current_idx
+    ZUI[redraw]=1
     ZUI[VIEW_CHANGE]=0
     return 0
 }
@@ -734,7 +743,6 @@ fi
 integer EC
 iqnc_hub 1 1 1
 ZUI[redraw]=1
-cmd-push-screen
 while (( 1 )); do
     ZUI[VIEW_CHANGE]=1
     builtin print -rn -- $terminfo[smcup]$termcap[ti]
@@ -826,7 +834,6 @@ while (( 1 )); do
     if [[ -d **/$QFILE(#qNY1/) ]];then
         [[ -d $QFILE ]]||{QFILE=(**/$QFILE(#qNY1/));QFILE=$QFILE[1];}
         iqw "Changing directory to: " ${QFILE##$PWD/}
-        cmd-push-screen
         iqnc_push_pwd
         if builtin cd -q -- $QFILE;then
             iqnc_get_command
