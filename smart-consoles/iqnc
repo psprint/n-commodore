@@ -570,13 +570,13 @@ iqnc_fill_cmd(){
         -zui_glib_special_text "Output of cmd: ·$ZUI[COMMAND]· run in: ·$PWD·:"
         TXT=$reply[1]
         ZUI[TMP]=$(mktemp)
-        eval "$cmd[@]">!$ZUI[TMP]
+        eval "$cmd[@]"&>!$ZUI[TMP]
+        ZUI[RET]=$?
         if [[ $cmd[1] == $~CMD_PT ]];then
             iq0items=("${(@f)$(builtin print -C2 ${(@f)$(<$ZUI[TMP])})}")
         else
             iq0items=("${(@f)$(<$ZUI[TMP])}")
         fi
-        ZUI[RET]=$?
         ZUI[redraw]=1
         rm -f $ZUI[TMP]
         ZUI[COMMAND]= ZUI[TMP]=
@@ -598,7 +598,8 @@ iqnc_fill_cmd(){
     fi
     (($+Opts[-s]))&&iq0items=("${(@on)iq0items}")
     (($+Opts[-R]))&&iq0items=("${(a@nO)iq0items}")
-    [[ -n $iq0items[1,3] ]]&&ok/qcolreduce "$iq0items[@]"&&iq0items=("$reply[@]")
+    [[ -n $iq0items[1,3] ]]&&\
+        {ok/qcolreduce -- "$iq0items[@]";iq0items=("$reply[@]");}
 
     typeset -ga -U ZUILIST_NONSELECTABLE_ELEMENTS=(4 3 2 1)
     separ
