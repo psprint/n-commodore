@@ -16,7 +16,7 @@ alias bat="bat --color=always"
 if type fd&>/dev/null;then
     NC_DEFAULT_LS_COMMAND="fd ."
 else
-    NC_DEFAULT_LS_COMMAND="command ls --color=always"
+    NC_DEFAULT_LS_COMMAND="ls -1 --color=always"
 fi 
 
 #NC_DEFAULT_LS_COMMAND="command exa --color=always|ok/qcolreduce -o"
