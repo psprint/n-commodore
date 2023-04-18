@@ -42,7 +42,7 @@ filter() {
     )
 
     reply=("$out[@]")
-    REPLY=${(pj:\n:)reply}
+    REPLY=${(F)reply}
     (($#reply))
 
     return
