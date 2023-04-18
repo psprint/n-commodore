@@ -1,0 +1,103 @@
+#!/usr/bin/env zsh
+# Copyright (c) 2023 Sebastian Gniazdowski
+#
+# ok/qgethr
+#
+
+ok/qcolreduce() {
+    integer EC QEC
+    0=${${${(M)${0::=${(%):-%x}}:#/*}:-$PWD/$0}:A}
+    [[ -f $0 ]];EC+=$?
+    source "$0:h:h:h"/share/preamble.inc.zsh --fun
+
+    # Options and arguments
+    local -A Opts; local -a opts toutop
+    {
+    int/nc::parse-opts "o u: s -sys t:=toutop -timeout:=toutop" Opts opts "$@"||\
+        {iqerr incorrect options given to {func}$0:t{%} fun; return EC+17;}
+    } always {
+        if CATCH \*;then
+            iqw "$CAUGHT[@]"
+        fi
+    }
+    set -- "$reply[@]"
+    int/nc::opt-cascade Opts -s --sys -t --timeout
+    EC+=$?
+    int/nc::reset
+
+    # descriptor variable
+    integer QU
+    local OUT
+    (($+Opts[-u]))&&QU=$Opts[-u]
+    if ((!$#))&&int/nc::test-stdin QU OUT;then
+        if (($+Opts[-s]));then
+            int/nc::read-all-sys -u$QU $toutop
+        else
+            int/nc::read-all -u$QU $toutop
+        fi
+        QEC=$?;EC+=QEC
+        ((QEC))&&iqerr "Problem reading from descriptor: " $QU
+        # nevertheless, save the output like if it was a succcessful read
+        OUT+=$REPLY
+        reply[1]=$OUT$reply[1]
+    else
+        # join the argument input like if it has been read from stdin
+        OUT=${(pj:\n:)@}
+    fi
+
+    #
+    # Color reduce code
+    #
+    local -A ColMap=( "(<1-8>)" $'\e[0;3$match[1]'m
+                      "(<9-16)" $'\e[1;3$((match[1]-8))'m
+                      "(<17-24>)" $'\e[0;34'm
+                      "(<25-39>)" $'\e[1;34'm
+                      "(<40-44>)" $'\e[0;32'm
+                      "(<45-51>)" $'\e[0;36'm
+                      "(<52-69>)" $'\e[0;34'm
+                      "(<70-73>)" $'\e[0;32'm
+                      "(<74-81>)" $'\e[0;36'm
+                      "(<82-90>)" $'\e[1;32'm
+                      "(<91-105>)" $'\e[0;34'm
+                      "(<106-110>)" $'\e[0;32'm
+                      "(<110-111>)" $'\e[1;34'm
+                      "(<112-116>)" $'\e[0;32'm
+                      "(<117-123>)" $'\e[1;36'm
+                      "(<124-129>)" $'\e[0;31'm
+                      "(<130-139>)" $'\e[0;33'm
+                      "(<140-147>)" $'\e[0;34'm
+                      "(<148-152>)" $'\e[0;32'm
+                      "(<153-153>)" $'\e[0;36'm
+                      "(<154-157>)" $'\e[1;32'm
+                      "(<158-159>)" $'\e[1;34'm
+                      "(<160-169>)" $'\e[0;31'm
+                      "(<170-171>)" $'\e[0;35'm
+                      "(<172-177>)" $'\e[0;33'm
+                      "(<178-181>)" $'\e[0;33'm
+                      "(<182-183>)" $'\e[1;35'm
+                      "(<184-187>)" $'\e[0;33'm
+                      "(<188-189>)" $'\e[1;34'm
+                      "(<190-194>)" $'\e[1;32'm
+                      "(<195-195>)" $'\e[1;34'm
+                      "(<196-205>)" $'\e[1;31'm
+                      "(<206-207>)" $'\e[1;35'm
+                      "(<208-216>)" $'\e[0;33'm
+                      "(<217-219>)" $'\e[1;35'm
+                      "(<220-229>)" $'\e[1;33'm
+                      "(<230-231>)" $'\e[1;37'm
+                      "(<232-250>)" $'\e[1;38'm
+                      "(<250-255>)" $'\e[0;38'm
+            )
+    local x1b=$'\x1b'
+    REPLY=${OUT//$x1b\[(<->\;)#38\;5\;(#b)(${~${(j:|:)${(kO@a)ColMap}}})(\;<->)#m/$(print -P -- $ColMap[(k)$match[1]])}
+
+    # Asked to output to stdout?
+    (($+Opts[-o]))&&print -r -- $REPLY
+
+    [[ $REPLY != $~NC[WRONGSTR] ]]
+    EC+=$?
+    reply=("${(@f)REPLY}")
+    return EC
+}
+ok/qcolreduce "$@"
+# vim:ft=zsh
