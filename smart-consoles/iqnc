@@ -699,6 +699,8 @@ iqnc_fill_help(){
             "· F3/Ctrl-E – command history view"
             "· Ctrl-/ – toggle command/execution and search/grep prompts"
             "· F7 – toggle syntax highlighting"
+            "· Ctrl-T – copy current item to prompt"
+            "· Ctrl-Y – copy current PWD to prompt"
             "· Ctrl-Up/Down – go back and forward in history (of commands or search keywords)"
             "· Ctrl-W – show standard input given on N-C's startup"
             "· Shift-Up – go up one dir (·cd ..·) and run "\
