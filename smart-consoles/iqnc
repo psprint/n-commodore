@@ -231,6 +231,7 @@ iqnc_search_prompt(){
  
     ZUI[QUERY_PROMPT]="Search $T: " ZUI[IN_QUERY]=1
     typeset -g in_query=1
+    ZUI[cursor]=$#ZUI[SEARCH_BUFFER]+1
     ZUI[VIEW_CHANGE]=1
 }
 
@@ -238,6 +239,8 @@ iqnc_exec_prompt(){
     ZUI[QUERY_PROMPT]="$PWD/:> "
     ZUI[IN_QUERY]=3
     typeset -g in_query=3
+    ZUI[cursor]=$#ZUI[QUERY_BUFFER]+1
+    ZUI[VIEW_CHANGE]=1
 }
 
 iqnc_db(){
