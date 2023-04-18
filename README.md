@@ -30,4 +30,4 @@ You basically have new screen (a greppable panel) for each new command, which is
 
 # Asciicast
 
-[![asciicast](https://asciinema.org/a/577630.svg)](https://asciinema.org/a/577630)
+[![asciicast](https://asciinema.org/a/578349.svg)](https://asciinema.org/a/578349)
