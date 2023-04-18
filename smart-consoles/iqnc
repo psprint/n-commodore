@@ -389,6 +389,19 @@ cmd-next-screen(){
     cmd-fetch-screen $WScreens[SCREEN_NO]
 }
 
+cmd-item-to-prompt(){
+    ((current_idx<=0))&&return 1
+    zui-process-buffer2 $__list[current_idx]||return 1
+    local WORD=$ZUI_PB2_QWORDS[current_segment]
+    buffer+=$WORD
+    ((ZUI[cursor]+=$#WORD))
+}
+
+cmd-pwd-to-prompt(){
+    buffer+=$PWD
+    ((ZUI[cursor]+=$#PWD))
+}
+
 cmd-help(){iqnc_fill_help;}
 
 if ((!$+Opts[--refresh])); then

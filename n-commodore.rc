@@ -62,3 +62,7 @@ zui::bindkey F299 cmd-next-screen
 zui::bindkey F8 cmd-remove-screen
 zui::bindkey F13 cmd-help
 zui::bindkey F20 cmd-prune-screens
+zui::bindkey $'\C-t' cmd-item-to-prompt
+zui::bindkey $'\C-y' cmd-pwd-to-prompt
+
+ 
