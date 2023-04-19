@@ -430,7 +430,7 @@ if ((!$+Opts[--refresh])); then
 
     -zui_glib_store_default_app_config b:instant_search 1
     -zui_glib_store_default_app_config s:select_mode "quit"   # Quit event loop on text-selection
-    -zui_glib_store_default_app_config b:text_bar "[F1 jump/res.][F2 view][F3 diff][F4 Tig][F5 commit][F6 push][F7 pull][F8 SynH]"
+    -zui_glib_store_default_app_config b:text_bar "[F1 tree][F2 preview][F3 history][F7 Synh][F8 remove scrn]"
     -zui_glib_store_default_app_config b:status_size 6
     -zui_glib_store_default_app_config b:status_pointer 1
     -zui_glib_store_default_app_config b:text_select 1        # Allow selection of text
