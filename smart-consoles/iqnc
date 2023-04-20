@@ -396,6 +396,7 @@ cmd-item-to-prompt(){
     ((current_idx<=0))&&return 1
     zui-process-buffer2 $__list[current_idx]||return 1
     local WORD=$ZUI_PB2_QWORDS[current_segment]
+     int/nc::prune-esc -e -v WORD $WORD
     buffer+=$WORD
     ((ZUI[cursor]+=$#WORD))
 }
