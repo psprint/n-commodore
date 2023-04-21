@@ -372,7 +372,7 @@ cmd-prune-screens(){
     (($+WScreens))||local -A WScreens
     iqnc_db WScreens||return 1
     integer i cnt=$#WScreens[(I)SCREEN_<->]
-    for ((i=cnt;i>=1;i++));do
+    for ((i=cnt;i>=1;i--));do
         cmd-remove-screen $i
     done
 }
