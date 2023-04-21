@@ -397,13 +397,13 @@ cmd-item-to-prompt(){
     zui-process-buffer2 $__list[current_idx]||return 1
     local WORD=$ZUI_PB2_QWORDS[current_segment]
      int/nc::prune-esc -e -v WORD $WORD
-    buffer+=$WORD
-    ((ZUI[cursor]+=$#WORD))
+    buffer+=$WORD" "
+    ((ZUI[cursor]+=$#WORD+1))
 }
 
 cmd-pwd-to-prompt(){
-    buffer+=$PWD
-    ((ZUI[cursor]+=$#PWD))
+    buffer+=$PWD" "
+    ((ZUI[cursor]+=$#PWD+1))
 }
 
 cmd-help(){iqnc_fill_help;}
