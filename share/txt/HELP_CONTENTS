@@ -1,0 +1,17 @@
+· Shift-F1 – this (help) screen
+· F1 – tree/command-output view
+· F2 – syntax highlighted file contents preview
+· F3/Ctrl-E – command history view
+· Ctrl-/ – toggle command/execution and search/grep prompts
+· F7 – toggle syntax highlighting
+· Ctrl-T – copy current item to prompt
+· Ctrl-Y – copy current PWD to prompt
+· Ctrl-Up/Down – go back and forward in history (of commands or search keywords)
+· Ctrl-W – show standard input given on N-C's startup
+· Shift-Up – go up one dir (·cd ..·) and run ·$NC_DEFAULT_LS_COMMAND·
+· Shift-Down – go back to previous PWD directory
+· Shift-Left/Right – move cursor left/right in the current prompt
+· Ctrl-Shift-Left/Right – move cursor word left/right in prompt
+· Ctrl-X – capture save current screen for later retrieval
+· Ctrl-Shift-Left/Right – retrieve saved previous/next screen
+· F8 – remove the currently shown saved screen from the disk
