@@ -345,7 +345,7 @@ cmd-push-screen(){
         WScreens[SCREEN_CMD_$QIDX]=$ZUI[QUERY_BUFFER]
         WScreens[SCREEN_CUR_IDX_$QIDX]=$current_idx
         WScreens[SCREEN_FROM_$QIDX]=$from_what_idx_list_is_shown
-        WScreens[SCREEN_CUR_SEG]=$current_segment
+        WScreens[SCREEN_CUR_SEG_$QIDX]=$current_segment
         WScreens[SCREEN_CURSOR_$QIDX]=$ZUI[cursor]
     done
     WScreens[SCREEN_NO]=$#WScreens[(I)SCREEN_<->]
