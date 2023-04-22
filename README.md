@@ -31,3 +31,12 @@ You basically have new screen (a greppable panel) for each new command, which is
 # Asciicast
 
 [![asciicast](https://asciinema.org/a/578349.svg)](https://asciinema.org/a/578349)
+
+# Installation
+
+Clone the repo and symlink `bin/n-c` to a directory in your `$PATH`, like `/usr/local/bin`, After this, run `n-c` for the file manager.
+
+… or, if using Zsh, load the plugin file `n-commdore.plugin.zsh` either directly
+(`source …`) or via a plugin manager, like zinit
+(`zinit for psprint/n-commodore`). This creates a `nc` alias which you can use
+to start the file manager.
