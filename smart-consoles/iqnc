@@ -632,17 +632,18 @@ iqnc_fill_cmd(){
 }
 
 iqnc_fill_0(){
-    int/nc::read-all -u$Q0_SAVE_PIPE -t0 -x100
+    integer QFLAG
+    int/nc::read-all -u$Q0_SAVE_PIPE -t0 -x30
     local ql had_read=0
     integer q0idx=$#q0input+1
     if ((!$#q0input&&$#reply));then
         q0input[q0idx]=$ZUI[FIRST_0_INPUT]$reply[1]
         shift reply
+        QFLAG=1
     fi
 
     # work on newly read lines
     local -a qreply=()
-    integer QFLAG
     foreach QE ("$reply[@]")
         int/nc::prune-esc -T -b -- $QE
         qreply+=("$REPLY")
