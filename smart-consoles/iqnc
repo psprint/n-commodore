@@ -251,6 +251,32 @@ iqnc_db(){
     return 0
 }
 
+iqnc_get_cmd_out(){
+    local TPE=$1 cmd=("$@[2,-1]")
+    if [[ $TPE == whole ]];then
+        ZUI[TMP]=$(mktemp)
+        eval "$cmd[@]"&>!$ZUI[TMP]
+        ZUI[RET]=$?
+        local CMD_PT="(${(~j.|.)${=NC_LS_LIKE_COMMANDS}})"
+
+        if [[ $cmd[1] == $~CMD_PT || ($cmd[1] == (noglob|command) &&\
+                $cmd[2] == $~CMD_PT) ]]
+        then
+            reply=("${(@f)$(builtin print -C2 -a ${(@f)$(<$ZUI[TMP])})}")
+        else
+            reply=("${(@f)$(<$ZUI[TMP])}")
+        fi
+        rm -f $ZUI[TMP]
+    else
+        ((Q0_SAVE_PIPE))&&exec {Q0_SAVE_PIPE}<&-
+        Q0_SAVE_PIPE=0
+        coproc {"$cmd[@]";}
+        ZUI[RET]=$?
+    fi
+
+    return $ZUI[RET]
+}
+
 separ(){
     REPLY="$ZUI[YELLOW]${(l:COLUMNS*3::—:):-}$ZUI[FMT_END]";
 }
@@ -463,7 +489,7 @@ if ((!$+Opts[--refresh])); then
     iqnc_set_prompt $ZUI[START_IN_QUERY]
     ZUI[GEN_B_IDX]=0
 
-    local -a qitems iq0items q0input q0inputp
+    local -a qitems iq0items q0input q0input_proc
     integer Q0_SAVE_PIPE tmout
     if int/nc::test-stdin Q0_SAVE_PIPE REPLY;then
         ZUI[FIRST_0_INPUT]=$REPLY
@@ -548,7 +574,7 @@ iqnc_fill_preview(){
                 THROW  "Unknown file type, no syntax highlighting"
             local TPE=$REPLY
             int/nc::get-stx-cmd -q $TPE||\
-               THROW "Error: no highlighter command found (bat, {src-,}highlight)"
+               THROW "Error: no highlighter command found: bat, {src-,}highlight"
             local -a qcmd=("$reply[@]" "$QPATH")
             iq0items=("${(@f)$($qcmd[@])}")
             iqw "Showing file: " "\`$QPATH:t\`" ", of type: " $TPE
@@ -577,6 +603,7 @@ iqnc_fill_preview(){
 
 iqnc_fill_cmd(){
     local TXT cmd=() CMD_PT
+    integer QI
     ZUI[text_mode]=all
     ZUI[COLORING_PATTERN]="·[^·]##·"
     ZUI[COLORING_MATCH_MULTIPLE]=1
@@ -585,47 +612,50 @@ iqnc_fill_cmd(){
     reply=()
 
     ZUI[COMMAND]=${1:-$ZUI[COMMAND]}
-    [[ $ZUI[COMMAND] != $~NC[WRONGSTR] ]] && ZUI[HAVE_0_INPUT]=0
+    [[ $ZUI[COMMAND] != $~NC[WRONGSTR] ]]&&ZUI[HAVE_0_INPUT]=0
     : ${ZUI[COMMAND]:=${NC_DEFAULT_LS_COMMAND:-$NC_DEFAULT_COMMAND}}
     if [[ -n $ZUI[COMMAND] ]];then
-        [[ -e $ZUI[QPATH] ]]&&ZUI[COMMAND]=${ZUI[COMMAND]//\%s/${(qqq)ZUI[QPATH]}}
+        [[ -e $ZUI[QPATH] ]]&&ZUI[COMMAND]=${ZUI[COMMAND]//\%s/${(q)ZUI[QPATH]}}
         [[ -e $ZUI[QPATH] ]]||ZUI[COMMAND]=${ZUI[COMMAND]//\%s/}
         ZUI[COMMAND_PREV]=$ZUI[COMMAND]
         cmd=("${(z@)ZUI[COMMAND]}")
+        ZUI[COMMAND]=
         CMD_PT="(${(~j.|.)${=NC_LS_LIKE_COMMANDS}})"
+
+        # Include ls-options
         if [[ -n $NC_DEFAULT_LS_LIKE_OPTS && ($cmd[1] == $~CMD_PT ||\
-            $cmd[1] == (command|noglob) && $cmd[2] == $~CMD_PT) ]]
+            $cmd[1] == (command|noglob|sudo) && $cmd[2] == $~CMD_PT) ]]
         then
-            if [[ $cmd[1] == $~CMD_PT ]];then
-                cmd[2,0]=($=NC_DEFAULT_LS_LIKE_OPTS)
-            elif [[ $cmd[2] == $~CMD_PT ]];then
-                cmd[3,0]=($=NC_DEFAULT_LS_LIKE_OPTS)
-            fi
+            QI=2;[[ $cmd[2] == $~CMD_PT ]]&&QI=3
+            cmd[QI,0]=($=NC_DEFAULT_LS_LIKE_OPTS)
+            ZUI[ls-command]=1
+        else
+            ZUI[ls-command]=0
+        fi
+
+        if [[ $cmd[1] == cd || $cmd[1] == builtin && $cmd[2] == cd ]];then
+            iqw "Changing directory to: " "" "" "$cmd[-1]"
+            iqnc_push_pwd 
+            eval "$cmd[@]"
+            iqnc_fill_cmd
+            return
+        fi
+
+        iqnc_get_cmd_out $ZUI[cmd-mode] "$cmd[@]"
+        if [[ $ZUI[cmd-mode] == whole ]]; then
+            iq0items=("$reply[@]")
+        else
+            iq0items=() q0input=()
+            ZUI[HAVE_0_INPUT]=1
         fi
 
         -zui_glib_special_text "Output of cmd: ·$ZUI[COMMAND]· run in: ·$PWD·:"
         TXT=$reply[1]
-        ZUI[TMP]=$(mktemp)
-        eval "$cmd[@]"&>!$ZUI[TMP]
-        ZUI[RET]=$?
-        if [[ $cmd[1] == $~CMD_PT ]];then
-            iq0items=("${(@f)$(builtin print -C2 ${(@f)$(<$ZUI[TMP])})}")
-        else
-            iq0items=("${(@f)$(<$ZUI[TMP])}")
-        fi
-        ZUI[redraw]=1
-        rm -f $ZUI[TMP]
-        ZUI[COMMAND]= ZUI[TMP]=
-        if [[ $cmd[1] == cd || $cmd[1] == builtin && $cmd[2] == cd ]];then
-            iqw "Changing directory to: " "" "" "$cmd[-1]"
-            iqnc_push_pwd 
-            iqnc_fill_cmd
-            return
-        elif [[ $iq0items == $~NC[WRONGSTR] ]];then
-            iqw "Command " "$cmd" " had no output"
+        if [[ $iq0items = $~NC[WRONGSTR] && $ZUI[cmd-mode] = whole ]]
+        then
+            iqw "Command " "$cmd" "" " had no output"
             return
         fi
-        
     else
         -zui_glib_special_text "Showing files in: ·$PWD·"
         TXT=$reply[1]
@@ -644,7 +674,11 @@ iqnc_fill_cmd(){
 
 iqnc_fill_0(){
     integer QFLAG
-    int/nc::read-all -u$Q0_SAVE_PIPE -t0 -x30
+    ((Q0_SAVE_PIPE))&&\
+        int/nc::read-all -u$Q0_SAVE_PIPE -t0 -x30
+    ((!Q0_SAVE_PIPE))&&\
+        int/nc::read-all -p -t0 -x30
+    print $Q0_SAVE_PIPE $?>>/tmp/reply
     local ql had_read=0
     integer q0idx=$#q0input+1
     if ((!$#q0input&&$#reply));then
@@ -655,24 +689,26 @@ iqnc_fill_0(){
 
     # work on newly read lines
     local -a qreply=()
-    foreach QE ("$reply[@]")
+    false&&foreach QE ("$reply[@]")
         int/nc::prune-esc -T -b -- $QE
         qreply+=("$REPLY")
         QFLAG=1
-    end
+    end||qreply=("$reply[@]")
 
     ((QFLAG))&&ok/qcolreduce "$qreply[@]"&&qreply=("$reply[@]")
 
     q0input+=("$qreply[@]")
-    q0inputp=("$q0input[@]")
-    (($+Opts[-s]))&&q0inputp=("${(@on)q0inputp}")
-    (($+Opts[-R]))&&q0inputp=("${(a@nO)q0inputp}")
+    q0input_proc=("$q0input[@]")
+    (($+Opts[-s]))&&q0input_proc=("${(@on)q0input_proc}")
+    (($+Opts[-R]))&&q0input_proc=("${(a@nO)q0input_proc}")
+    ((ZUI[ls-command]))&&q0input_proc=(
+            "${(@f)$(print -C2 -a $q0input_proc[@])}" )
     if ((ZUI[GEN_B_IDX]%3==0));then
         reply=()
         -zui_glib_special_text "·Below are entries read from input·"
         separ
         local -a q0items=("$qitems[@]")
-        qitems=($REPLY "$reply[1]" $REPLY "$q0inputp[@]")
+        qitems=($REPLY "$reply[1]" $REPLY "$q0input_proc[@]")
         [[ -n ${qitems:|q0items} ]] && -zui_glib_fly_array_refresh 1
     fi
 }
