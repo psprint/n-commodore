@@ -676,7 +676,6 @@ iqnc_fill_0(){
         int/nc::read-all -u$Q0_SAVE_PIPE -t0 -x30
     ((!Q0_SAVE_PIPE))&&\
         int/nc::read-all -p -t0 -x30
-    print $Q0_SAVE_PIPE $?>>/tmp/reply
     local ql had_read=0
     integer q0idx=$#q0input+1
     if ((!$#q0input&&$#reply));then
