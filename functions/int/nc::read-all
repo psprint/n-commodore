@@ -9,17 +9,18 @@ int/nc::read-all() {
     0=${${${(M)${0::=${(%):-%x}}:#/*}:-$PWD/$0}:A}
 
     local -A Opts; local -a opts
-    int/nc::parse-opts "d: t: x: u:" Opts opts "$@"||return 7
+    int/nc::parse-opts "p d: t: x: u:" Opts opts "$@"||return 7
     set -- "$reply[@]"
-    int/nc::opt-cascade Opts
     integer __I __RET __CX=${Opts[-x]:--1}
     local __out_var=${1:-REPLY}
 
     (($+Opts[-d]))&&[[ ! -f $Opts[-d] ]]&&
             {iqerr File {file}$Opts[-d]{%} not found;return 1;}
 
-    if ((!$+Opts[-u]))&&[[ -f $Opts[-d] ]];then
+    if ((!$+Opts[-u]&&!$+Opts[-p]))&&[[ -f $Opts[-d] ]];then
         exec {__I}<$Opts[-d]||return 3
+    elif (($+Opts[-p]));then
+        __I=-1
     else
         __I=${Opts[-u]:-0};
     fi
@@ -27,14 +28,21 @@ int/nc::read-all() {
     int/nc::reset
     local TXT
 
-    while ((__CX--))&&IFS= read -t${Opts[-t]:-1} -r TXT <&$__I;do
-        reply+=("$TXT")
-    done
+    if ((__I<0));then
+        while ((__CX--))&&IFS= read -t${Opts[-t]:-1} -r TXT <&p;do
+            reply+=("$TXT")
+        done
+    else
+        while ((__CX--))&&IFS= read -t${Opts[-t]:-1} -r TXT <&$__I;do
+            reply+=("$TXT")
+        done
+    fi
     __RET+=$?
     local __QREPLY=${(F)reply}$'\n'
     [[ $__QREPLY != $~NC[WRONGSTR] ]]
     __RET+=$?
-    [[ $__I != ${Opts[-u]:-0} ]]&&{exec {__I}<&-;__RET+=$?;}
+    [[ $__I -ne $Opts[-u] && $__I -gt 0 ]]&&\
+        {exec {__I}<&-;__RET+=$?;}
     : ${(P)__out_var::=$__QREPLY}
     __RET+=$?
     return __RET

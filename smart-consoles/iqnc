@@ -406,10 +406,21 @@ cmd-pwd-to-prompt(){
     ((ZUI[cursor]+=$#PWD+1))
 }
 
+cmd-command-mode-toggle() {
+    if [[ $ZUI[cmd-mode] == pipe ]];then
+        ZUI[cmd-mode]=whole
+        iqw "Command capture mode: " "" "" whole
+    elif [[ $ZUI[cmd-mode] == (whole|) ]];then
+        ZUI[cmd-mode]=pipe
+        iqw "Command capture mode: " "" "" pipe
+    fi
+}
+
 cmd-help(){iqnc_fill_help;}
 
 if ((!$+Opts[--refresh])); then
     ok/qnstr $PWD&&local APP=$REPLY
+    : ${ZUI[cmd-mode]:=pipe}
     ZUI[SRC_HIGHLIGHT]=1
     -zui_glib_cleanup deserialize:"iqnc_$APP"
     -zui_glib_init app:"iqnc_$APP" app_name:"°Open° Console"

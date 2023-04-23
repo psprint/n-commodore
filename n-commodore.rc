@@ -46,6 +46,7 @@ zui::bindkey F7 cmd-synh-switch
 zui::bindkey F304 cmd-prev-hist
 zui::bindkey F263 cmd-next-hist
 zui::bindkey $'\C-w' cmd-show-stdin
+zui::bindkey $'\C-y' cmd-command-mode-toggle
 zui::bindkey F305 cmd-pwd-up
 zui::bindkey SR cmd-pwd-up
 zui::bindkey F264 cmd-prev-pwd
@@ -62,7 +63,7 @@ zui::bindkey F299 cmd-next-screen
 zui::bindkey F8 cmd-remove-screen
 zui::bindkey F13 cmd-help
 zui::bindkey F20 cmd-prune-screens
-zui::bindkey $'\C-t' cmd-item-to-prompt
-zui::bindkey $'\C-y' cmd-pwd-to-prompt
+zui::bindkey $'\C-r' cmd-item-to-prompt
+zui::bindkey $'\C-t' cmd-pwd-to-prompt
 
  
