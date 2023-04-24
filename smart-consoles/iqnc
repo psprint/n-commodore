@@ -891,9 +891,12 @@ while (( 1 )); do
     fi
     if ((!QFLAG));then
         iqw "" "" "" "NO SUCH FILE OR DIRECTORY: " $QFILE
+    else
+        builtin zcurses clear main redraw
+        builtin zcurses clear status redraw
     fi
     iqnc_set_prompt
-#    builtin zcurses refresh
+    builtin zcurses refresh
 done
 
 -zui_glib_cleanup serialize
