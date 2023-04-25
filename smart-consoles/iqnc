@@ -447,7 +447,7 @@ if ((!$+Opts[--refresh])); then
     : ${ZUI[cmd-mode]:=pipe}
     ZUI[SRC_HIGHLIGHT]=1
     -zui_glib_cleanup deserialize:"iqnc_$APP"
-    -zui_glib_init app:"iqnc_$APP" app_name:"°Open° Console"
+    -zui_glib_init app:"iqnc_$APP" app_name:"NC Console"
     emulate -L zsh -o extendedglob -o typesetsilent -o warncreateglobal -o combiningchars -o rcquotes
     -zui_glib_init2 # after emulate
     ZUI[GEN_B_IDX]=0 ZUI[PREVIEW_FILE_TYPE]=
@@ -784,7 +784,7 @@ if (($+Opts[--refresh])); then
 fi
 
 ## Start application ##
--zui_glib_msg "" "@@@ " "Welcome to " "NC System " "°open° console!" " @@@";
+-zui_glib_msg "" "@@@ " "Welcome to " "NC System " "console!" " @@@";
 integer EC
 iqnc_hub 1 1 1
 ZUI[redraw]=1
