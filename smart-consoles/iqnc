@@ -39,38 +39,39 @@ iqnc_util_swap4(){
 }
 
 iqnc_util_set_current_idx(){
-    integer IN=ZUI[PREV_CURRENT_IDX]
+    integer IN=ZUI[PREV_CURRENT_IDX] prev_idx=ZUI[PREV_CURRENT_IDX]
     local QPATH=${ZUI[QPATH]:+_$ZUI[QPATH]}
     # Tree
     if ((ZUI[GEN_B_IDX]==0));then
-       [[ $ZUI[PREV_CURRENT_IDX] -eq $ZUI[CURRENT_IDX_PVIEW_BKP$QPATH] ||\
-         $ZUI[PREV_CURRENT_IDX] -eq $ZUI[CURRENT_IDX_HIST_BKP] ||\
-         $ZUI[PREV_CURRENT_IDX] -eq $ZUI[CURRENT_IDX_TAGS_BKP] ]]&&\
-            ZUI[PREV_CURRENT_IDX]=${ZUI[CURRENT_IDX_MAIN_BKP]:-5}
+       [[ $prev_idx -eq $ZUI[CURRENT_IDX_PVIEW_BKP$QPATH] ||\
+         $prev_idx -eq $ZUI[CURRENT_IDX_HIST_BKP] ||\
+         $prev_idx -eq $ZUI[CURRENT_IDX_TAGS_BKP] ]]&&\
+            prev_idx=${ZUI[CURRENT_IDX_MAIN_BKP]:-5}
     # Preview
     elif ((ZUI[GEN_B_IDX]==1));then
-        [[ $ZUI[PREV_CURRENT_IDX] -eq $ZUI[CURRENT_IDX_MAIN_BKP] ||\
-          $ZUI[PREV_CURRENT_IDX] -eq $ZUI[CURRENT_IDX_HIST_BKP] ||\
-          $ZUI[PREV_CURRENT_IDX] -eq $ZUI[CURRENT_IDX_TAGS_BKP] ]]&&\
-            ZUI[PREV_CURRENT_IDX]=${${ZUI[CURRENT_IDX_PVIEW_BKP$QPATH]:#0#}:-5}
+        [[ $prev_idx -eq $ZUI[CURRENT_IDX_MAIN_BKP] ||\
+          $prev_idx -eq $ZUI[CURRENT_IDX_HIST_BKP] ||\
+          $prev_idx -eq $ZUI[CURRENT_IDX_TAGS_BKP] ]]&&\
+            prev_idx=${${ZUI[CURRENT_IDX_PVIEW_BKP$QPATH]:#0#}:-5}
     elif ((ZUI[GEN_B_IDX]==0+2));then
-        [[ $ZUI[PREV_CURRENT_IDX] -eq $ZUI[CURRENT_IDX_PVIEW_BKP$QPATH] ||\
-        $ZUI[PREV_CURRENT_IDX] -eq $ZUI[CURRENT_IDX_MAIN_BKP] ||\
-        $ZUI[PREV_CURRENT_IDX] -eq $ZUI[CURRENT_IDX_TAGS_BKP] ]]&&\
-        ZUI[PREV_CURRENT_IDX]=${${ZUI[CURRENT_IDX_HIST_BKP]:#0#}:-5}
+        [[ $prev_idx -eq $ZUI[CURRENT_IDX_PVIEW_BKP$QPATH] ||\
+        $prev_idx -eq $ZUI[CURRENT_IDX_MAIN_BKP] ||\
+        $prev_idx -eq $ZUI[CURRENT_IDX_TAGS_BKP] ]]&&\
+        prev_idx=${${ZUI[CURRENT_IDX_HIST_BKP]:#0#}:-5}
     elif ((ZUI[GEN_B_IDX]==3+0));then
-[[ $ZUI[PREV_CURRENT_IDX] -eq $ZUI[CURRENT_IDX_PVIEW_BKP$QPATH] ||\
-          $ZUI[PREV_CURRENT_IDX] -eq $ZUI[CURRENT_IDX_MAIN_BKP] ||\
-          $ZUI[PREV_CURRENT_IDX] -eq $ZUI[CURRENT_IDX_HIST_BKP] ]]&&\
-            ZUI[PREV_CURRENT_IDX]=${${ZUI[CURRENT_IDX_TAGS_BKP]:#0#}:-5}
+        [[ $prev_idx -eq $ZUI[CURRENT_IDX_PVIEW_BKP$QPATH] ||\
+          $prev_idx -eq $ZUI[CURRENT_IDX_MAIN_BKP] ||\
+          $prev_idx -eq $ZUI[CURRENT_IDX_HIST_BKP] ]]&&\
+            prev_idx=${${ZUI[CURRENT_IDX_TAGS_BKP]:#0#}:-5}
     fi
-    if ((IN!=ZUI[PREV_CURRENT_IDX]));then
-        ZUI[CURRENT_IDX]=$ZUI[PREV_CURRENT_IDX]
+    if ((IN!=prev_idx));then
+        ZUI[CURRENT_IDX]=$prev_idx
     fi
     if ((!ZUI[UNIQ_MODE]&&!$#ZUI[SEARCH_BUFFER]&&\
             ZUI[CURRENT_IDX]<=${${(On)ZUILIST_NONSELECTABLE_ELEMENTS}[1]}));then
         ZUI[CURRENT_IDX]=${${(On)ZUILIST_NONSELECTABLE_ELEMENTS}[1]}+1
     fi
+    ZUI[PREV_CURRENT_IDX]=$prev_idx
 }
 
 iqnc_cmd_synh_switch(){
