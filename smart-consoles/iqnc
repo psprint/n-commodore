@@ -44,25 +44,32 @@ iqnc_util_set_current_idx(){
     # Tree
     if ((ZUI[GEN_B_IDX]==0));then
        [[ $ZUI[PREV_CURRENT_IDX] -eq $ZUI[CURRENT_IDX_PVIEW_BKP$QPATH] ||\
-         $ZUI[PREV_CURRENT_IDX] -eq $ZUI[CURRENT_IDX_HIST_BKP] ]]&&\
+         $ZUI[PREV_CURRENT_IDX] -eq $ZUI[CURRENT_IDX_HIST_BKP] ||\
+         $ZUI[PREV_CURRENT_IDX] -eq $ZUI[CURRENT_IDX_TAGS_BKP] ]]&&\
             ZUI[PREV_CURRENT_IDX]=${ZUI[CURRENT_IDX_MAIN_BKP]:-5}
     # Preview
     elif ((ZUI[GEN_B_IDX]==1));then
         [[ $ZUI[PREV_CURRENT_IDX] -eq $ZUI[CURRENT_IDX_MAIN_BKP] ||\
-          $ZUI[PREV_CURRENT_IDX] -eq $ZUI[CURRENT_IDX_HIST_BKP] ]]&&\
+          $ZUI[PREV_CURRENT_IDX] -eq $ZUI[CURRENT_IDX_HIST_BKP] ||\
+          $ZUI[PREV_CURRENT_IDX] -eq $ZUI[CURRENT_IDX_TAGS_BKP] ]]&&\
             ZUI[PREV_CURRENT_IDX]=${${ZUI[CURRENT_IDX_PVIEW_BKP$QPATH]:#0#}:-5}
     elif ((ZUI[GEN_B_IDX]==0+2));then
         [[ $ZUI[PREV_CURRENT_IDX] -eq $ZUI[CURRENT_IDX_PVIEW_BKP$QPATH] ||\
-          $ZUI[PREV_CURRENT_IDX] -eq $ZUI[CURRENT_IDX_MAIN_BKP] ]]&&\
-            ZUI[PREV_CURRENT_IDX]=${${ZUI[CURRENT_IDX_HIST_BKP]:#0#}:-5}
+        $ZUI[PREV_CURRENT_IDX] -eq $ZUI[CURRENT_IDX_MAIN_BKP] ||\
+        $ZUI[PREV_CURRENT_IDX] -eq $ZUI[CURRENT_IDX_TAGS_BKP] ]]&&\
+        ZUI[PREV_CURRENT_IDX]=${${ZUI[CURRENT_IDX_HIST_BKP]:#0#}:-5}
+    elif ((ZUI[GEN_B_IDX]==3+0));then
+[[ $ZUI[PREV_CURRENT_IDX] -eq $ZUI[CURRENT_IDX_PVIEW_BKP$QPATH] ||\
+          $ZUI[PREV_CURRENT_IDX] -eq $ZUI[CURRENT_IDX_MAIN_BKP] ||\
+          $ZUI[PREV_CURRENT_IDX] -eq $ZUI[CURRENT_IDX_HIST_BKP] ]]&&\
+            ZUI[PREV_CURRENT_IDX]=${${ZUI[CURRENT_IDX_TAGS_BKP]:#0#}:-5}
     fi
     if ((IN!=ZUI[PREV_CURRENT_IDX]));then
         ZUI[CURRENT_IDX]=$ZUI[PREV_CURRENT_IDX]
-        -zui_list_verify_vars
     fi
     if ((!ZUI[UNIQ_MODE]&&!$#ZUI[SEARCH_BUFFER]&&\
             ZUI[CURRENT_IDX]<=${${(On)ZUILIST_NONSELECTABLE_ELEMENTS}[1]}));then
-        ZUI[CURRENT_IDX]=${${(On)ZUILIST_NONSELECTABLE_ELEMENTS}[1]}
+        ZUI[CURRENT_IDX]=${${(On)ZUILIST_NONSELECTABLE_ELEMENTS}[1]}+1
     fi
 }
 
@@ -87,7 +94,7 @@ iqnc_cmd_next(){
         ZUI[GEN_B_IDX]=$q
     # Third: no-arg
     else
-        ((ZUI[GEN_B_IDX]=(1+ZUI[GEN_B_IDX])%3))
+        ((ZUI[GEN_B_IDX]=(1+ZUI[GEN_B_IDX])%4))
     fi
     iqnc_view_switch $in $ZUI[GEN_B_IDX]
     iqnc_set_prompt
@@ -116,6 +123,8 @@ iqnc_view_switch(){
         ZUI[CURRENT_IDX_PVIEW_BKP$QPATH]=$ZUI[CURRENT_IDX]
     elif ((in0==2));then
         ZUI[CURRENT_IDX_HIST_BKP]=$ZUI[CURRENT_IDX]
+    elif ((in0==3));then
+        ZUI[CURRENT_IDX_TAGS_BKP]=$ZUI[CURRENT_IDX]
     elif ((in0==0));then
         ZUI[CURRENT_IDX_MAIN_BKP]=$ZUI[CURRENT_IDX]
     fi
@@ -300,7 +309,8 @@ cmd-page-up(){
 cmd-command-history-view(){iqnc_cmd_next 2;}
 cmd-contents-view(){iqnc_cmd_next 1;}
 cmd-main-view(){iqnc_cmd_next 0;}
-cmd-set-view(){local -A Qe=(main 0 preview 1 hist 2 "" 0);iqnc_cmd_next $Qe[$1];}
+cmd-tags-view(){iqnc_cmd_next 3;}
+cmd-set-view(){local -A Qe=(main 0 preview 1 hist 2 tags 3 "" 0);iqnc_cmd_next $Qe[$1];}
 cmd-show-stdin(){ZUI[HAVE_0_INPUT]=1;iqnc_hub;}
 # Commands
 cmd-open-cmd(){zcurses end;eval "$@";-zui_glib_refresh;}
@@ -371,6 +381,7 @@ cmd-push-screen(){
         WScreens[SCREEN_FROM_$QIDX]=$from_what_idx_list_is_shown
         WScreens[SCREEN_CUR_SEG_$QIDX]=$current_segment
         WScreens[SCREEN_CURSOR_$QIDX]=$ZUI[cursor]
+        WScreens[SCREEN_COLORING_$QIDX]=$ZUI[COLORING_PATTERN]
     done
     WScreens[SCREEN_NO]=$#WScreens[(I)SCREEN_<->]
     iqw "" "Screen " "#$#WScreens[(I)SCREEN_<->] " pushed, " PWD is: " ${PWD/$HOME/\~}
@@ -420,7 +431,7 @@ cmd-item-to-prompt(){
     ((current_idx<=0))&&return 1
     zui-process-buffer2 $__list[current_idx]||return 1
     local WORD=$ZUI_PB2_QWORDS[current_segment]
-     int/nc::prune-esc -e -v WORD $WORD
+    int/nc::prune-esc -e -v WORD $WORD
     buffer+=$WORD" "
     ((ZUI[cursor]+=$#WORD+1))
 }
@@ -466,7 +477,7 @@ if ((!$+Opts[--refresh])); then
 
     -zui_glib_store_default_app_config b:instant_search 1
     -zui_glib_store_default_app_config s:select_mode "quit"   # Quit event loop on text-selection
-    -zui_glib_store_default_app_config b:text_bar "[F1 tree][F2 preview][F3 history][F7 Synh][F8 remove scrn]"
+    -zui_glib_store_default_app_config b:text_bar "[F1 tree][F2 preview][F3 history][F4 Ctags][F7 Synh][F8 remove scrn]"
     -zui_glib_store_default_app_config b:status_size 6
     -zui_glib_store_default_app_config b:status_pointer 1
     -zui_glib_store_default_app_config b:text_select 1        # Allow selection of text
@@ -523,8 +534,9 @@ iqnc_pop_pwd(){
 
 iqnc_hub(){
     integer EC
-    local -a gener=(iqnc_fill_cmd iqnc_fill_preview iqnc_fill_history)
-    $gener[1+(ZUI[GEN_B_IDX]%3)]
+    local -a gener=(iqnc_fill_cmd iqnc_fill_preview iqnc_fill_history iqnc_fill_tags)
+ 
+    $gener[1+(ZUI[GEN_B_IDX]%4)]
     if ((ZUI[CURRENT_IDX]<5&&!$#ZUI[SEARCH_BUFFER]&&!ZUI[UNIQ_MODE]));then
         ((__last_element>=5))&&\
             {ZUI[CURRENT_IDX]=5;-zui_list_verify_vars;ZUI[redraw]=1;}
@@ -700,7 +712,7 @@ iqnc_fill_0(){
     (($+Opts[-R]))&&q0input_proc=("${(a@nO)q0input_proc}")
     ((ZUI[ls-command]))&&q0input_proc=(
             "${(@f)$(print -C2 -a $q0input_proc[@])}" )
-    if ((ZUI[GEN_B_IDX]%3==0));then
+    if ((ZUI[GEN_B_IDX]%4==0));then
         reply=()
         -zui_glib_special_text "Output of cmd: ·$ZUI[COMMAND_PREV]· run in: ·$PWD·:"
 
@@ -722,6 +734,7 @@ iqnc_fill_screen(){
     [[ -n ${SPWD::=$WScreens[SCREEN_PWD_$QIDX]} ]]&&cmd-cd -q $SPWD
     ZUI[GEN_B_IDX]=${WScreens[SCREEN_VIEW_$QIDX]:-0}
     ZUI[QPATH]=$WScreens[SCREEN_QPATH_$QIDX]
+    ZUI[COLORING_PATTERN]=$WScreens[SCREEN_COLORING_$QIDX]
     current_idx=$WScreens[SCREEN_CUR_IDX_$QIDX]
     from_what_idx_list_is_shown=$WScreens[SCREEN_FROM_$QIDX]
     current_segment=$WScreens[SCREEN_CUR_SEG_$QIDX]
@@ -803,7 +816,7 @@ while (( 1 )); do
     # …from diff?
     if [[ -z $ZUI[SEARCH_BUFFER] ]];then
         # …from preview?
-        if ((ZUI[GEN_B_IDX]%3==1));then
+        if ((ZUI[GEN_B_IDX]%4==1));then
             QFILE=$ZUI[QPATH]
             QIDX=ZUI[USER_CURRENT_IDX]
             iqw "Opening " $QFILE " scrolled to line: " "#$QIDX"
@@ -817,7 +830,7 @@ while (( 1 )); do
         repeat 1; do typeset +U -ga __slist=("$__qlist[@]");done
         if -zui_sys_get_match_line QIDX; then
             # preview?
-            if ((ZUI[GEN_B_IDX]%3==1));then
+            if ((ZUI[GEN_B_IDX]%4==1));then
                 QFILE=$ZUI[QPATH]
                 iqw "Opening " "${QFILE:-error ↔ not found}"\
                         " scrolled to line: " "#$QIDX"
