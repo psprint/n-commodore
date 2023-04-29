@@ -134,6 +134,7 @@ iqnc_exec_command_cb(){
     ZUI[COMMAND]=$ZUI[QUERY_BUFFER]
     if ((ZUI[GEN_B_IDX]==2&&(ZUI[IN_QUERY]!=3||!$#ZUI[QUERY_BUFFER])));then
         ZUI[COMMAND]=$__list[ZUI[CURRENT_IDX]]
+        iqnc_view_switch $ZUI[GEN_B_IDX] 0
     fi
     {
         if [[ $ZUI[COMMAND] != $~NC[WRONGSTR] ]];then
@@ -274,7 +275,11 @@ iqnc_get_cmd_out(){
     else
         ((Q0_SAVE_PIPE))&&exec {Q0_SAVE_PIPE}<&-
         Q0_SAVE_PIPE=0
-        coproc {"$cmd[@]";}
+        [[ $cmd[1] == noglob ]]&&{local -a stdbuf1=(noglob $stdbuf1);cmd[1]=();}
+        [[ $cmd[1] == builtin ]]&&local -a stdbuf1=(${(M)stdbuf1:#noglob})
+        [[ $cmd[1] == command ]]&&cmd[1]=()
+        [[ -n $aliases[$cmd[1]] ]]&&cmd[1]=(${=aliases[$cmd[1]]})
+        coproc {$stdbuf1 "$cmd[@]" 2>&1;}
         ZUI[RET]=$?
     fi
 
@@ -480,7 +485,7 @@ if ((!$+Opts[--refresh])); then
     -zui_glib_store_default_app_config b:text_select 1        # Allow selection of text
     -zui_glib_store_default_app_config s:timeout 25
     -zui_glib_store_default_app_config s:mark "white MAGENTA reverse"
-    -zui_glib_store_default_app_config s:text_mode all
+    -zui_glib_store_default_app_config s:text_mode off
     -zui_glib_store_default_app_config b:top_anchors 0
     ZUI[UNIQ_MODE]=0
     [[ $1 == open ]]&&shift
@@ -546,6 +551,7 @@ iqnc_hub(){
 }
 
 iqnc_fill_history(){
+    ZUI[text_mode]=off
     int/nc::read-all-sys -d$NCCHIST||{iqw "Error reading history…";return 1;}
     ZUI[COLORING_PATTERN]='(#s)[^[:space:]]##~(*[·–—]*)'
     qitems=(${(u)reply}) reply=()
@@ -559,7 +565,7 @@ iqnc_fill_history(){
 
 iqnc_fill_preview(){
     local QPATH QTXT
-    ZUI[text_mode]=all
+    ZUI[text_mode]=off
     ZUI[COLORING_PATTERN]="·[^·]##·"
     ZUI[COLORING_MATCH_MULTIPLE]=1
     ZUI[COLORING_COLOR]=$ZUI[BOLD]$ZUI[YELLOW]
@@ -766,7 +772,7 @@ iqnc_fill_help(){
 # Read & publish Configure/make output
 -zui-standard-timeout-callback(){
     local TM=$ZUI[text_mode]
-    ((ZUI[GEN_B_IDX]==2))&&ZUI[text_mode]=off||ZUI[text_mode]=all
+    ((ZUI[GEN_B_IDX]==0))&&ZUI[text_mode]=all||ZUI[text_mode]=off
     # Ensure cursor is visible
     if ((ZUI[CURRENT_IDX]<5&&!$#ZUI[SEARCH_BUFFER]&&!ZUI[UNIQ_MODE]));then
         ((__last_element>=5))&&\
@@ -790,7 +796,7 @@ iqnc_fill_help(){
     fi
     builtin unset 'ZUI[COMMAND]'
     iqnc_util_set_current_idx
-    -zui_list_verify_vars 1;
+    -zui_list_verify_vars 1
     -zui_glib_fly_array_refresh 1
     ZUI[VIEW_CHANGE]=0
     return 0
