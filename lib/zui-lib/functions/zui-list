@@ -102,14 +102,17 @@ trap "REPLY=-2; reply=(); return 1" TERM INT QUIT
 
 # List was processed, check if variables aren't off range
 -zui_list_verify_vars(){
-    [[ $ZUI[CURRENT_IDX] -gt "$__last_element" ]] && ZUI[CURRENT_IDX]="$__last_element"
-    [[ $ZUI[CURRENT_IDX] -eq 0 && "$__last_element" -ne 0 ]] && ZUI[CURRENT_IDX]=1
+    integer Q
+    [[ $1 -ne 1 && $ZUI[CURRENT_IDX] -gt "$__last_element" ]] && ZUI[CURRENT_IDX]="$__last_element"
+    [[ $ZUI[CURRENT_IDX] -eq 0 && ("$__last_element" -ne 0 || $1 -ne 0) ]] && ZUI[CURRENT_IDX]=1
 
     # Verify that element is just visible, if not then compute exact page
     if [[ $ZUI[CURRENT_IDX] -lt $ZUI[FROM_WHAT_IDX_LIST_IS_SHOWN] ||
         $ZUI[CURRENT_IDX] -gt "$(( ZUI[FROM_WHAT_IDX_LIST_IS_SHOWN] + __page_height - 1 ))" ]]
     then
-        (( ZUI[FROM_WHAT_IDX_LIST_IS_SHOWN] = ((ZUI[CURRENT_IDX]-1)/__page_height) * __page_height + 1 ))
+        Q=ZUI[CURRENT_IDX]-__page_height/2
+        Q=$((Q<1?1:Q))
+        ZUI[FROM_WHAT_IDX_LIST_IS_SHOWN]=$Q
     fi
 }
 

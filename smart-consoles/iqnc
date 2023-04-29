@@ -43,25 +43,20 @@ iqnc_util_set_current_idx(){
     local QPATH=${ZUI[QPATH]:+_$ZUI[QPATH]}
     # Tree
     if ((ZUI[GEN_B_IDX]==0));then
-       [[ $prev_idx -eq $ZUI[CURRENT_IDX_PVIEW_BKP$QPATH] ||\
-         $prev_idx -eq $ZUI[CURRENT_IDX_HIST_BKP] ||\
-         $prev_idx -eq $ZUI[CURRENT_IDX_TAGS_BKP] ]]&&\
+       [[ $prev_idx == ($ZUI[CURRENT_IDX_PVIEW_BKP$QPATH]|\
+$ZUI[CURRENT_IDX_HIST_BKP]|$ZUI[CURRENT_IDX_TAGS_BKP]) ]]&&\
             prev_idx=${ZUI[CURRENT_IDX_MAIN_BKP]:-5}
     # Preview
     elif ((ZUI[GEN_B_IDX]==1));then
-        [[ $prev_idx -eq $ZUI[CURRENT_IDX_MAIN_BKP] ||\
-          $prev_idx -eq $ZUI[CURRENT_IDX_HIST_BKP] ||\
-          $prev_idx -eq $ZUI[CURRENT_IDX_TAGS_BKP] ]]&&\
+        [[ $prev_idx == ($ZUI[CURRENT_IDX_MAIN_BKP]|$ZUI[CURRENT_IDX_HIST_BKP]|\
+$ZUI[CURRENT_IDX_TAGS_BKP]) ]]&&\
             prev_idx=${${ZUI[CURRENT_IDX_PVIEW_BKP$QPATH]:#0#}:-5}
     elif ((ZUI[GEN_B_IDX]==0+2));then
-        [[ $prev_idx -eq $ZUI[CURRENT_IDX_PVIEW_BKP$QPATH] ||\
-        $prev_idx -eq $ZUI[CURRENT_IDX_MAIN_BKP] ||\
-        $prev_idx -eq $ZUI[CURRENT_IDX_TAGS_BKP] ]]&&\
+        [[ $prev_idx == ($ZUI[CURRENT_IDX_PVIEW_BKP$QPATH]|\
+$ZUI[CURRENT_IDX_MAIN_BKP]|$ZUI[CURRENT_IDX_TAGS_BKP]) ]]&&\
         prev_idx=${${ZUI[CURRENT_IDX_HIST_BKP]:#0#}:-5}
     elif ((ZUI[GEN_B_IDX]==3+0));then
-        [[ $prev_idx -eq $ZUI[CURRENT_IDX_PVIEW_BKP$QPATH] ||\
-          $prev_idx -eq $ZUI[CURRENT_IDX_MAIN_BKP] ||\
-          $prev_idx -eq $ZUI[CURRENT_IDX_HIST_BKP] ]]&&\
+        [[ $prev_idx == ($ZUI[CURRENT_IDX_PVIEW_BKP$QPATH]|$ZUI[CURRENT_IDX_MAIN_BKP]|$ZUI[CURRENT_IDX_HIST_BKP]) ]]&&\
             prev_idx=${${ZUI[CURRENT_IDX_TAGS_BKP]:#0#}:-5}
     fi
     if ((IN!=prev_idx));then
@@ -84,7 +79,7 @@ iqnc_cmd_synh_switch(){
 }
 
 iqnc_cmd_next(){
-    integer q=${1##<->/} qq=${1%%/<->} in=$ZUI[GEN_B_IDX]
+    integer q=${1##<->/} qq=${1%%/<->} in=ZUI[GEN_B_IDX]
 
     # Three kind of args, first: num0/num1
     if ((q!=qq));then
@@ -103,6 +98,7 @@ iqnc_cmd_next(){
     return 0
 }
 
+# Swaps search buffers and command bufs, saves current idx
 iqnc_view_switch(){
     integer in=$2 in0=$1
     ZUI[VIEW_CHANGE]=1
@@ -117,7 +113,7 @@ iqnc_view_switch(){
 
     local -a qt=(·file·\  ·preview·\  ·history·\ )
     local Q=$qt[ZUI[GEN_B_IDX]+1]
-    ((ZUI[IN_QUERY]==1&&in!=in0))&&iqw "[${(U)Q%%[ ]##}] " "Restored previous " $Q search
+    #((ZUI[IN_QUERY]==1&&in!=in0))&&iqw "[${(U)Q%%[ ]##}] " "Restored previous " $Q search
 
     buffer=$ZUI[SEARCH_BUFFER]
     if ((in0==1));then
@@ -689,6 +685,12 @@ iqnc_fill_0(){
         int/nc::read-all -u$Q0_SAVE_PIPE -t0 -x30
     ((!Q0_SAVE_PIPE))&&\
         int/nc::read-all -p -t0 -x30
+    ZUI[read-all-failed]=$((!$#reply))
+    ((!ZUI[read-all-failed]))&&ZUI[read-all-first-fail]=0
+    ((ZUI[read-all-failed]&&!ZUI[read-all-first-fail]))&&\
+        ZUI[read-all-first-fail]=3
+    ((ZUI[read-all-first-fail]==3))&&{ZUI[redraw]=1;ZUI[read-all-first-fail]=1;}
+
     local ql had_read=0
     integer q0idx=$#q0input+1
     if ((!$#q0input&&$#reply));then
@@ -788,6 +790,8 @@ iqnc_fill_help(){
     fi
     builtin unset 'ZUI[COMMAND]'
     iqnc_util_set_current_idx
+    -zui_list_verify_vars 1;
+    -zui_glib_fly_array_refresh 1
     ZUI[VIEW_CHANGE]=0
     return 0
 }
