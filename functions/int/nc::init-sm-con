@@ -28,8 +28,6 @@ int/nc::init-sm-con() {
     EC+=$?
     int/nc::reset
     local VAR_OPT=$2 VAR_OPTS=$1; shift 2
-    : ${(AP@)VAR_OPT::="$__opts[@]"}
-    : ${(AAP@)VAR_OPTS::="${(kv)__Opts[@]}"}
     # Change directory to the supplied one
     if [[ -n $__Opts[-C] ]];then
         if ! cd -q -- $__Opts[-C];then
@@ -42,14 +40,19 @@ int/nc::init-sm-con() {
     # Load  TUI library, the Zsh User Interface (ZUI)
     (($+ZUI))||{source $NC_CON_DIR/../lib/zui-lib/zui.lib.zsh;EC+=$?;}
 
-
     typeset -g NCPKGPATH=$__Opts[--ifile]
+    [[ -s $NCPKGPATH || -z $NCPKGPATH ]]
+    EC+=$?
+
     # REPLY eval – ensure that CWD doesn't change
     REPLY='
         trap "return 1" INT TERM QUIT HUP
         trap "cd -q -- ${(qqq)NC_ORIG_PWD}" EXIT
         local -Ua fpath=($NC_CON_DIR $fpath) path=($NC_CON_DIR $path)
         fpath[1,0]=(${${:-$NC_CON_DIR/../lib/zui-lib/functions}:A})'
+
+    : ${(AP@)VAR_OPT::="$__opts[@]"}
+    : ${(AAP@)VAR_OPTS::="${(kv)__Opts[@]}"}
     reply=("$@")
     return EC
 }

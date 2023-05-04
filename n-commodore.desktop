@@ -1,0 +1,15 @@
+[Desktop Entry]
+Name=N-Commodore
+Exec=n-commodore %f
+Icon=n-commodore
+Type=Application
+Categories=Utility;FileTools;ConsoleOnly;
+Keywords=zsh;zshell;tui-app;n-c;n-commodore;ncommodore;file-manager;textual-interface;
+Comment=A next-generation TUI file manager and/or command line
+MimeType=inode/directory;
+Name[en]=N-Commodore
+Name[pl]=Komandor-N
+Terminal=true
+StartupNotify=true
+NoDisplay=false
+#SingleMainWindow=true

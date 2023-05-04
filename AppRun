@@ -1,0 +1,4 @@
+#!/usr/bin/env sh
+#env
+#tree $APPDIR
+command $APPDIR/bin/n-c --ifile "$APPIMAGE" "$@"

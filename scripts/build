@@ -1,0 +1,71 @@
+#!/usr/bin/env zsh
+zsh-build(){
+    builtin emulate -L zsh \
+                        -o extendedglob \
+                        -o warncreateglobal -o typesetsilent \
+                        -o noshortloops -o nopromptsubst \
+                        -o rcquotes
+    # Autogen
+    m {nl}{nl}{hi}Autogen{…}
+    ./.preconfig&>/dev/null||return 3
+
+    # Configure
+    m {nl}{nl}{hi}Configuring Zsh{…}
+    sleep 1
+    local -x CPPFLAGS='-I/usr/include -I/usr/local/include' \
+        CFLAGS='-g3 -O0 -Wall -static -static-libgcc -flto -fno-strict-aliasing' \
+        LDFLAGS='-static -lncurses -L/usr/lib64 -L/usr/local/lib64'
+    local ZPFX=$HOME/pkgs/zsh-i
+    command mkdir -p $ZPFX
+    builtin print -P %F{39} %B
+    # Configure (built-in) modules
+    local QPAT="**/*.mdd~*(zsh.mdd|ftp|newuse|zprof|zpty|private|mapfile|files|clone|sched|zsele|comp[a-z]#.mdd|elto*.mdd|zle.mdd|pcre|near)*(N.)"
+    command sed -i -e 's/load=no/load=yes/g' config.modules* $~QPAT
+    command sed -i -e 's/link=no/link=static/' config.modules* $~QPAT
+    command sed -i -e 's/link=dynamic/link=static/' config.modules* $~QPAT
+    print °°°$PWD° — `pwd`
+    setopt xtrace
+    ./configure --prefix="$ZPFX"      \
+        --disable-etcdir                   \
+        --disable-zshenv                   \
+        --disable-zshrc                    \
+        --disable-zlogin                   \
+        --disable-zprofile                 \
+        --disable-zlogout                  \
+        --disable-function-subdirs         \
+        --disable-site-fndir               \
+        --disable-scriptdir                     \
+        --enable-cap                       \
+        --enable-unicode9                  \
+        --disable-maildir-support         \
+        --enable-site-scriptdir=n-commodore \
+        --with-site-scriptdir=n-commodore \
+        --with-tcsetpgrp                   \
+        --disable-dynamic                  \
+        --enable-gdbm                 \
+        --disable-restricted-r \
+        --with-term-lib='ncursesw tinfo ncurses' \
+        --enable-multibyte \
+        --disable-runhelpdir \
+        --disable-pcre
+    integer QRET=$?
+    unsetopt xtrace
+    command sed -i -e 's/load=no/load=yes/g' config.modules* $~QPAT
+    command sed -i -e 's/link=no/link=static/' config.modules* $~QPAT
+    command sed -i -e 's/link=dynamic/link=static/' config.modules* $~QPAT
+    builtin print -P %b %f
+
+    # Make
+    ((!QRET))&&m {nl}{nl}{hi}Building Zsh{…}&&sleep 1&&\
+        {make install.bin;make install.fns install.modules;}&&\
+            m {info}The build succeeded.||m {failure}The build failed.
+}
+
+source /home/q/.local/share/zinit/zinit.git/zinit.zsh
+
+zinit null id-as'zsh-i' atclone'zsh-build' atpull"%atclone" countdown'3' lucid \
+    ver"zsh-5.9" \
+        for zsh-users/zsh
+
+zinit update --urge zsh-i
+ 

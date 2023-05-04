@@ -18,7 +18,7 @@ set -- "$reply[@]"
 eval "$REPLY"
 
 zmodload zsh/db/gdbm&>>$NCLOG||\
-    iqw "No zsh/db/gdbm module" "" "," " no screen saving available…"
+    iqerr "No zsh/db/gdbm module" "" "," " no screen saving available…"
 command mkdir -p $NCSCRDB:h
 [[ -f $NCSCRDB ]]||\
   (){local -A Screens;zmodload zsh/db/gdbm&&builtin ztie -d db/gdbm -f $NCSCRDB Screens;}
