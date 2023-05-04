@@ -6,8 +6,12 @@ console(){
     source $0:h:h/share/preamble.inc.zsh --fun
 
     local -A Opts; local -a opts
-    int/nc::parse-opts "C: -dir: s -sort R -reverse" Opts opts "$@"||\
-        {iqerr incorrect options given to {cmd}${${@:#-*}[1]}{%}; return 7;}
+    {
+        int/nc::parse-opts "C: -dir: s -sort R -reverse -ifile:" Opts opts "$@"\
+            ||THROW incorrect options given to ${${@:#-*}[1]}
+    } always {
+        CATCH \*&&iqerr $CAUGHT
+    }
     set -- "$reply[@]"
 
     [[ -x $NCDIR/smart-consoles/iq$1 ]]&&\

@@ -15,10 +15,11 @@ int/nc::parse-opts() {
     tmp/nc::prune-dashes "$@"
     local -a qe=("$reply[@]")
 
-    eval "local qfopt=$SNIP_F_OPT_FOR_ZP_OPTS_VERSION"
+    local qfopt
+    eval "qfopt=\"$SNIP_F_OPT_FOR_ZP_OPTS_VERSION\""
     builtin zparseopts $qfopt \
         -D -E ${(s| |)ASVAR:+-A $ASVAR} ${(s| |)ARVAR:+-a $ARVAR} -- \
-            ${(s: :)OPTSPEC}||THROW BadOpts #zsweep:pass
+            ${(s: :)OPTSPEC}||THROW incorrect options, exiting #zsweep:pass
 
     # Save remains without options in reply (pruning --/-)
     tmp/nc::prune-dashes "$@"

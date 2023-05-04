@@ -27,11 +27,16 @@
 
     integer EC
     local -A Opts; local -a opts
+    {
     int/nc::parse-opts "t: -timeout: z -zsh C: -dir: c -c v -verbose V -vim \
                          o: 1 e n p q -quiet E O -ed s h -help m -msg \
                          -auto -move -move2 -prune -bkp \
-                            T -cat -1space i -zle-nt R -reverse r: x:" \
-                            Opts opts "$@"||return 7
+                            T -cat -1space i -zle-nt \
+                            R -reverse r: x: -ifile:" \
+                            Opts opts "$@"||THROW incorrect options given
+    } always {
+        CATCH \*&&{iqerr $CAUGHT;return 76;}
+    }
     set -- "$reply[@]"
     local CMD=$1
     if (($+Opts[-h]||$+Opts[--help]));then

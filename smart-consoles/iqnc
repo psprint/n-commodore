@@ -13,7 +13,7 @@ iqnc()
 source $0:h:h/share/preamble.inc.zsh --script --fun --cleanup
 
 local -A Opts;local -a opts
-int/nc::init-sm-con Opts opts "$@"||{print QE>>/tmp/reply;return 13}
+int/nc::init-sm-con Opts opts "$@"||return 30
 set -- "$reply[@]"
 eval "$REPLY"
 
@@ -41,11 +41,14 @@ iqnc_util_swap4(){
 iqnc_util_set_current_idx(){
     integer IN=ZUI[PREV_CURRENT_IDX] prev_idx=ZUI[PREV_CURRENT_IDX]
     local QPATH=${ZUI[QPATH]:+_$ZUI[QPATH]}
+        print «$prev_idx>>/tmp/reply
+        print $ZUI[CURRENT_IDX]>>/tmp/reply
     # Tree
     if ((ZUI[GEN_B_IDX]==0));then
        [[ $prev_idx == ($ZUI[CURRENT_IDX_PVIEW_BKP$QPATH]|\
 $ZUI[CURRENT_IDX_HIST_BKP]|$ZUI[CURRENT_IDX_TAGS_BKP]) ]]&&\
             prev_idx=${ZUI[CURRENT_IDX_MAIN_BKP]:-5}
+        print °$prev_idx>>/tmp/reply
     # Preview
     elif ((ZUI[GEN_B_IDX]==1));then
         [[ $prev_idx == ($ZUI[CURRENT_IDX_MAIN_BKP]|$ZUI[CURRENT_IDX_HIST_BKP]|\
@@ -67,6 +70,7 @@ $ZUI[CURRENT_IDX_MAIN_BKP]|$ZUI[CURRENT_IDX_TAGS_BKP]) ]]&&\
         ZUI[CURRENT_IDX]=${${(On)ZUILIST_NONSELECTABLE_ELEMENTS}[1]}+1
     fi
     ZUI[PREV_CURRENT_IDX]=$prev_idx
+    print ̣.°.̣$prev_idx/$ZUI[CURRENT_IDX]>>/tmp/reply
 }
 
 iqnc_cmd_synh_switch(){
@@ -132,6 +136,7 @@ iqnc_exec_command_cb(){
     integer QEXISTS
     local CMD=${(Q@)${(@)${(@zA)ZUI[QUERY_BUFFER]}[1]}}
     ZUI[COMMAND]=$ZUI[QUERY_BUFFER]
+    iqw "«««"
     if ((ZUI[GEN_B_IDX]==2&&(ZUI[IN_QUERY]!=3||!$#ZUI[QUERY_BUFFER])));then
         ZUI[COMMAND]=$__list[ZUI[CURRENT_IDX]]
         iqnc_view_switch $ZUI[GEN_B_IDX] 0
@@ -409,6 +414,7 @@ cmd-prune-screens(){
     (($+WScreens))||local -A WScreens
     iqnc_db WScreens||return 1
     integer i cnt=$#WScreens[(I)SCREEN_<->]
+    iqw "Pruning all: " $cnt "" " screens" "" "…"
     for ((i=cnt;i>=1;i--));do
         cmd-remove-screen $i
     done
@@ -467,6 +473,7 @@ if ((!$+Opts[--refresh])); then
     typeset -g ZUILIST_TRACK_SEGMENTS=1
     ZUI[SPECIAL_COMMAND_CALLBACK]=iqnc_exec_command_cb
     ZUI[QUERY_CHANGE_CALLBACK]=iqnc_query_change_cb
+    ZUI[reset_current_segment]=no
 
     # Needed for immediate output from coprocesses (disables buffering).
     ((${+commands[stdbuf]}))&& \
@@ -511,7 +518,7 @@ if ((!$+Opts[--refresh])); then
 fi
 
 #    zui::bindkey F3 "{print q:$ZUI[mark]}"
-zui::bindkey F9 '{print \\n cursor:$ZUI[cursor], cmdno:$ZUI[CMD_NO], query:$ZUI[IN_QUERY], qbuf: $ZUI[QUERY_BUFFER], view:$ZUI[SEARCH_BUFFER_PREVIEW], gl:$ZUI[SEARCH_BUFFER_GLOBAL], sbuff:$ZUI[SEARCH_BUFFER], current:$ZUI[CURRENT_IDX], PVIEW_Q:$ZUI[CURRENT_IDX_PVIEW_BKP_$ZUI[QPATH]], PVIEW:$ZUI[CURRENT_IDX_PVIEW_BKP], main:$ZUI[CURRENT_IDX_MAIN_BKP] sptr:$ZUI[status_pointer]|tee -a /tmp/reply;}'
+zui::bindkey F9 '{print \\n cursor:$ZUI[cursor], cmdno:$ZUI[CMD_NO], query:$ZUI[IN_QUERY], qbuf: $ZUI[QUERY_BUFFER], view:$ZUI[SEARCH_BUFFER_PREVIEW], gl:$ZUI[SEARCH_BUFFER_GLOBAL], sbuff:$ZUI[SEARCH_BUFFER], current:$ZUI[CURRENT_IDX], PVIEW_Q:$ZUI[CURRENT_IDX_PVIEW_BKP_$ZUI[QPATH]], PVIEW:$ZUI[CURRENT_IDX_PVIEW_BKP], TAG:$ZUI[CURRENT_IDX_TAGS_BKP], main:$ZUI[CURRENT_IDX_MAIN_BKP] sptr:$ZUI[status_pointer]|tee -a /tmp/reply;}'
 zui::bindkey F10 '{builtin source $NC_CON_DIR/iqnc --refresh||\
                     iqw -r "Reload finished with error: " $?;}'
 
@@ -541,7 +548,7 @@ iqnc_hub(){
     $gener[1+(ZUI[GEN_B_IDX]%4)]
     if ((ZUI[CURRENT_IDX]<5&&!$#ZUI[SEARCH_BUFFER]&&!ZUI[UNIQ_MODE]));then
         ((__last_element>=5))&&\
-            {ZUI[CURRENT_IDX]=5;-zui_list_verify_vars;ZUI[redraw]=1;}
+            {: 'ZUI[CURRENT_IDX]'=5;-zui_list_verify_vars 1;ZUI[redraw]=1;}
     fi
     EC=$?
     iqnc_set_prompt
@@ -627,14 +634,15 @@ iqnc_fill_cmd(){
     ZUI[COMMAND]=${1:-$ZUI[COMMAND]}
     [[ $ZUI[COMMAND] != $~NC[WRONGSTR] ]]&&ZUI[HAVE_0_INPUT]=0
     : ${ZUI[COMMAND]:=${NC_DEFAULT_LS_COMMAND:-$NC_DEFAULT_COMMAND}}
+    print $ZUI[COMMAND]>>/tmp/reply
     if [[ -n $ZUI[COMMAND] ]];then
         [[ -e $ZUI[QPATH] ]]&&ZUI[COMMAND]=${ZUI[COMMAND]//\%s/${(q)ZUI[QPATH]}}
         [[ -e $ZUI[QPATH] ]]||ZUI[COMMAND]=${ZUI[COMMAND]//\%s/}
         ZUI[COMMAND_PREV]=$ZUI[COMMAND]
         cmd=("${(z@)ZUI[COMMAND]}")
         ZUI[COMMAND]=
-        CMD_PT="(${(~j.|.)${=NC_LS_LIKE_COMMANDS}})"
-
+        CMD_PT="(${(~j.|.)${(@)=NC_LS_LIKE_COMMANDS}})"
+        printf %s\\n -- $CMD_PT ${=NC_LS_LIKE_COMMANDS} ${(q)NC_LS_LIKE_COMMANDS}>>/tmp/reply
         # Include ls-options
         if [[ -n $NC_DEFAULT_LS_LIKE_OPTS && ($cmd[1] == $~CMD_PT ||\
             $cmd[1] == (command|noglob|sudo) && $cmd[2] == $~CMD_PT) ]]
@@ -679,6 +687,7 @@ iqnc_fill_cmd(){
     [[ -n $iq0items[1,3] ]]&&\
         {ok/qcolreduce -- "$iq0items[@]";iq0items=("$reply[@]");}
 
+    printf %s\\n $cmd >>/tmp/reply
     typeset -ga -U ZUILIST_NONSELECTABLE_ELEMENTS=(4 3 2 1)
     separ
     qitems=("$REPLY" "$TXT" "$REPLY" "$iq0items[@]")
@@ -761,6 +770,67 @@ iqnc_fill_screen(){
     iqw "" "Showing screen no: " "" "" "#$QCIDX" "$spwd[@]"
 }
 
+local -a qa_tag_data
+local -A TAG
+
+iqnc_find_tags_index() {
+    local q
+    local -a p
+
+    # Read tags file
+    p=( (../)#TAGS(N) )
+    TAG[file]=${${(On)p}[1]}
+    [[ -f ./TAGS ]] && TAG[file]=$PWD/TAGS
+    if [[ -n $TAG[file] ]]; then
+        TAG[git-or-project]=${${TAG[file]:a}:h:t}
+    else
+        TAG[git-or-project]="<unknown>"
+    fi
+
+    # Pre-process found index
+    TAG[file-pp]=${TAG[file]/TAGS/.TAGS}.z
+    if [[ -n $TAG[file] && -f $TAG[file] && ( ! -f $TAG[file-pp] || $TAG[file] -nt $TAG[file-pp]) ]]
+    then
+        local sed_
+        (($+commands[sed]))&&sed_=sed
+        (($+commands[gsed]))&&sed_=gsed
+        (($+commands[$sed_]))||{iqw "No sed found, cannot read TAGS";return;}
+         # Generate simplified file – append the filename at each line,
+        # so that it's not only at the preamble line
+        command $sed_ -r -n $'/^\x0c$/ { n; s/,[^,]*$//;s/^/\x02/; h; d;}; G; y/\\n/,/; p' $TAG[file] >! $TAG[file-pp]
+    fi
+
+    # Read index, and as index is found, establish git main dir for it
+    if [[ -n $TAG[file] && -f $TAG[file-pp] ]]; then
+        qa_tag_data=( ${"${(@f)"$(<${TAG[file-pp]})"}"##[[:space:]]##} )
+        # Cleanup functions and their preambles
+        qa_tag_data=( ${qa_tag_data[@]/(#b)(\([^\)]#\))[[:space:]]#[\{]*($'\x7f')/$match[1]$match[2]} )
+        qa_tag_data=( ${qa_tag_data[@]/(#b)[[:space:]]\#*($'\x7f')/$match[1]} )
+        local outside_git="${PWD%/${$(git rev-parse --quiet --show-prefix 2>/dev/null)%/}}"
+        if [[ -d $outside_git && -n ${${(M)PWD##$outside_git}##$HOME} ]]; then
+            TAG[git-or-project]=$outside_git:t
+            TAG[repo-dir]=$outside_git
+        else
+            TAG[git-or-project]=$TAG[file]:h:t
+            TAG[repo-dir]=$TAG[file]:h
+        fi
+        return 0
+    fi
+    return 1
+}
+
+iqnc_fill_tags(){
+    ZUI[COLORING_PATTERN]="((#s)[^[:space:]]##|·[^·]##·)"
+    iqnc_find_tags_index || {iqw "No TAGS file in ../…"; return 1;}
+    qa=(${qa_tag_data//(#b)([^$'\177']##)$'\177'([^$'\1']##)*/${(r:39:: :)match[2]} $match[1]})
+    iqnc_search_prompt
+    separ
+    qitems=($REPLY[3,-1]
+            "·TAG· (func, var, etc.)                 ·CODE SNIPPET·"
+            $REPLY[3,-1]
+            $qa)
+}
+
 iqnc_fill_help(){
     ZUI[COLORING_PATTERN]="((·[^·]##·~(#s)·*)|(#s)· [^[:space:]]##)"
     separ
@@ -776,8 +846,9 @@ iqnc_fill_help(){
     # Ensure cursor is visible
     if ((ZUI[CURRENT_IDX]<5&&!$#ZUI[SEARCH_BUFFER]&&!ZUI[UNIQ_MODE]));then
         ((__last_element>=5))&&\
-            {ZUI[CURRENT_IDX]=5;-zui_list_verify_vars;ZUI[redraw]=1;}
+            { : 'ZUI[CURRENT_IDX]'=5;-zui_list_verify_vars 1;ZUI[redraw]=1;}
     fi
+    print °°°$ZUI[CURRENT_IDX]>>/tmp/reply
 
     ZUI[VIEW_CHANGE]=$((ZUI[VIEW_CHANGE]+${#${TM:#$ZUI[text_mode]}}))
     ZUI[VIEW_CHANGE]=$((ZUI[VIEW_CHANGE]+${${ZUI[COMMAND]:+1}:-0}))
@@ -815,6 +886,7 @@ ZUI[redraw]=1
 while (( 1 )); do
     ZUI[VIEW_CHANGE]=1
     builtin print -rn -- $terminfo[smcup]$termcap[ti]
+    
     zui-event-loop a:qitems
     builtin print -rn -- $terminfo[rmcup]$termcap[te]
     # exit?
@@ -845,6 +917,9 @@ while (( 1 )); do
                 QFILE=$ZUI[QPATH]
                 iqw "Opening " "${QFILE:-error ↔ not found}"\
                         " scrolled to line: " "#$QIDX"
+            # tags?
+            elif ((ZUI[GEN_B_IDX]%4==3));then
+                iqw "………"
             # or normal?
             elif [[ $ZUI[GEN_B_IDX] == (0|2) && $REPLY_SAVE != *(·|–|—)* ]];then
                 QFILE=$REPLY_SAVE

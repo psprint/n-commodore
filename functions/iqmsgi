@@ -24,7 +24,7 @@ int/nc::parse-opts "h p q -quiet e n Q" Opts opts "$@"||return 13
 set -- "$reply[@]"
 # Quiet mode? → no printing if so
 (($+Opts[-q]==1&&$+Opts[-p]!=1))&&return
-(($+functions[iqw]))&&{iqw "$*";tmp/restore-state;return;}
+((ZUI[RUNNING]))&&{iqw "$*";tmp/restore-state;return;}
 
 local TMP
 nc::read-theme||return 17

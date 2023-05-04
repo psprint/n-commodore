@@ -107,6 +107,8 @@ done
 
 while (( 1 )); do
 
+ZUI[RUNNING]=1
+
 # Measure generation time
 zuiel_start_seconds=$SECONDS
 
@@ -395,14 +397,13 @@ else
     zui-usetty-wrapper zui-list-wrapper "${ZUIEL_OUTPUT[@]}"
 fi
 
-printf %s\\n ZUILIST_WRAPPER_BIT:$ZUILIST_WRAPPER_BIT>>/tmp/reply
-printf %s\\n ZUILIST_WRAPPER_LINE:$ZUILIST_WRAPPER_LINE>>/tmp/reply
 if [[ "${ZUI[text_mode]}" = (all|nohyp) ]] || -zui_glib_has_any_hyperlinks "$ZUILIST_WRAPPER_LINE"; then
     ZUI[pure_text_selected]="$ZUILIST_WRAPPER_BIT"
     (( ${+functions[-zui-standard-text-select-callback]} )) && -zui-standard-text-select-callback "segment" "$ZUILIST_WRAPPER_BIT"
     # No selection -> quit
     if [[ -z "$ZUILIST_WRAPPER_BIT" || "${ZUI[select_mode]}" = "quit" ]] && ! -zui_glib_is_any_hyperlink "$ZUILIST_WRAPPER_BIT"; then
         REPLY="$ZUILIST_WRAPPER_BIT"
+        ZUI[RUNNING]=0
         zle && { zle .redisplay; zle .reset-prompt; }
         return 0
     fi
@@ -412,6 +413,7 @@ else # No hyperlinks, and text_mode is off|hyp
     (( ${+functions[-zui-standard-text-select-callback]} )) && -zui-standard-text-select-callback "line" "$ZUILIST_WRAPPER_LINE"
     if [[ -z "$ZUILIST_WRAPPER_LINE" || "${ZUI[select_mode]}" = "quit" ]]; then
         REPLY="$ZUILIST_WRAPPER_LINE"
+        ZUI[RUNNING]=0
         zle && { zle -R; zle .reset-prompt; }
         return 0
     fi
@@ -440,11 +442,12 @@ if (( zuiel_bit_set )); then
             reply[1]="${reply[1]#(zuiiaction|zuiaction|zuicheckbox|zuieanchor|zuianchor|zuitfield|zuilbox)}"
             # Call the handler with all hyper-link
             # data or eval code, not using the data
-            if [[ "${ZUI[$id]}" = *(=|\(\(| )* ]]; then
+            if [[ "${ZUI[$id]}" = *(=|\(\(| )* &&\
+                        $(builtin type $ZUI[$id] 2>&1) == *:\ none ]]; then
                 eval "() { ${ZUI[$id]%;}; } ${(q)reply[@]}"
 
                 # Does in-line code set reply?
-                if [[ "${ZUI[$id]}" = *reply=* ]]; then
+                if [[ "${ZUI[$id]}" = *"reply="* ]]; then
                     REGENERATE="${reply[1]}"
                     REGENERATE_ARG="${reply[2]}"
                 else

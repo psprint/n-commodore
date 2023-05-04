@@ -33,6 +33,7 @@ NC_LS_LIKE_COMMANDS="ls fd exa"
 zui::bindkey F1 cmd-main-view
 zui::bindkey F2 cmd-contents-view
 zui::bindkey F3 cmd-command-history-view
+zui::bindkey F4 cmd-tags-view
 zui::bindkey $'\C-_' cmd-toggle-prompt
 
 # Strictly preview view
