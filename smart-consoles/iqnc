@@ -128,10 +128,6 @@ iqnc_exec_command_cb(){
     integer QEXISTS
     local CMD=${(Q@)${(@)${(@zA)ZUI[QUERY_BUFFER]}[1]}}
     ZUI[COMMAND]=$ZUI[QUERY_BUFFER]
-    if ((ZUI[GEN_B_IDX]==VIEW&&(ZUI[IN_QUERY]!=PR_CMD_EXEC||!$#ZUI[QUERY_BUFFER])));then
-        ZUI[COMMAND]=$__list[ZUI[CURRENT_IDX]]
-    fi
-    iqnc_cmd_next $CIN
     {
         if [[ $ZUI[COMMAND] != $~NC[WRONGSTR] ]];then
             builtin print -r -- $ZUI[COMMAND]>>!$NCCHIST
@@ -146,8 +142,10 @@ iqnc_exec_command_cb(){
             iqw "$CAUGHT[@]"
             TRY_BLOCK_ERROR=0
         else
-            cmd-push-screen
-            iqnc_reset_hist
+             cmd-push-screen
+             iqnc_reset_hist
+             iqnc_cmd_next $CIN
+
             #iqnc_hub
             iqw "Executed command: " \`$CMD\` " which returned: " $ZUI[RET]
         fi
@@ -455,7 +453,7 @@ cmd-help(){iqnc_fill_help;}
 
 if ((!$+Opts[--refresh])); then
     ok/qnstr $PWD&&local APP=$REPLY
-    readonly CIN=0 VIEW=1 HIST=2 TAGS=3 VIEWS=4
+    readonly CIN=0 VIEW=1 CQUE=2 TAGS=3 VIEWS=4
     readonly PR_NONE=0 PR_SEARCH=1 PR_CMD_EXEC=3
     : ${ZUI[cmd-mode]:=pipe}
     ZUI[SRC_HIGHLIGHT]=1
