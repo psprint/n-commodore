@@ -128,16 +128,15 @@ iqnc_exec_command_cb(){
     integer QEXISTS
     local CMD=${(Q@)${(@)${(@zA)ZUI[QUERY_BUFFER]}[1]}}
     ZUI[COMMAND]=$ZUI[QUERY_BUFFER]
-    iqw "«««"
     if ((ZUI[GEN_B_IDX]==VIEW&&(ZUI[IN_QUERY]!=PR_CMD_EXEC||!$#ZUI[QUERY_BUFFER])));then
         ZUI[COMMAND]=$__list[ZUI[CURRENT_IDX]]
-        iqnc_view_switch $ZUI[GEN_B_IDX] $CIN
     fi
+    iqnc_cmd_next $CIN
     {
         if [[ $ZUI[COMMAND] != $~NC[WRONGSTR] ]];then
             builtin print -r -- $ZUI[COMMAND]>>!$NCCHIST
         else
-            THROW "No command entered, " "" "" "cannot execute"
+            THROW "No command entered ($ZUI[COMMAND]), " "" "" "cannot execute"
         fi
         # No such command?
         builtin type $CMD&>/dev/null||\
@@ -149,7 +148,7 @@ iqnc_exec_command_cb(){
         else
             cmd-push-screen
             iqnc_reset_hist
-            iqnc_hub
+            #iqnc_hub
             iqw "Executed command: " \`$CMD\` " which returned: " $ZUI[RET]
         fi
     }

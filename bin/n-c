@@ -10,7 +10,13 @@
 
 ZERO="${0##$PWD}"
 [ -z "$APPDIR" ] && APPDIR=$PWD/${ZERO%/*}
-APPCFG="$APPDIR/share/n-c.cfg"
+APPCFG="$APPDIR/zsh.cfg"
+
+iqgetpath() {
+    export INPTH=$*
+    REPLY=$($ZSH_CONTROL_BIN -f -c 'print -P -r -- %F{30}${INPTH:P}%f')
+    unset INPTH
+}
 
 [ -f "$APPCFG" ] && . "$APPCFG"
 
@@ -22,7 +28,8 @@ if [ -z "$ZSH_VERSION" ]; then
     args="$args \"$arg\""
   done
   {
-    printf %s\\n "Restarting with $ZSH_CONTROL_BIN"|tee -a "$APPDIR/io.log"
+    iqgetpath "$ZSH_CONTROL_BIN"
+    printf %s\\n "Restarting with bundled Zsh ($REPLY)"
   } 2>/dev/null
   builtin exec /usr/bin/env "${ZSH_CONTROL_BIN}" -f -c "source ${args}"
 fi
