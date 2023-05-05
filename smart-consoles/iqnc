@@ -308,7 +308,7 @@ cmd-contents-view(){iqnc_cmd_next 1;}
 cmd-main-view(){iqnc_cmd_next 0;}
 cmd-tags-view(){iqnc_cmd_next 3;}
 cmd-set-view(){local -A Qe=(main 0 preview 1 hist 2 tags 3 "" 0);iqnc_cmd_next $Qe[$1];}
-cmd-show-stdin(){ZUI[HAVE_0_INPUT]=1;iqnc_hub;}
+cmd-show-stdin(){ZUI[HAVE_0_INPUT]=1;ZUI[IO_COUNT]=33;iqnc_hub;}
 # Commands
 cmd-open-cmd(){zcurses end;eval "$@";-zui_glib_refresh;}
 cmd-open-tig(){curses end;command tig "$@";-zui_glib_refresh;}
@@ -503,7 +503,7 @@ if ((!$+Opts[--refresh])); then
     integer Q0_SAVE_PIPE tmout
     if int/nc::test-stdin Q0_SAVE_PIPE REPLY;then
         ZUI[FIRST_0_INPUT]=$REPLY
-        ZUI[HAVE_0_INPUT]=1
+        ZUI[HAVE_0_INPUT]=1 ZUI[IO_COUNT]=30
     fi
     iqnc_create_histories
     cmd-exec-prompt
@@ -626,7 +626,6 @@ iqnc_fill_cmd(){
     ZUI[COMMAND]=${1:-$ZUI[COMMAND]}
     [[ $ZUI[COMMAND] != $~NC[WRONGSTR] ]]&&ZUI[HAVE_0_INPUT]=0
     : ${ZUI[COMMAND]:=${NC_DEFAULT_LS_COMMAND:-$NC_DEFAULT_COMMAND}}
-    print $ZUI[COMMAND]>>/tmp/reply
     if [[ -n $ZUI[COMMAND] ]];then
         [[ -e $ZUI[QPATH] ]]&&ZUI[COMMAND]=${ZUI[COMMAND]//\%s/${(q)ZUI[QPATH]}}
         [[ -e $ZUI[QPATH] ]]||ZUI[COMMAND]=${ZUI[COMMAND]//\%s/}
@@ -659,7 +658,7 @@ iqnc_fill_cmd(){
             iq0items=("$reply[@]")
         else
             iq0items=() q0input=()
-            ZUI[HAVE_0_INPUT]=1
+            ZUI[HAVE_0_INPUT]=1 ZUI[IO_COUNT]=30
         fi
 
         -zui_glib_special_text "Output of cmd: ·$ZUI[COMMAND_PREV]· run in: ·$PWD·:" TXT
@@ -690,36 +689,36 @@ iqnc_fill_0(){
         int/nc::read-all -u$Q0_SAVE_PIPE -t0 -x30
     ((!Q0_SAVE_PIPE))&&\
         int/nc::read-all -p -t0 -x30
-    ZUI[read-all-failed]=$((!$#reply))
-    ((!ZUI[read-all-failed]))&&ZUI[read-all-first-fail]=0
-    ((ZUI[read-all-failed]&&!ZUI[read-all-first-fail]))&&\
-        ZUI[read-all-first-fail]=3
-    ((ZUI[read-all-first-fail]==3))&&{ZUI[redraw]=1;ZUI[read-all-first-fail]=1;}
+
+    QFLAG=$#reply
+    ZUI[read-all-failed]=$((!QFLAG))
+    ((ZUI[IO_COUNT]-=!QFLAG))
+    ((ZUI[IO_COUNT]<0))&&ZUI[HAVE_0_INPUT]=0&&return
 
     local ql had_read=0
     integer q0idx=$#q0input+1
-    if ((!$#q0input&&$#reply));then
+    if ((!$#q0input&&QFLAG));then
         q0input[q0idx]=$ZUI[FIRST_0_INPUT]$reply[1]
         shift reply
-        QFLAG=1
     fi
 
-    ((QFLAG))&&ok/qcolreduce "$qreply[@]"
+    ((QFLAG))&&ok/qcolreduce "$reply[@]"
 
     q0input+=("$reply[@]")
     q0input_proc=("$q0input[@]")
     (($+Opts[-s]))&&q0input_proc=("${(@on)q0input_proc}")
     (($+Opts[-R]))&&q0input_proc=("${(a@nO)q0input_proc}")
     ((ZUI[ls-command]))&&q0input_proc=(
-            "${(@f)$(print -C2 -a $q0input_proc[@])}" )
+            "${(@f)$(print -C2 -a -r -- $q0input_proc[@])}" )
     if ((ZUI[GEN_B_IDX]%VIEWS==0));then
         reply=()
         -zui_glib_special_text "Output of cmd: ·$ZUI[COMMAND_PREV]· run in: ·$PWD·:"
         local TXT=$reply[1] 
         separ
-        local -a q0items=("$qitems[@]")
-        Qitems=($REPLY "s$TXT" $REPLY "$q0input_proc[@]")
-        [[ -n ${qitems:|q0items} ]] && -zui_glib_fly_array_refresh 1
+        #local -a q0items=("$qitems[@]")
+        qitems=($REPLY "s$TXT" $REPLY "$q0input_proc[@]")
+        #[[ -n ${qitems:|q0items} ]]
+       -zui_glib_fly_array_refresh 1
     fi
 }
 
@@ -830,7 +829,6 @@ iqnc_fill_help(){
         ((__last_element>=5))&&\
             { ZUI[CURRENT_IDX]=5;-zui_list_verify_vars 1;ZUI[redraw]=1;}
     fi
-    print °°°$ZUI[CURRENT_IDX]>>/tmp/reply
 
     ZUI[VIEW_CHANGE]=$((ZUI[VIEW_CHANGE]+${#${TM:#$ZUI[text_mode]}}))
     ZUI[VIEW_CHANGE]=$((ZUI[VIEW_CHANGE]+${${ZUI[COMMAND]:+1}:-0}))
