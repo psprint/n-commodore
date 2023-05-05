@@ -7,15 +7,29 @@ console(){
 
     local -A Opts; local -a opts
     {
-        int/nc::parse-opts "C: -dir: s -sort R -reverse -ifile:" Opts opts "$@"\
+       int/nc::parse-opts "C: -dir: s -sort R -reverse -ifile:" Opts opts "$@"\
             ||THROW incorrect options given to ${${@:#-*}[1]}
     } always {
         CATCH \*&&iqerr $CAUGHT
     }
     set -- "$reply[@]"
 
+    # find interpreter
+    typeset -g ZSH_CONTROL_BIN
+    : ${ZSH_CONTROL_BIN:=$commands[zsh]}
+    ZSH_CONTROL_BIN=$ZSH_CONTROL_BIN:A
+
+    # verify
+    if ! type $ZSH_CONTROL_BIN&>/dev/null;then
+        print -u2 Error: cannot find zsh binary, \
+            cannot continue...
+        return 1
+    fi
+
+    # exec
+    [[ ! -x $ZSH_CONTROL_BIN ]]&&ZSH_CONTROL_BIN=zsh
     [[ -x $NCDIR/smart-consoles/iq$1 ]]&&\
-        $NCDIR/smart-consoles/iq$1 $opts -- "${(@)@[2,-1]}"
+       $ZSH_CONTROL_BIN $NCDIR/smart-consoles/iq$1 $opts -- "${(@)@[2,-1]}"
 }
 
 console "$@"

@@ -5,7 +5,7 @@
 #
 
 #
-# /bin/sh stage, load configuration to obtain $zsh_control_bin
+# /bin/sh stage, load configuration to obtain $ZSH_CONTROL_BIN
 #
 
 ZERO="${0##$PWD}"
@@ -14,7 +14,7 @@ APPCFG="$APPDIR/share/n-c.cfg"
 
 [ -f "$APPCFG" ] && . "$APPCFG"
 
-[ -z "$zsh_control_bin" ] && zsh_control_bin="zsh"
+[ -z "$ZSH_CONTROL_BIN" ] && ZSH_CONTROL_BIN="zsh"
 
 if [ -z "$ZSH_VERSION" ]; then
   args="\"$0\""
@@ -22,9 +22,9 @@ if [ -z "$ZSH_VERSION" ]; then
     args="$args \"$arg\""
   done
   {
-    printf %s\\n "Restarting with $zsh_control_bin">>"$APPDIR/io.log"
+    printf %s\\n "Restarting with $ZSH_CONTROL_BIN">>"$APPDIR/io.log"
   } 2>/dev/null
-  exec /usr/bin/env "${zsh_control_bin}" -f -c "source ${args}"
+  exec /usr/bin/env "${ZSH_CONTROL_BIN}" -f -c "source ${args}"
 fi
 
 n-c() {
