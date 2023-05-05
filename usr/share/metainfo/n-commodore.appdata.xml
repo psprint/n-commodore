@@ -63,7 +63,7 @@ Recommended is to visit help screen (press: <code>Shift-F1</code> to open it).
   </provides>
 
   <releases>
-    <release version="0.7" date="2023-05-04" type="stable">
+    <release version="0.8" date="2023-05-04" type="stable">
       <description>
         <p>Adapted to AppImage package</p>
       </description>
