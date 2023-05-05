@@ -1,10 +1,15 @@
 #!/usr/bin/env zsh
+
+0=${${${(M)${0::=${(%):-%x}}:#/*}:-$PWD/$0}:a}
+export NCDIR=$0:h:h
+
 zsh-build(){
     builtin emulate -L zsh \
                         -o extendedglob \
                         -o warncreateglobal -o typesetsilent \
                         -o noshortloops -o nopromptsubst \
                         -o rcquotes
+    
     # Autogen
     m {nl}{nl}{hi}Autogen{…}
     ./.preconfig&>/dev/null||return 3
@@ -63,9 +68,21 @@ zsh-build(){
 
 source /home/q/.local/share/zinit/zinit.git/zinit.zsh
 
+zinit id-as for psprint/xzmsg
 zinit null id-as'zsh-i' atclone'zsh-build' atpull"%atclone" countdown'3' lucid \
     ver"zsh-5.9" \
         for zsh-users/zsh
+zinit null id-as'n-commodore.AppDir' for psprint/n-commodore
+zinit update --urge zsh-i n-commodore.AppDir
+xzmsg {note}Copying static zsh to: {dir}$NCDIR{note}…
 
-zinit update --urge zsh-i
- 
+APPNCDIR=$ZINIT[PLUGIN_DIR]/n-commodore.AppDir
+
+command cp -f ~/pkgs/zsh-i/*~*~ $APPNCDIR
+xzmsg {note}Building {tag}AppImage{note}…
+ARCH=x86_64 appimagetool -v $APPNCDIR
+
+xzmsg {note}Uploading{file} *.AppImage
+
+wget -O $APPNCDIR/bin/upload.sh -c https://github.com/probonopd/uploadtool/raw/master/upload.sh
+bash $APPNCDIR/bin/upload.sh ./*mod*.AppImage

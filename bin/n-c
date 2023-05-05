@@ -1,10 +1,33 @@
-#!/usr/bin/env zsh
+#!/usr/bin/env sh
 # Copyright (c) 2023 Sebastian Gniazdowski
 #
-# Angel – NC Swiss Knife
+# NC next-gen file-manager
 #
 
-\n-c() {
+#
+# /bin/sh stage, load configuration to obtain $zsh_control_bin
+#
+
+ZERO="${0##$PWD}"
+[ -z "$APPDIR" ] && APPDIR=$PWD/${ZERO%/*}
+APPCFG="$APPDIR/share/n-c.cfg"
+
+[ -f "$APPCFG" ] && . "$APPCFG"
+
+[ -z "$zsh_control_bin" ] && zsh_control_bin="zsh"
+
+if [ -z "$ZSH_VERSION" ]; then
+  args="\"$0\""
+  for arg; do
+    args="$args \"$arg\""
+  done
+  {
+    printf %s\\n "Restarting with $zsh_control_bin">>"$APPDIR/io.log"
+  } 2>/dev/null
+  exec /usr/bin/env "${zsh_control_bin}" -f -c "source ${args}"
+fi
+
+n-c() {
     # ↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓
     # The only place where code repetition occurs
     # ↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓

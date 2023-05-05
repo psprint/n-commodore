@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Copyright 2023 Sebastian Gniazdowski <sgniazdowski@gmail.com> -->
+<component type="desktop-application">
+        <id>org.zdharma.n-commodore</id>
+  <metadata_license>FSFAP</metadata_license>
+  <project_license>Affero GPL-3.0+</project_license>
+           <name>N-Commodore</name>
+<summary>a new-paradigm file-manager, novel command line</summary>
+<description>
+<p>
+Basically, it’s novelty comes from 3 factors:
+<ul>
+<li> Panelize everything.</li>
+<li> Filter/grep everything.</li>
+<li> Save everything for later.</li>
+</ul>
+</p>
+<p>
+Panelization is known from Midnight Commander - it means to capture
+command output into a list that can be browsed (i,e. files viewed and opened).
+Filtering by keywords  is known from fzf fuzzy-finder. Finally: screen saving – a fully new discovery paradigm.</p>
+<p>
+A next-generation file-manager: N-Commodore.
+</p>
+<p>N-Commodore is a novel merge of regular command-line (think: ls, cp, mv,
+etc.) and of Midnight Commander. In short, when you first time run NC, you'll
+see a 2-column view with files and a command/search prompt (toggle between
+search and command prompts with <code>Ctrl-/</code>). When you run a command,
+like: <code>ls functions</code>, the current view will be a) saved to disk,
+b) replaced in the display with a new, 2-column view of files in the requested
+dir: <code>./functions</code>. You can always filter the lines of text by
+switching to search prompt with <code>Ctrl-/</code> and entering keywords.
+Or you can go back to the saved view and restore it via:
+<code>Ctrl-Shift-Left</code>.
+</p>
+<p>
+Recommended is to visit help screen (press: <code>Shift-F1</code> to open it).
+</p>
+</description>
+
+<!--  <launchable type="desktop-id">org.gnome.gnome-power-statistics.desktop</launchable> -->
+
+  <screenshots>
+    <screenshot type="default">
+      <caption>N-Commodore at tree-view, with search active</caption>
+      <image>https://github.com/psprint/n-commodore/blob/master/share/img/N-Commodore.png?raw=true</image>
+    </screenshot>
+  </screenshots>
+
+  <url type="homepage">https://github.com/psprint/n-commodore</url>
+  <url type="donation">https://www.paypal.com/cgi-bin/webscr?cmd=_s-xclick&amp;hosted_button_id=D6XDCHDSBDSDG</url>
+
+ 
+ 
+ <suggests>
+  <id>org.zdharma.Angel-IQ</id>
+</suggests>
+
+  <project_group>Zdharma</project_group>
+
+  <provides>
+    <binary>n-c</binary>
+  </provides>
+
+  <releases>
+    <release version="0.7" date="2023-05-04" type="stable">
+      <description>
+        <p>Adapted to AppImage package</p>
+      </description>
+    </release>
+  </releases>
+</component>
