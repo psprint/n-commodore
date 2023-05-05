@@ -140,7 +140,7 @@ iqnc_exec_command_cb(){
             THROW "No command entered, " "" "" "cannot execute"
         fi
         # No such command?
-        type $CMD&>/dev/null||\
+        builtin type $CMD&>/dev/null||\
             THROW "No such command" ": " "" $CMD
     } always {
         if CATCH \*;then
@@ -336,7 +336,7 @@ cmd-next-command(){iqnc_command_top 1;}
 cmd-prev-command(){iqnc_command_top 0;}
 
 # directories
-cmd-pwd-up(){local PPWD=$PWD;if builtin cd -q -- $PWD:h;then iqnc_push_pwd $PPWD; iqw "Current PWD is: " "" "" $PWD(D);iqnc_cmd_next 0; else iqw "Cannot change directory to: " "" "" ..;fi;}
+cmd-pwd-up(){((ZUI[GEN_B_IDX]!=0))&&{iqnc_cmd_next 0;return 0;}; local PPWD=$PWD;if builtin cd -q -- $PWD:h;then iqnc_push_pwd $PPWD; iqw "Current PWD is: " "" "" $PWD(D);iqnc_cmd_next 0; else iqw "Cannot change directory to: " "" "" ..;fi;}
 cmd-cd(){local Q=${(M)1:#-*};[[ $1 == -* ]]&&shift;if builtin cd -q -- "$1";then [[ $Q != -q
   ]]&&{iqw "PWD dir changed to: " "" "" $PWD; iqnc_cmd_next 0;};else iqw "Cannot change directory to: " "" "" $1;fi;}
 cmd-prev-pwd(){iqnc_pop_pwd; cmd-cd "$REPLY";}
@@ -617,7 +617,7 @@ iqnc_fill_preview(){
 }
 
 iqnc_fill_cmd(){
-    local TXT cmd=() CMD_PT
+    local TXT=() cmd=() CMD_PT
     integer QI
     ZUI[text_mode]=all
     ZUI[COLORING_PATTERN]="·[^·]##·"
@@ -665,16 +665,14 @@ iqnc_fill_cmd(){
             ZUI[HAVE_0_INPUT]=1
         fi
 
-        -zui_glib_special_text "Output of cmd: ·$ZUI[COMMAND_PREV]· run in: ·$PWD·:"
-        TXT=$reply[1]
+        -zui_glib_special_text "Output of cmd: ·$ZUI[COMMAND_PREV]· run in: ·$PWD·:" TXT
         if [[ $iq0items = $~NC[WRONGSTR] && $ZUI[cmd-mode] = whole ]]
         then
             iqw "Command " "$cmd" "" " had no output"
             return
         fi
     else
-        -zui_glib_special_text "Showing files in: ·$PWD·"
-        TXT=$reply[1]
+        -zui_glib_special_text "Showing files in: ·$PWD·" TXT
         iq0items=(**/*~*~(N.,@))
     fi
     (($+Opts[-s]))&&iq0items=("${(@on)iq0items}")
@@ -709,17 +707,9 @@ iqnc_fill_0(){
         QFLAG=1
     fi
 
-    # work on newly read lines
-    local -a qreply=()
-    false&&foreach QE ("$reply[@]")
-        int/nc::prune-esc -T -b -- $QE
-        qreply+=("$REPLY")
-        QFLAG=1
-    end||qreply=("$reply[@]")
+    ((QFLAG))&&ok/qcolreduce "$qreply[@]"
 
-    ((QFLAG))&&ok/qcolreduce "$qreply[@]"&&qreply=("$reply[@]")
-
-    q0input+=("$qreply[@]")
+    q0input+=("$reply[@]")
     q0input_proc=("$q0input[@]")
     (($+Opts[-s]))&&q0input_proc=("${(@on)q0input_proc}")
     (($+Opts[-R]))&&q0input_proc=("${(a@nO)q0input_proc}")
@@ -728,10 +718,10 @@ iqnc_fill_0(){
     if ((ZUI[GEN_B_IDX]%VIEWS==0));then
         reply=()
         -zui_glib_special_text "Output of cmd: ·$ZUI[COMMAND_PREV]· run in: ·$PWD·:"
-
+        local TXT=$reply[1] 
         separ
         local -a q0items=("$qitems[@]")
-        qitems=($REPLY "$reply[1]" $REPLY "$q0input_proc[@]")
+        Qitems=($REPLY "s$TXT" $REPLY "$q0input_proc[@]")
         [[ -n ${qitems:|q0items} ]] && -zui_glib_fly_array_refresh 1
     fi
 }

@@ -22,9 +22,9 @@ if [ -z "$ZSH_VERSION" ]; then
     args="$args \"$arg\""
   done
   {
-    printf %s\\n "Restarting with $ZSH_CONTROL_BIN">>"$APPDIR/io.log"
+    printf %s\\n "Restarting with $ZSH_CONTROL_BIN"|tee -a "$APPDIR/io.log"
   } 2>/dev/null
-  exec /usr/bin/env "${ZSH_CONTROL_BIN}" -f -c "source ${args}"
+  builtin exec /usr/bin/env "${ZSH_CONTROL_BIN}" -f -c "source ${args}"
 fi
 
 n-c() {
