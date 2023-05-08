@@ -26,4 +26,6 @@ source $APPDIR/zsh.cfg
     printf %s\\n "Restarting with bundled Zsh (found at: ·$REPLY·)"
 } 2>/dev/null
 
+export FPATH=$APPDIR/share/zsh/5.9/functions
+
 exec $ZSH_CONTROL_BIN $APPDIR/bin/n-c --ifile "$APPIMAGE" "$@"
