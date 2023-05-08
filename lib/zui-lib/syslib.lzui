@@ -262,6 +262,7 @@ function -zui_sys_add_message() {
     # House-keeping
     (( ${#ZUI_MESSAGES} >= ZUI[log_size] + 10 ))&&\
         { ZUI_MESSAGES=( "${(@)ZUI_MESSAGES[1+10,-1]}" ); }
+    true
 } # }}}
 
 

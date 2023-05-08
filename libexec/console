@@ -16,11 +16,11 @@ console(){
 
     # find interpreter
     typeset -g ZSH_CONTROL_BIN
-    : ${ZSH_CONTROL_BIN:=$commands[zsh]}
+    type $ZSH_CONTROL_BIN&>/dev/null||ZSH_CONTROL_BIN=$commands[zsh]
     ZSH_CONTROL_BIN=$ZSH_CONTROL_BIN:A
 
     # verify
-    if ! type $ZSH_CONTROL_BIN&>/dev/null;then
+    if ! type $ZSH_CONTROL_BIN&>>/dev/null;then
         print -u2 Error: cannot find zsh binary, \
             cannot continue...
         return 1

@@ -1,4 +1,4 @@
-#!/usr/bin/env sh
+#!/usr/bin/env zsh
 # Copyright (c) 2023 Sebastian Gniazdowski
 #
 # NC next-gen file-manager
@@ -7,32 +7,6 @@
 #
 # /bin/sh stage, load configuration to obtain $ZSH_CONTROL_BIN
 #
-
-ZERO="${0##$PWD}"
-[ -z "$APPDIR" ] && APPDIR=$PWD/${ZERO%/*}
-APPCFG="$APPDIR/zsh.cfg"
-
-iqgetpath() {
-    export INPTH=$*
-    REPLY=$($ZSH_CONTROL_BIN -f -c 'print -P -r -- %F{30}${INPTH:P}%f')
-    unset INPTH
-}
-
-[ -f "$APPCFG" ] && . "$APPCFG"
-
-[ -z "$ZSH_CONTROL_BIN" ] && ZSH_CONTROL_BIN="zsh"
-
-if [ -z "$ZSH_VERSION" ]; then
-  args="\"$0\""
-  for arg; do
-    args="$args \"$arg\""
-  done
-  {
-    iqgetpath "$ZSH_CONTROL_BIN"
-    printf %s\\n "Restarting with bundled Zsh ($REPLY)"
-  } 2>/dev/null
-  builtin exec /usr/bin/env "${ZSH_CONTROL_BIN}" -f -c "source ${args}"
-fi
 
 n-c() {
     # ↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓
@@ -50,6 +24,10 @@ n-c() {
     # Set $0 with a new trik - use of %x prompt expansion
     0=${${${(M)${0::=${(%):-%x}}:#/*}:-$PWD/$0}:A}
     source $0:h:h/share/preamble.inc.zsh --fun
+
+    typeset -gx APPCFG APPDIR
+    : ${APPDIR:=$0:h:h} ${APPCFG:=$APPDIR/zsh.cfg}
+    source $APPCFG
 
     # ↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑
     # End of code repetition

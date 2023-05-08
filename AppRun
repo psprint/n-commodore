@@ -1,4 +1,29 @@
 #!/usr/bin/env sh
 #env
 #tree $APPDIR
-command $APPDIR/bin/n-c --ifile "$APPIMAGE" "$@"
+
+ZERO="$0"
+ZERO="${ZERO%/*}"
+case $ZERO in
+    (/*)
+        ;;
+    (*)
+        ZERO="$PWD/$ZERO"
+        ;;
+esac
+
+iqgetpath() {
+    export INPTH=$*
+    REPLY=$($ZSH_CONTROL_BIN -f -c 'print -P -r -- %F{30}${INPTH:P}%f')
+    unset INPTH
+}
+
+: ${APPDIR:="$ZERO"}
+source $APPDIR/zsh.cfg
+
+{
+    iqgetpath "$ZSH_CONTROL_BIN"
+    printf %s\\n "Restarting with bundled Zsh (found at: ·$REPLY·)"
+} 2>/dev/null
+
+exec $ZSH_CONTROL_BIN $APPDIR/bin/n-c --ifile "$APPIMAGE" "$@"

@@ -8,7 +8,7 @@
 iqnc()
 {
 # Preamble – emulate & 0=…
-    0=${${${(M)${0::=${(%):-%x}}:#/*}:-$PWD/$0}:A}
+0=${${${(M)${0::=${(%):-%x}}:#/*}:-$PWD/$0}:A}
 
 source $0:h:h/share/preamble.inc.zsh --script --fun --cleanup
 
@@ -28,6 +28,20 @@ command touch $NCSCRDB
 iqw(){ 
     ((ZUI[started]))||return
     -zui_glib_msg "${@//\{[^\}]#\}/}"
+}
+
+iqnc_mime_setup(){
+    zstyle ':mime:*' browser-style running x tty
+    zstyle ':mime:*' x-browsers google-chrome
+    zstyle ':mime:*' tty-browsers w3m links
+    zstyle :mime:browser:new:google-chrome: command %b %u
+    zstyle :mime:browser:running:google-chrome: command %b %u
+    zstyle :mime:browser:new:w3m: command  %b %u
+    zstyle :mime:browser:running:w3m: command  %b %u
+    zstyle :mime: mailcap  $APPDIR/.mailcap ~/.mailcap /etc/mailcap
+    zstyle :mime: mime-types $APPDIR/.mime.types ~/.mime.types /etc/mime.types
+    autoload -Uz zsh-mime-setup pick-web-browser
+    zsh-mime-setup
 }
 
 iqnc_util_swap4(){
@@ -111,7 +125,7 @@ iqnc_view_switch(){
         ZUI[SEARCH_BUFFER_TAGS]\
         ZUI[SEARCH_BUFFER]
 
-    buffer=$ZUI[SEARCH_BUFFER]
+    typeset -g buffer=$ZUI[SEARCH_BUFFER]
     if ((in0==VIEW));then
         ZUI[CURRENT_IDX_PVIEW_BKP$QPATH]=$ZUI[CURRENT_IDX]
     elif ((in0==CQUE));then
@@ -303,10 +317,10 @@ cmd-page-up(){
     -zui_listin_compute_first_to_show_idx
 }
 # Views
-cmd-command-history-view(){iqnc_cmd_next 2;}
-cmd-contents-view(){iqnc_cmd_next 1;}
-cmd-main-view(){iqnc_cmd_next 0;}
-cmd-tags-view(){iqnc_cmd_next 3;}
+cmd-command-history-view(){iqnc_cmd_next $CQUE;}
+cmd-contents-view(){iqnc_cmd_next $VIEW;}
+cmd-main-view(){iqnc_cmd_next $CIN;}
+cmd-tags-view(){iqnc_cmd_next $TAGS;}
 cmd-set-view(){local -A Qe=(main 0 preview 1 hist 2 tags 3 "" 0);iqnc_cmd_next $Qe[$1];}
 cmd-show-stdin(){ZUI[HAVE_0_INPUT]=1;ZUI[IO_COUNT]=33;iqnc_hub;}
 # Commands
@@ -333,9 +347,9 @@ cmd-next-command(){iqnc_command_top 1;}
 cmd-prev-command(){iqnc_command_top 0;}
 
 # directories
-cmd-pwd-up(){((ZUI[GEN_B_IDX]!=0))&&{iqnc_cmd_next 0;return 0;}; local PPWD=$PWD;if builtin cd -q -- $PWD:h;then iqnc_push_pwd $PPWD; iqw "Current PWD is: " "" "" $PWD(D);iqnc_cmd_next 0; else iqw "Cannot change directory to: " "" "" ..;fi;}
+cmd-pwd-up(){((ZUI[GEN_B_IDX]!=$CIN))&&{iqnc_cmd_next $CIN;return 0;}; local PPWD=$PWD;if builtin cd -q -- $PWD:h;then iqnc_push_pwd $PPWD; iqw "Current PWD is: " "" "" $PWD(D);iqnc_cmd_next $CIN; else iqw "Cannot change directory to: " "" "" ..;fi;}
 cmd-cd(){local Q=${(M)1:#-*};[[ $1 == -* ]]&&shift;if builtin cd -q -- "$1";then [[ $Q != -q
-  ]]&&{iqw "PWD dir changed to: " "" "" $PWD; iqnc_cmd_next 0;};else iqw "Cannot change directory to: " "" "" $1;fi;}
+  ]]&&{iqw "PWD dir changed to: " "" "" $PWD; iqnc_cmd_next $CIN;};else iqw "Cannot change directory to: " "" "" $1;fi;}
 cmd-prev-pwd(){iqnc_pop_pwd; cmd-cd "$REPLY";}
 
 # cursor
@@ -497,7 +511,6 @@ if ((!$+Opts[--refresh])); then
         ZUI[cursor]=$#ZUI[QUERY_BUFFER]+1
     fi
     iqnc_set_prompt $ZUI[START_IN_QUERY]
-    ZUI[GEN_B_IDX]=0
 
     local -a qitems iq0items q0input q0input_proc
     integer Q0_SAVE_PIPE tmout
@@ -513,7 +526,7 @@ fi
 zui::bindkey F9 '{print \\n cursor:$ZUI[cursor], cmdno:$ZUI[CMD_NO], query:$ZUI[IN_QUERY], qbuf: $ZUI[QUERY_BUFFER], view:$ZUI[SEARCH_BUFFER_PREVIEW], gl:$ZUI[SEARCH_BUFFER_GLOBAL], sbuff:$ZUI[SEARCH_BUFFER], current:$ZUI[CURRENT_IDX], PVIEW_Q:$ZUI[CURRENT_IDX_PVIEW_BKP_$ZUI[QPATH]], PVIEW:$ZUI[CURRENT_IDX_PVIEW_BKP], TAG:$ZUI[CURRENT_IDX_TAGS_BKP], main:$ZUI[CURRENT_IDX_MAIN_BKP] sptr:$ZUI[status_pointer]|tee -a /tmp/reply;}'
 zui::bindkey F10 '{builtin source $NC_CON_DIR/iqnc --refresh||\
                     iqw -r "Reload finished with error: " $?;}'
-
+zui::bindkey F14 '{builtin zcurses end;sleep 3;}'
 unsetopt warncreateglobal
 builtin source -- $NCCFG
 setopt warncreateglobal
@@ -716,7 +729,7 @@ iqnc_fill_0(){
         local TXT=$reply[1] 
         separ
         #local -a q0items=("$qitems[@]")
-        qitems=($REPLY "s$TXT" $REPLY "$q0input_proc[@]")
+        qitems=($REPLY "$TXT" $REPLY "$q0input_proc[@]")
         #[[ -n ${qitems:|q0items} ]]
        -zui_glib_fly_array_refresh 1
     fi
@@ -803,6 +816,7 @@ iqnc_find_tags_index() {
 iqnc_fill_tags(){
     ZUI[COLORING_PATTERN]="((#s)[^[:space:]]##|·[^·]##·)"
     iqnc_find_tags_index || {iqw "No TAGS file in ../…"; return 1;}
+    qa_tag_data=(${(o)qa_tag_data})
     qa=(${qa_tag_data//(#b)([^$'\177']##)$'\177'([^$'\1']##)*/${(r:39:: :)match[2]} $match[1]})
     iqnc_search_prompt
     separ
@@ -827,7 +841,7 @@ iqnc_fill_help(){
     # Ensure cursor is visible
     if ((ZUI[CURRENT_IDX]<5&&!$#ZUI[SEARCH_BUFFER]&&!ZUI[UNIQ_MODE]));then
         ((__last_element>=5))&&\
-            { ZUI[CURRENT_IDX]=5;-zui_list_verify_vars 1;ZUI[redraw]=1;}
+            { ZUI[CURRENT_IDX]=5;-zui_list_verify_vars;ZUI[redraw]=1;}
     fi
 
     ZUI[VIEW_CHANGE]=$((ZUI[VIEW_CHANGE]+${#${TM:#$ZUI[text_mode]}}))
@@ -842,8 +856,7 @@ iqnc_fill_help(){
     ((ZUI[VIEW_CHANGE]))||return 0
     if [[ -n $ZUI[COMMAND] ]];then
         local CMD=$ZUI[COMMAND]
-        ZUI[GEN_B_IDX]=0
-        iqnc_hub
+        iqnc_cmd_next $CIN $ZUI[GEN_B_IDX]
     fi
     builtin unset 'ZUI[COMMAND]'
     iqnc_util_set_current_idx
@@ -860,8 +873,9 @@ if (($+Opts[--refresh])); then
 fi
 
 ## Start application ##
+iqnc_mime_setup
 -zui_glib_msg "" "@@@ " "Welcome to " "NC System " "console!" " @@@";
-integer EC
+integer QFLAG EC
 iqnc_hub 1 1 1
 ZUI[redraw]=1
 while (( 1 )); do
@@ -870,14 +884,31 @@ while (( 1 )); do
     ZUI[started]=1
     zui-event-loop a:qitems
     builtin print -rn -- $terminfo[rmcup]$termcap[te]
+    QFLAG=0
     # exit?
     [[ -z $REPLY ]]&&break
     local QFILE= REPLY_SAVE=$REPLY; integer QIDX=0
     [[ $ZUI[SEARCH_BUFFER] != $~NC[WRONGSTR] ]]&&
         {iqnc_create_histories; builtin print $ZUI[SEARCH_BUFFER]>>!$NCSHIST;}
 
+    if [[ $ZUI[GEN_B_IDX] = $TAGS ]];then
+        integer QI=0
+        [[ -n $ZUI[SEARCH_BUFFER] || $ZUI[UNIQ_MODE] -eq 1 ]]||QI=-4
+        [[ -n $ZUI[SEARCH_BUFFER] ]]&&\
+            repeat 1; do typeset +U -ga __slist=("$__qlist[@]");done
+        if [[ $ZUI[SEARCH_BUFFER] ]]&&-zui_sys_get_match_line QIDX; then
+            QI+=QIDX
+        else
+            QI+=ZUI[CURRENT_IDX]
+        fi
+        if [[ $qa_tag_data[QI] = (#b)[^$'\177']##$'\177'[^$'\1']##$'\1'\
+([^$'\2']##)$'\2'((*)) ]];then
+            QFILE=$match[3] QIDX=${match[1]%%,*} QFLAG=1
+        fi
+    fi
+
     # …from diff?
-    if [[ -z $ZUI[SEARCH_BUFFER] ]];then
+    if [[ $QFLAG -eq 0 && -z $ZUI[SEARCH_BUFFER] ]];then
         # …from preview?
         if ((ZUI[GEN_B_IDX]%VIEWS==VIEW));then
             QFILE=$ZUI[QPATH]
@@ -888,7 +919,7 @@ while (( 1 )); do
             QFILE=$REPLY_SAVE
         fi
     # search selection?
-    else
+    elif [[ $QFLAG -eq 0 ]];then
         # prepare the list var that's needed by -zui_sys_get_match_line
         repeat 1; do typeset +U -ga __slist=("$__qlist[@]");done
         if -zui_sys_get_match_line QIDX; then
@@ -950,14 +981,24 @@ while (( 1 )); do
                 "\$VISUAL (=$VISUAL) " then "" " \$EDITOR (=$EDITOR)"
         fi
         # Run the editor in $REPLY, first cd-ing into project's directory
-        [[ -n $REPLY ]]&&\
+        if [[ -n $REPLY && $(file -- $QFILE) = (#i)*text* ]];then
             int/nc::run-command -C $PWD \
                 "$REPLY" ${${QIDX:#0##}:++$QIDX} -- $QFILE
+        else
+                local QTMP=${zsh_mime_handlers[$QFILE:e]// (\"|)%?(\"|)/}
+                [[ -n $saliases[$QFILE:e] && -n $QTMP ]]&&\
+                    iqw "MIME type " $QFILE:e " program run: " "\`$QTMP\`" …||\
+                    iqw "No MIME program for extension: " "" ".$QFILE:e"\
+                            " you can set it via " "~/.mailcap" " and in" \
+                            " ~/.mime-types"
+                eval ./$QFILE
+        fi
         EC+=$? QFLAG=1
     fi
     if [[ -d **/$QFILE(#qNY1/) ]];then
         [[ -d $QFILE ]]||{QFILE=(**/$QFILE(#qNY1/));QFILE=$QFILE[1];}
         iqw "Changing directory to: " ${QFILE##$PWD/}
+        cmd-push-screen
         iqnc_push_pwd
         if builtin cd -q -- $QFILE;then
             iqnc_get_command
@@ -968,6 +1009,7 @@ while (( 1 )); do
         fi
         QFLAG=1
     fi
+
     if ((!QFLAG));then
         iqw "" "" "" "NO SUCH FILE OR DIRECTORY: " $QFILE
     else

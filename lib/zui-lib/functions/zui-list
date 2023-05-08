@@ -103,8 +103,8 @@ trap "REPLY=-2; reply=(); return 1" TERM INT QUIT
 # List was processed, check if variables aren't off range
 -zui_list_verify_vars(){
     integer Q
-    [[ $1 -ne 1 && $ZUI[CURRENT_IDX] -gt "$__last_element" ]] && ZUI[CURRENT_IDX]="$__last_element"
-    [[ $ZUI[CURRENT_IDX] -eq 0 && ("$__last_element" -ne 0 || $1 -ne 0) ]] && ZUI[CURRENT_IDX]=1
+    [[ $ZUI[IO_COUNT] -eq 0 && $ZUI[CURRENT_IDX] -gt "$__last_element" ]] && ZUI[CURRENT_IDX]="$__last_element"
+    [[ $ZUI[CURRENT_IDX] -eq 0 && ("$__last_element" -gt 0 && $ZUI[IO_COUNT] -eq 0) ]] && ZUI[CURRENT_IDX]=5
 
     # Verify that element is just visible, if not then compute exact page
     if [[ $ZUI[CURRENT_IDX] -lt $ZUI[FROM_WHAT_IDX_LIST_IS_SHOWN] ||
@@ -254,6 +254,7 @@ trap "REPLY=-2; reply=(); return 1" TERM INT QUIT
         buf="${buf//(#b)$'\034'[^$'\034']#$'\034'[^$'\034']#$'\034'[^$'\034']#$'\034'[^$'\034']#$'\034'([^$'\034']#)$'\034'([^$'\034']#)$'\034'([^$'\02']#)$'\02'/${(mr:${(P)${(Q)match[1]}}:: :)${(As:;:)${(P)${(Q)match[3]}}}[${(P)${(Q)match[2]}}]}}"
 
         -zui_list_translate_color_marks "$buf"
+        current_page_idx=$((current_page_idx>0?current_page_idx:1))
         __disp_list2[current_page_idx]="${REPLY//$'\n'/n}"  # replace newlines with "n" (3/3)
 }
 
