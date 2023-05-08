@@ -921,7 +921,7 @@ function -zui_glib_serialize() {
     typeset -gx $VAR=$OUT       # 2. Exported var
 
     # 3. File in ~/.cache/zui-zsh (by default, customizable):
-    {builtin print -r -- $OUT>!$PERFLE;} &>>!$ZUIO
+    {builtin print -r -- $OUT>!$PERFLE;} 2>>!$ZUIO
 
     # Testable
     [[ -n $ZUI[$FIELD] && -n ${(P)VAR} && -s $PERFLE ]]

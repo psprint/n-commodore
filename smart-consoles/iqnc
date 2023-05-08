@@ -143,13 +143,13 @@ iqnc_exec_command_cb(){
     local CMD=${(Q@)${(@)${(@zA)ZUI[QUERY_BUFFER]}[1]}}
     ZUI[COMMAND]=$ZUI[QUERY_BUFFER]
     {
-        if [[ $ZUI[COMMAND] != $~NC[WRONGSTR] ]];then
+        if [[ $ZUI[COMMAND] != [[:space:]]# ]];then
             builtin print -r -- $ZUI[COMMAND]>>!$NCCHIST
         else
             THROW "No command entered ($ZUI[COMMAND]), " "" "" "cannot execute"
         fi
         # No such command?
-        builtin type $CMD&>/dev/null||\
+        builtin type ${CMD#\!}&>/dev/null||\
             THROW "No such command" ": " "" $CMD
     } always {
         if CATCH \*;then
@@ -267,8 +267,11 @@ iqnc_db(){
 
 iqnc_get_cmd_out(){
     local TPE=$1 cmd=("$@[2,-1]")
-    if [[ $TPE == whole ]];then
+    if [[ $TPE == whole || -n ${(M)cmd[1,-2]:#builtin} || $cmd[1] == \!* ]];then
         ZUI[TMP]=$(mktemp)
+        [[ $cmd[1] == \!* ]]&&iqw "Notice: " "in the same-shell process run ("\
+                                    "leading ! detected" ")"
+        cmd[1]=${cmd[1]#\!}
         eval "$cmd[@]"&>!$ZUI[TMP]
         ZUI[RET]=$?
         local CMD_PT="(${(~j.|.)${=NC_LS_LIKE_COMMANDS}})"
@@ -347,10 +350,9 @@ cmd-next-command(){iqnc_command_top 1;}
 cmd-prev-command(){iqnc_command_top 0;}
 
 # directories
-cmd-pwd-up(){((ZUI[GEN_B_IDX]!=$CIN))&&{iqnc_cmd_next $CIN;return 0;}; local PPWD=$PWD;if builtin cd -q -- $PWD:h;then iqnc_push_pwd $PPWD; iqw "Current PWD is: " "" "" $PWD(D);iqnc_cmd_next $CIN; else iqw "Cannot change directory to: " "" "" ..;fi;}
-cmd-cd(){local Q=${(M)1:#-*};[[ $1 == -* ]]&&shift;if builtin cd -q -- "$1";then [[ $Q != -q
-  ]]&&{iqw "PWD dir changed to: " "" "" $PWD; iqnc_cmd_next $CIN;};else iqw "Cannot change directory to: " "" "" $1;fi;}
-cmd-prev-pwd(){iqnc_pop_pwd; cmd-cd "$REPLY";}
+cmd-pwd-up(){((ZUI[GEN_B_IDX]!=$CIN))&&{iqnc_cmd_next $CIN;return 0;}; local PPWD=$PWD;if builtin cd -q -- $PWD:h;then iqnc_push_pwd $PPWD; iqw "Current CWD is: " "" "" $PWD(D);iqnc_cmd_next $CIN; else iqw "Cannot change CWD to: " "" "" ..;fi;}
+cmd-cd(){local Q=${(M)1:#-*};[[ $1 == -* ]]&&shift;if builtin cd -q -- "$1";then [[ $Q != -q ]]&&{iqw "CWD changed to: " "" "" $PWD; iqnc_cmd_next $CIN;};else iqw "Cannot change CWD to: " "" "" $1;fi;}
+cmd-prev-pwd(){iqnc_pop_pwd&&cmd-cd "$REPLY";}
 
 # cursor
 cmd-cursor-left(){ZUI[cursor]=$((ZUI[cursor]-1));}
@@ -456,24 +458,24 @@ cmd-pwd-to-prompt(){
 cmd-command-mode-toggle() {
     if [[ $ZUI[cmd-mode] == pipe ]];then
         ZUI[cmd-mode]=whole
-        iqw "Command capture mode: " "" "" whole
-    elif [[ $ZUI[cmd-mode] == (whole|) ]];then
+        iqw "Command capture mode: " "" "" whole ", the same-shell process"
+    elif [[ $ZUI[cmd-mode] != pipe ]];then
         ZUI[cmd-mode]=pipe
-        iqw "Command capture mode: " "" "" pipe
+        iqw "Command capture mode: " "" "" pipe ", separate subshell process"
     fi
 }
 
 cmd-help(){iqnc_fill_help;}
 
 if ((!$+Opts[--refresh])); then
-    ok/qnstr $PWD&&local APP=$REPLY
+    ok/qnstr $PWD:A&&local APP=$REPLY||local APP=unknown
     readonly CIN=0 VIEW=1 CQUE=2 TAGS=3 VIEWS=4
     readonly PR_NONE=0 PR_SEARCH=1 PR_CMD_EXEC=3
     : ${ZUI[cmd-mode]:=pipe}
     ZUI[SRC_HIGHLIGHT]=1
     -zui_glib_cleanup deserialize:"iqnc_$APP"
     -zui_glib_init app:"iqnc_$APP" app_name:"NC Console"
-    emulate -L zsh -o extendedglob -o typesetsilent -o warncreateglobal -o combiningchars -o rcquotes
+    emulate -L zsh -o extendedglob -o typesetsilent -o warncreateglobal -o combiningchars -o rcquotes -o noshortloops -o nopromptsubst
     -zui_glib_init2 # after emulate
     ZUI[GEN_B_IDX]=0 ZUI[PREVIEW_FILE_TYPE]=
     typeset -g ZUILIST_TRACK_SEGMENTS=1
@@ -492,11 +494,11 @@ if ((!$+Opts[--refresh])); then
 
     -zui_glib_store_default_app_config b:instant_search 1
     -zui_glib_store_default_app_config s:select_mode "quit"   # Quit event loop on text-selection
-    -zui_glib_store_default_app_config b:text_bar "[F1 tree][F2 preview][F3 history][F4 Ctags][F7 Synh][F8 remove scrn]"
+    -zui_glib_store_default_app_config b:text_bar "[F1 tree][F2 preview][F3 history][F4 Ctags][F7 Synh][F8 remove scrn][Shift-Up CD ..][Shift-Down Prev. Dir]"
     -zui_glib_store_default_app_config b:status_size 6
     -zui_glib_store_default_app_config b:status_pointer 1
     -zui_glib_store_default_app_config b:text_select 1        # Allow selection of text
-    -zui_glib_store_default_app_config s:timeout 25
+    -zui_glib_store_default_app_config s:timeout 5
     -zui_glib_store_default_app_config s:mark "white MAGENTA reverse"
     -zui_glib_store_default_app_config s:text_mode off
     -zui_glib_store_default_app_config b:top_anchors 0
@@ -536,14 +538,21 @@ iqnc_get_command(){
 }
 
 iqnc_push_pwd(){
-    ZUI[PWD_HISTORY]+=" ${(q)${1:-$PWD}}"
+    local -a h=(${(Q)${(z@)ZUI[PWD_HISTORY]}})
+    [[ ${1:-$PWD} != $h[-1] ]]&&ZUI[PWD_HISTORY]+=" ${(q)${1:-$PWD}}"
 }
 
 iqnc_pop_pwd(){
-    local -a h=(${(Q)${(z@)ZUI[PWD_HISTORY]}})
-    REPLY=$h[-1]
-    ZUI[PWD_HISTORY]=${(j[ ])${(q)h[1,-2]}}
-    [[ $REPLY == $~NC[WRONGSTR] ]]&&REPLY=$HOME
+    local -a qh=(${(Q)${(z@)ZUI[PWD_HISTORY]}})
+    qh=($qh)
+    REPLY=$PWD;
+    [[ $qh == [[:space:]]# ]]&&{iqw "Error: " "NO saved CWD locations";return 1;}
+    local DIR=$qh[-1]
+    ZUI[PWD_HISTORY]=${(j[ ])${(q)qh[1,-2]}}
+    [[ $DIR == [[:space:]]# ]]&&{iqw "Incorrect directory saved in buffer:" \
+                                        " "${(qqq)$DIR};return 1;}
+    REPLY=$DIR
+    return 0
 }
 
 iqnc_hub(){
@@ -627,7 +636,7 @@ iqnc_fill_preview(){
 }
 
 iqnc_fill_cmd(){
-    local TXT=() cmd=() CMD_PT
+    local TXT=() cmd=() CMD_PT QEX
     integer QI
     ZUI[text_mode]=all
     ZUI[COLORING_PATTERN]="·[^·]##·"
@@ -644,15 +653,16 @@ iqnc_fill_cmd(){
         [[ -e $ZUI[QPATH] ]]||ZUI[COMMAND]=${ZUI[COMMAND]//\%s/}
         ZUI[COMMAND_PREV]=$ZUI[COMMAND]
         cmd=("${(z@)ZUI[COMMAND]}")
+        QEX=${(M)cmd[1]#\!}
+        cmd[1]=${cmd[1]#\!}
         ZUI[COMMAND]=
         CMD_PT="(${(~j.|.)${(@)=NC_LS_LIKE_COMMANDS}})"
-        printf %s\\n -- $CMD_PT ${=NC_LS_LIKE_COMMANDS} ${(q)NC_LS_LIKE_COMMANDS}>>/tmp/reply
         # Include ls-options
         if [[ -n $NC_DEFAULT_LS_LIKE_OPTS && ($cmd[1] == $~CMD_PT ||\
             $cmd[1] == (command|noglob|sudo) && $cmd[2] == $~CMD_PT) ]]
         then
             QI=2;[[ $cmd[2] == $~CMD_PT ]]&&QI=3
-            cmd[QI,0]=($=NC_DEFAULT_LS_LIKE_OPTS)
+            cmd[QI,0]=(${(s: :)NC_DEFAULT_LS_LIKE_OPTS})
             ZUI[ls-command]=1
         else
             ZUI[ls-command]=0
@@ -666,8 +676,8 @@ iqnc_fill_cmd(){
             return
         fi
 
-        iqnc_get_cmd_out $ZUI[cmd-mode] "$cmd[@]"
-        if [[ $ZUI[cmd-mode] == whole ]]; then
+        iqnc_get_cmd_out $ZUI[cmd-mode] $QEX$cmd[1] "${(@)cmd[2,-1]}"
+        if [[ $ZUI[cmd-mode] == whole || -n $QEX ]]; then
             iq0items=("$reply[@]")
         else
             iq0items=() q0input=()
@@ -689,7 +699,6 @@ iqnc_fill_cmd(){
     [[ -n $iq0items[1,3] ]]&&\
         {ok/qcolreduce -- "$iq0items[@]";iq0items=("$reply[@]");}
 
-    printf %s\\n $cmd >>/tmp/reply
     typeset -ga -U ZUILIST_NONSELECTABLE_ELEMENTS=(4 3 2 1)
     separ
     qitems=("$REPLY" "$TXT" "$REPLY" "$iq0items[@]")
@@ -699,9 +708,9 @@ iqnc_fill_cmd(){
 iqnc_fill_0(){
     integer QFLAG
     ((Q0_SAVE_PIPE))&&\
-        int/nc::read-all -u$Q0_SAVE_PIPE -t0 -x30
+        int/nc::read-all -u$Q0_SAVE_PIPE -t0 -x50
     ((!Q0_SAVE_PIPE))&&\
-        int/nc::read-all -p -t0 -x30
+        int/nc::read-all -p -t0 -x50
 
     QFLAG=$#reply
     ZUI[read-all-failed]=$((!QFLAG))
@@ -874,8 +883,10 @@ fi
 
 ## Start application ##
 iqnc_mime_setup
--zui_glib_msg "" "@@@ " "Welcome to " "NC System " "console!" " @@@";
+-zui_glib_msg "" "@@@ " "Welcome to " "NC System " "console" " v0.8" " @@@";
+-zui_glib_msg "" "@@@ " "Press " Shift-F1 " to show the " "HELP screen" " @@@";
 integer QFLAG EC
+iqnc_push_pwd
 iqnc_hub 1 1 1
 ZUI[redraw]=1
 while (( 1 )); do
