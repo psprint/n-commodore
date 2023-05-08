@@ -290,8 +290,8 @@ iqnc_get_cmd_out(){
         [[ $cmd[1] == noglob ]]&&{local -a stdbuf1=(noglob $stdbuf1);cmd[1]=();}
         [[ $cmd[1] == builtin ]]&&local -a stdbuf1=(${(M)stdbuf1:#noglob})
         [[ $cmd[1] == command ]]&&cmd[1]=()
-        [[ -n $aliases[$cmd[1]] ]]&&cmd[1]=(${=aliases[$cmd[1]]})
-        coproc {$stdbuf1 "$cmd[@]" 2>&1;}
+        [[ -n $aliases[$cmd[1]] ]]&&cmd[1]=(${(s: :)aliases[$cmd[1]]})
+        coproc {$stdbuf1 "$cmd[@]" 2>&1 </dev/tty;}
         ZUI[RET]=$?
     fi
 

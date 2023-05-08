@@ -44,7 +44,6 @@ trap "REPLY=-2; reply=(); return 1" TERM INT QUIT
 # $1 is window name, $2 is the expected cursor state (0 invisible, 1 visible)
 # Prefer module terminfo, then tput
 -zui_list_cursor_visibility(){
-    print -r -- -zui_list_cursor_visibility "$@">>/tmp/reply
     # If $1 = plain, then just output the
     # codes without any state management
     if [[ "$1" != "plain" ]]; then
