@@ -1,7 +1,7 @@
 #!/usr/bin/env zsh
 # Copyright (c) 2023 Sebastian Gniazdowski
 #
-# ok/nstr – zs…quote…braces
+# ok/qnstr – …normalize…str
 #
 
 ok/qnstr() {
@@ -19,8 +19,8 @@ ok/qnstr() {
     EC+=$?
     int/nc::reset
     local CH=${Opts[--ch]:-'[^[:IDENT:]]'} QT=${Opts[--to]:-_}
-
-    REPLY=${*//$~CH/$QT}
+    local -A map=('&' × '!' · '.' .)
+    REPLY=${*//(#m)$~CH/${map[$MATCH]:-$QT}}
     (($+Opts[-o]))&&print -r -- $REPLY
 
     [[ $REPLY != _# ]]
