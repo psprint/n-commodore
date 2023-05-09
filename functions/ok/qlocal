@@ -21,7 +21,7 @@ ok/qlocal() {
     integer QU
     ((!$#||$+Opts[-r]))&&TEXT+="local -a reply=();local REPLY=;"
     ((!$#||$+Opts[-m]))&&TEXT+="local -a match=() mbegin=() mend=();"\
-"local MATCH;integer MBEGIN MEND;"
+"local MATCH=;integer MBEGIN=0 MEND=0;"
     (($+Opts[-a]))&&TEXT+="local -a match=() mbegin=() mend=() reply=();"
 
     builtin trap "$TEXT" EXIT
