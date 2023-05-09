@@ -210,7 +210,7 @@ iqnc_hist(){
         [[ $ITEM == $~NC[WRONGSTR] && $ZUI[${TPE}_NO] -ne 1 ]]&&\
             {iqw "Unknown problem with history occurred…";return 1;}
     fi
-    ZUI[QUERY_BUFFER]=$ITEM buffer=$ITEM
+    ZUI[QUERY_BUFFER]=$ITEM buffer=$ITEM ZUI[VERIFY_COUNT]=10
 }
 
 iqnc_hist_top(){
@@ -855,6 +855,8 @@ iqnc_fill_help(){
 
     ((--ZUI[REDRAW_COUNT]==0))&&ZUI[redraw]=1
     ((ZUI[REDRAW_COUNT]<0))&&ZUI[REDRAW_COUNT]=0
+    ((--ZUI[VERIFY_COUNT]==0))&&-zui_list_verify_vars
+    ((ZUI[VERIFY_COUNT]<0))&&ZUI[VERIFY_COUNT]=0
 
     ZUI[VIEW_CHANGE]=$((ZUI[VIEW_CHANGE]+${#${TM:#$ZUI[text_mode]}}))
     ZUI[VIEW_CHANGE]=$((ZUI[VIEW_CHANGE]+${${ZUI[COMMAND]:+1}:-0}))

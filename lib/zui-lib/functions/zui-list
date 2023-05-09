@@ -94,7 +94,7 @@ trap "REPLY=-2; reply=(); return 1" TERM INT QUIT
         __current_difference=0
         local idx
         for idx in "${(n)ZUILIST_NONSELECTABLE_ELEMENTS[@]}"; do
-            [[ "$idx" -le $ZUI[CURRENT_IDX] ]] && __current_difference+=1 || break
+            [[ "$idx" -le $ZUI[CURRENT_IDX] ]]&&__current_difference+=1 || break
         done
     fi
 }
@@ -102,9 +102,20 @@ trap "REPLY=-2; reply=(); return 1" TERM INT QUIT
 # List was processed, check if variables aren't off range
 -zui_list_verify_vars(){
     integer Q
-    [[ $ZUI[IO_COUNT] -eq 0 && $ZUI[CURRENT_IDX] -gt "$__last_element" ]] && ZUI[CURRENT_IDX]="$__last_element"
-    [[ $ZUI[CURRENT_IDX] -eq 0 && ("$__last_element" -gt 0 && $ZUI[IO_COUNT] -eq 0) ]] && ZUI[CURRENT_IDX]=5
-
+    __last_element=$#__list
+    [[ $ZUI[CURRENT_IDX] -gt "$__last_element" ]]&&\
+      ZUI[BFIX_CURRENT_IDX]=$ZUI[CURRENT_IDX] ZUI[CURRENT_IDX]="$__last_element"\
+         ZUI[1_CURRENT_IDX]="$__last_element"
+   [[ 0 -ge $ZUI[CURRENT_IDX] && ("$__last_element" -gt 0) ]]&&\
+        ZUI[CURRENT_IDX]=$((__last_element>=5?:__last_element))
+    [[ $ZUI[IO_COUNT] -eq 0 && $ZUI[1_CURRENT_IDX] -eq $ZUI[CURRENT_IDX] &&\
+        $ZUI[BFIX_CURRENT_IDX] -gt 0 &&\
+        $ZUI[BFIX_CURRENT_IDX] -gt $ZUI[CURRENT_IDX] ]]&&\
+        {[[ $__last_element -ge $ZUI[BFIX_CURRENT_IDX] ]]&&\
+            ZUI[CURRENT_IDX]=$ZUI[BFIX_CURRENT_IDX] ZUI[BFIX_CURRENT_IDX]=0 \
+                ZUI[1_CURRENT_IDX]=0||\
+            ZUI[CURRENT_IDX]=$__last_element ZUI[BFIX_CURRENT_IDX]=0 \
+                ZUI[1_CURRENT_IDX]=0;}
     # Verify that element is just visible, if not then compute exact page
     if [[ $ZUI[CURRENT_IDX] -lt $ZUI[FROM_WHAT_IDX_LIST_IS_SHOWN] ||
         $ZUI[CURRENT_IDX] -gt "$(( ZUI[FROM_WHAT_IDX_LIST_IS_SHOWN] + __page_height - 1 ))" ]]
