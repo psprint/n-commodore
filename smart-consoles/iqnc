@@ -49,8 +49,8 @@ iqnc_util_swap4(){
     shift 0+2
     local -a vars=("$@")
 
-    : ${(P)vars[Q0+1]::=${(P)vars[4]}}
-    : ${(P)vars[4]::=${(P)vars[Q+1]}}
+    : ${(P)vars[Q0+1]::=${(P)vars[5]}}
+    : ${(P)vars[5]::=${(P)vars[Q+1]}}
 }
 
 iqnc_util_set_current_idx(){
