@@ -29,16 +29,21 @@ trap "REPLY=-2; reply=(); return 1" TERM INT QUIT
 -zui_list_status_msg(){
     integer indent=2 line=$ZUI[status_border]
 
-    local color=${(M)1:#(magenta|yellow|blue|cyan|white|green)}
-    [[ -n $color ]]&&shift||color=magenta
+    local final_msg=$@[-1]
+    shift -p 1
+    ZUI[stat_len_1]=0
     zcurses move "$__wname_status" $line $indent
     zcurses clear "$__wname_status" eol
-    zcurses attr "$__wname_status" +bold "$color/${ZUI[status_colorpair]#*/}"
-    zcurses string "$__wname_status" "$1"
+    for color msg;do
+        local color=${(M)color:#(magenta|yellow|blue|cyan|white|green)}
+        [[ -z $color ]]&&color=magenta
+        zcurses attr "$__wname_status" +bold "$color/${ZUI[status_colorpair]#*/}"
+        zcurses string "$__wname_status" "$msg"
+        ((ZUI[stat_len_1]+=${#msg}))
+    done
     zcurses attr "$__wname_status" "$wrk_stbold" $ZUI[status_colorpair]
-    zcurses string "$__wname_status" "$2"
-    ((ZUI[stat_len_1]=${#1}))
-    ((ZUI[stat_len_3]=${#2}))
+    zcurses string "$__wname_status" "$final_msg"
+    ((ZUI[stat_len_3]=${#final_msg}))
 }
 
 # $1 is window name, $2 is the expected cursor state (0 invisible, 1 visible)
@@ -781,9 +786,11 @@ while (( 1 )); do
                     $ZUI[USER_CURRENT_IDX] $ZUI[USER_LAST_ELEMENT]
 
         if ((ZUI[IN_QUERY]==3));then
-            -zui_list_status_msg green "$ZUI[QUERY_PROMPT]" $ZUI[QUERY_BUFFER]
+            local color=magenta
+            ((ZUI[QUERY_PROMPT_RET]))&&color=yellow
+            -zui_list_status_msg "$color" "·$ZUI[QUERY_PROMPT_RET]· " green "$ZUI[QUERY_PROMPT]" "$ZUI[QUERY_BUFFER]"
         elif ((ZUI[IN_QUERY]==1)); then
-            -zui_list_status_msg cyan "$ZUI[QUERY_PROMPT]" ${ZUI[SEARCH_BUFFER]// /+}
+            -zui_list_status_msg cyan "$ZUI[QUERY_PROMPT]" "${ZUI[SEARCH_BUFFER]// /+}"
         fi
 
         [[ $ZUI[status_border] = 1 ]] && {

@@ -42,7 +42,7 @@ ok/qcolreduce() {
         reply[1]=$OUT$reply[1]
     else
         # join the argument input like if it has been read from stdin
-        OUT=${(pj:\n:)@}
+        OUT=${(F)@}
     fi
 
     #
@@ -94,7 +94,7 @@ ok/qcolreduce() {
     # Asked to output to stdout?
     (($+Opts[-o]))&&print -r -- $REPLY
 
-    [[ $REPLY != $~NC[WRONGSTR] ]]
+    [[ $REPLY != [[:space:]$'\1'-$'\x1b']# ]]
     EC+=$?
     reply=("${(@f)REPLY}")
     return EC
