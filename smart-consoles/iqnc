@@ -853,6 +853,9 @@ iqnc_fill_help(){
             { ZUI[CURRENT_IDX]=5;-zui_list_verify_vars;ZUI[redraw]=1;}
     fi
 
+    ((--ZUI[REDRAW_COUNT]==0))&&ZUI[redraw]=1
+    ((ZUI[REDRAW_COUNT]<0))&&ZUI[REDRAW_COUNT]=0
+
     ZUI[VIEW_CHANGE]=$((ZUI[VIEW_CHANGE]+${#${TM:#$ZUI[text_mode]}}))
     ZUI[VIEW_CHANGE]=$((ZUI[VIEW_CHANGE]+${${ZUI[COMMAND]:+1}:-0}))
     typeset -ga -U ZUILIST_NONSELECTABLE_ELEMENTS=(4 3 2 1)
@@ -995,6 +998,7 @@ while (( 1 )); do
         if [[ -n $REPLY && $(file -- $QFILE) = (#i)*text* ]];then
             int/nc::run-command -C $PWD \
                 "$REPLY" ${${QIDX:#0##}:++$QIDX} -- $QFILE
+            EC+=$? QFLAG=1
         else
                 local QTMP=${zsh_mime_handlers[$QFILE:e]// (\"|)%?(\"|)/}
                 [[ -n $saliases[$QFILE:e] && -n $QTMP ]]&&\
@@ -1003,8 +1007,8 @@ while (( 1 )); do
                             " you can set it via " "~/.mailcap" " and in" \
                             " ~/.mime-types"
                 eval ./$QFILE
+                EC+=$? QFLAG=3
         fi
-        EC+=$? QFLAG=1
     fi
     if [[ -d **/$QFILE(#qNY1/) ]];then
         [[ -d $QFILE ]]||{QFILE=(**/$QFILE(#qNY1/));QFILE=$QFILE[1];}
@@ -1024,6 +1028,8 @@ while (( 1 )); do
     if ((!QFLAG));then
         iqw "" "" "" "NO SUCH FILE OR DIRECTORY: " $QFILE
     else
+        ZUI[redraw]=1
+        ZUI[REDRAW_COUNT]=$((QFLAG/2*70))
         builtin zcurses clear main redraw
         builtin zcurses clear status redraw
     fi
