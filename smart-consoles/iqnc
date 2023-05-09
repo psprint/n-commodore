@@ -56,14 +56,11 @@ iqnc_util_swap4(){
 iqnc_util_set_current_idx(){
     integer IN=ZUI[PREV_CURRENT_IDX] prev_idx=ZUI[PREV_CURRENT_IDX]
     local QPATH=${ZUI[QPATH]:+_$ZUI[QPATH]}
-        print «$prev_idx>>/tmp/reply
-        print $ZUI[CURRENT_IDX]>>/tmp/reply
     # Tree
     if ((ZUI[GEN_B_IDX]==CIN));then
        [[ $prev_idx == ($ZUI[CURRENT_IDX_PVIEW_BKP$QPATH]|\
 $ZUI[CURRENT_IDX_HIST_BKP]|$ZUI[CURRENT_IDX_TAGS_BKP]) ]]&&\
             prev_idx=${ZUI[CURRENT_IDX_MAIN_BKP]:-5}
-        print °$prev_idx>>/tmp/reply
     # Preview
     elif ((ZUI[GEN_B_IDX]==VIEW));then
         [[ $prev_idx == ($ZUI[CURRENT_IDX_MAIN_BKP]|$ZUI[CURRENT_IDX_HIST_BKP]|\
@@ -85,7 +82,6 @@ $ZUI[CURRENT_IDX_MAIN_BKP]|$ZUI[CURRENT_IDX_TAGS_BKP]) ]]&&\
         ZUI[CURRENT_IDX]=${${(On)ZUILIST_NONSELECTABLE_ELEMENTS}[1]}+1
     fi
     ZUI[PREV_CURRENT_IDX]=$prev_idx
-    print ̣.°.̣$prev_idx/$ZUI[CURRENT_IDX]>>/tmp/reply
 }
 
 iqnc_cmd_synh_switch(){
@@ -210,7 +206,8 @@ iqnc_hist(){
         [[ $ITEM == $~NC[WRONGSTR] && $ZUI[${TPE}_NO] -ne 1 ]]&&\
             {iqw "Unknown problem with history occurred…";return 1;}
     fi
-    ZUI[QUERY_BUFFER]=$ITEM buffer=$ITEM ZUI[VERIFY_COUNT]=10
+    typeset -g buffer=$ITEM
+    ZUI[VERIFY_COUNT]=10
 }
 
 iqnc_hist_top(){
@@ -499,7 +496,7 @@ if ((!$+Opts[--refresh])); then
     -zui_glib_store_default_app_config b:status_pointer 1
     -zui_glib_store_default_app_config b:text_select 1        # Allow selection of text
     -zui_glib_store_default_app_config s:timeout 5
-    -zui_glib_store_default_app_config s:mark "white MAGENTA reverse"
+    -zui_glib_store_default_app_config s:mark "white BLUE reverse bold"
     -zui_glib_store_default_app_config s:text_mode off
     -zui_glib_store_default_app_config b:top_anchors 0
     ZUI[UNIQ_MODE]=0
@@ -848,9 +845,14 @@ iqnc_fill_help(){
     local TM=$ZUI[text_mode]
     ((ZUI[GEN_B_IDX]==0))&&ZUI[text_mode]=all||ZUI[text_mode]=off
     # Ensure cursor is visible
-    if ((ZUI[CURRENT_IDX]<5&&!$#ZUI[SEARCH_BUFFER]&&!ZUI[UNIQ_MODE]));then
-        ((__last_element>=5))&&\
-            { ZUI[CURRENT_IDX]=5;-zui_list_verify_vars;ZUI[redraw]=1;}
+    if ((ZUI[CURRENT_IDX]<5));then
+        if ((!$#ZUI[SEARCH_BUFFER]&&!ZUI[UNIQ_MODE]));then
+            ((__last_element>=5))&&\
+                { ZUI[CURRENT_IDX]=5;-zui_list_verify_vars;ZUI[redraw]=1;}
+        else
+            ((ZUI[CURRENT_IDX]<1))&&\
+                {ZUI[CURRENT_IDX]=1;-zui_list_verify_vars;ZUI[redraw]=1;}
+        fi
     fi
 
     ((--ZUI[REDRAW_COUNT]==0))&&ZUI[redraw]=1
