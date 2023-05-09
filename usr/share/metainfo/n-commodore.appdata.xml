@@ -63,6 +63,11 @@ Recommended is to visit help screen (press: <code>Shift-F1</code> to open it).
   </provides>
 
   <releases>
+    <release version="0.89" date="2023-05-09" type="stable">
+      <description>
+        <p>Bugfixes. New feature: prefix the command with !! to print it's output to status window, instead of the  panel. Useful for commands that produce 1-3 lines of text.</p>
+      </description>
+    </release>
     <release version="0.8" date="2023-05-04" type="stable">
       <description>
         <p>Many bugfixes, Ctags browser works.</p>
