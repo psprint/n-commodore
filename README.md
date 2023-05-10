@@ -46,6 +46,7 @@ You basically have new screen (a greppable panel) for each new command, which is
 [![asciicast](https://asciinema.org/a/578349.svg)](https://asciinema.org/a/578349)
 
 # Installation
+**NEW**: AppImages are [available](https://github.com/psprint/n-commodore/releases).
 
 Clone the repo and symlink `$PWD/bin/n-c` (full path) to a directory in your `$PATH`, like `/usr/local/bin`, After this, run `n-c` for the file manager.
 
