@@ -104,7 +104,8 @@ setopt typesetsilent extendedglob
             if [[ "$attr" != -1 ]]; then
                 # Bold, blink, reverse, underline
                 [[ "$attr" = "21" ]] && zcurses attr "$win" -bold || {
-                    [[ "$attr" = 5 || "$attr" = 6 ]] && zcurses attr "$win" +blink || {
+                    #[[ "$attr" = 5 || "$attr" = 6 ]] && zcurses attr "$win" +blink || {
+                    false||{
                         [[ "$attr" = "25" ]] && zcurses attr "$win" -blink || {
                             [[ "$attr" = 7 ]] && zcurses attr "$win" +reverse || {
                                 [[ "$attr" = "27" ]] && zcurses attr "$win" -reverse || {
