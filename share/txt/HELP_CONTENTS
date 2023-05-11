@@ -2,7 +2,7 @@
 · F1 – tree/command-output view
 · F2 – syntax highlighted file contents preview
 · F3/Ctrl-E – command history view
-· F4 – Ctags index (in Emacs format – TAGS file) browser
+· Ctrl-W – Ctags index (in Emacs format – TAGS file) browser
 · Ctrl-/ – toggle command/execution and search/grep prompts
 · F7 – toggle syntax highlighting
 · Ctrl-T – copy current item to prompt

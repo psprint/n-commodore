@@ -33,7 +33,7 @@ NC_LS_LIKE_COMMANDS="ls fd exa"
 zui::bindkey F1 cmd-main-view
 zui::bindkey F2 cmd-contents-view
 zui::bindkey F3 cmd-command-history-view
-zui::bindkey F4 cmd-tags-view
+zui::bindkey $'\C-w' cmd-tags-view
 zui::bindkey $'\C-_' cmd-toggle-prompt
 
 # Strictly preview view
@@ -46,13 +46,13 @@ zui::bindkey F16 cmd-open-tig
 zui::bindkey F7 cmd-synh-switch
 zui::bindkey F304 cmd-prev-hist
 zui::bindkey F263 cmd-next-hist
-zui::bindkey $'\C-w' cmd-show-stdin
+zui::bindkey $'\C-D' cmd-show-stdin
 zui::bindkey $'\C-y' cmd-command-mode-toggle
 zui::bindkey F305 cmd-pwd-up
 zui::bindkey SR cmd-pwd-up
 zui::bindkey F264 cmd-prev-pwd
 zui::bindkey SF cmd-prev-pwd
-zui::bindkey $'\C-d' cmd-page-down
+zui::bindkey $'\C-v' cmd-page-down
 zui::bindkey $'\C-u' cmd-page-up
 zui::bindkey SRIGHT cmd-cursor-right
 zui::bindkey SLEFT cmd-cursor-left
