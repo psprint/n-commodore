@@ -1,7 +1,12 @@
 #!/usr/bin/env zsh
 # Draws list-box drop-down list
 
-local __page_height="$1" __page_width="$2" __ypos="$3" __xpos="$4" __id="$5" __width_var="$6" __idx_var="$7" __opts_var="$8" __data2="$9" __data2="$10" __data3="$11"
+local __page_height="$1" __page_width="$2" __ypos="$3" __xpos="$4" __id="$5" __width_var="$6" __idx_var="$7" __opts_var="$8" __data2="$9" __data2="$10" __data3="$11
+"
+#print -f %s\\n "———$@">>/tmp/reply
+# QE=("$@")
+#autoload -z $NCDIR/libexec/qprint
+#qprint QE>>/tmp/reply
 
 # Get maximum width
 local -a options
@@ -119,6 +124,7 @@ while (( 1 )); do
             ;;
         ($'\E')
             : ${(P)__idx_var::=$initial_idx}
+
             return_val=1
             break
             ;;

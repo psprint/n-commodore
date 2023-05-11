@@ -8,7 +8,7 @@ int/nc::read-all-sys() {
     0=${${${(M)${0::=${(%):-%x}}:#/*}:-$PWD/$0}:A}
 
     local -A Opts; local -a opts
-    int/nc::parse-opts "r: t: d: u:" Opts opts "$@"||return 1
+    int/nc::parse-opts "p r: t: d: u:" Opts opts "$@"||return 1
     set -- "$reply[@]"
     int/nc::opt-cascade Opts
     integer __in_fd
@@ -19,6 +19,8 @@ int/nc::read-all-sys() {
 
     if ((!$+Opts[-u]))&&[[ -f $Opts[-d] ]];then
         exec {__in_fd}<$Opts[-d]||return 3
+    elif (($+Opts[-p]));then
+        exec {__in_fd}<&p
     else
         __in_fd=${Opts[-u]:-0};
     fi
@@ -36,12 +38,12 @@ int/nc::read-all-sys() {
     done
 
     __QREPLY="${(j::)__tmp}"
-    [[ $__QREPLY != $~NC[WRONGSTR] ]]
+    [[ $__QREPLY != [[:space:]]# ]]
     __ret+=$(($?))
     [[ $__in_fd != ${Opts[-u]:-0} ]]&&exec {__in_fd}<&-
     typeset -g $__out_var=
     : ${(P)__out_var::=$__QREPLY}
-    reply=("${(@f)__QREPLY}")
+    [[ -n $__QREPLY ]]&&reply=("${(@f)__QREPLY}")||reply=()
     return __ret
 }
 int/nc::read-all-sys "$@"

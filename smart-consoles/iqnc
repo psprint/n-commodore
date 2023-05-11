@@ -11,6 +11,7 @@ iqnc()
 0=${${${(M)${0::=${(%):-%x}}:#/*}:-$PWD/$0}:A}
 
 source $0:h:h/share/preamble.inc.zsh --script --fun --cleanup
+builtin autoload -z -- $NCDIR/functions/cmd/*[a-z](N.)
 
 local -A Opts;local -a opts
 int/nc::init-sm-con Opts opts "$@"||return 30
@@ -147,7 +148,7 @@ iqnc_exec_command_cb(){
     integer QEXISTS QSUB=1
     local -a cmd=(${(@zA)ZUI[QUERY_BUFFER]})
     iqnc_get_cmd_idx "$cmd[@]"&&QSUB=REPLY
-    local CMD=${cmd[QSUB]##\!#}
+    local CMD=${cmd[1]##(\!|\+)#}
     ZUI[COMMAND]=$ZUI[QUERY_BUFFER]
     {
         if [[ $ZUI[COMMAND] != [[:space:]$'\1'-$'\x1b']# ]];then
@@ -274,16 +275,23 @@ iqnc_db(){
 }
 
 iqnc_get_cmd_out(){
-    local TPE=$1 cmd=("$@[2,-1]")
-    integer QSUB=1 QI
-    if [[ $TPE == whole || -n ${(M)cmd[1,-2]:#builtin} || $cmd[1] == \!* ]];then
+    local TPE=$1 cmd=("$@[2,-1]") QEX
+    integer QSUB=1 QI EC
+    if [[ $TPE == whole || -n ${(M)cmd[1,-2]:#builtin} || $cmd[1] == \!* || \
+        $cmd[1] == *+* ]];then
         ZUI[TMP]=$(mktemp)
         [[ $cmd[1] == \!* && $cmd[1] != \!\!* ]]&&\
                 iqw "Notice: " "in the same-shell process-run ("\
                                     "leading ! detected" ")"
-        cmd[1]=${cmd[1]##\!#}
-        eval "$cmd[@]"</dev/tty &>!$ZUI[TMP]
-        ZUI[RET]=$?
+        QEX=${(M)cmd[1]##(\+|\!)#}
+        cmd[1]=${cmd[1]##(\+|\!)#}
+        [[ $QEX == *++* ]]&&{
+            eval "$cmd[@]"</dev/tty 2>/dev/tty 1>/dev/tty;EC=$?;ZUI[redraw]=1;}
+        [[ $QEX == *+* && $QEX != *++* ]]&&\
+                {eval "$cmd[@]"</dev/tty &>!$ZUI[TMP] 2>/dev/tty 1>/dev/tty;EC=$?
+                    ZUI[redraw]=1;}
+        [[ $QEX != *+* ]]&&eval "$cmd[@]"</dev/tty &>!$ZUI[TMP];EC=$?
+        ZUI[RET]=$EC
         local CMD_PT="(${(~j.|.)${(@s: :)NC_LS_LIKE_COMMANDS}})"
 
         iqnc_get_cmd_idx "$cmd[@]"&&QSUB=REPLY
@@ -667,8 +675,8 @@ iqnc_fill_cmd(){
         [[ -e $ZUI[QPATH] ]]||ZUI[COMMAND]=${ZUI[COMMAND]//\%s/}
         ZUI[COMMAND_PREV]=$ZUI[COMMAND]
         cmd=("${(z@)ZUI[COMMAND]}")
-        QEX=${(M)cmd[1]##\!#}
-        cmd[1]=${cmd[1]##\!#}
+        QEX=${(M)cmd[1]##(\!|\+)#}
+        cmd[1]=${cmd[1]##(\!|\+)#}
         iqnc_get_cmd_idx "$cmd[@]"&&QSUB=REPLY
         ZUI[COMMAND]=
         CMD_PT="(${(~j.|.)${(@)=NC_LS_LIKE_COMMANDS}})"
@@ -696,10 +704,10 @@ iqnc_fill_cmd(){
 
         iqnc_get_cmd_out $ZUI[cmd-mode] $QEX$cmd[1] "${(@)cmd[2,-1]}"
         if [[ $ZUI[cmd-mode] == whole || -n $QEX ]]; then
-            if [[ $QEX == '!!' ]];then
+            if [[ $QEX == *'!!'* ]];then
                 iqw "!!" "-CMD-OUT:»: " "${(j:·\n·:)reply}"
             else
-                iq0items=("$reply[@]")
+                [[ $QEX != *++* ]]&&iq0items=("$reply[@]")
             fi
         else
             iq0items=() q0input=()
@@ -729,23 +737,30 @@ iqnc_fill_cmd(){
 }
 
 iqnc_fill_0(){
-    integer QFLAG
+    integer QFLAG QEC
     ((Q0_SAVE_PIPE))&&\
-        int/nc::read-all -u$Q0_SAVE_PIPE -t0 -x50
+        {int/nc::read-all -u$Q0_SAVE_PIPE -t0 -x50;QEC=$?;}
     ((!Q0_SAVE_PIPE))&&\
-        int/nc::read-all -p -t0 -x50
+        {int/nc::read-all-sys -p -t0;QEC=$?;}
 
     QFLAG=$#reply
     ZUI[read-all-failed]=$((!QFLAG))
     ((ZUI[IO_COUNT]-=!QFLAG))
-    ((ZUI[IO_COUNT]<0))&&ZUI[HAVE_0_INPUT]=0&&return
+    ((ZUI[IO_COUNT]<0))&&{ZUI[HAVE_0_INPUT]=0;ZUI[read-all-incomplete]=;}&&return
+    ((QFLAG))||return 1
 
     local ql had_read=0
-    integer q0idx=$#q0input+1
     if ((!$#q0input&&QFLAG));then
-        q0input[q0idx]=$ZUI[FIRST_0_INPUT]$reply[1]
+        q0input[1]=$ZUI[FIRST_0_INPUT]$reply[1]
         shift reply
     fi
+
+    if ((ZUI[read-all-incomplete]));then
+        q0input[-1]+=$reply[1]
+        shift reply
+    fi
+    ZUI[read-all-incomplete]=0
+    [[ -n $REPLY && $REPLY != *$'\n' ]]&&ZUI[read-all-incomplete]=1
 
     ((QFLAG))&&ok/qcolreduce "$reply[@]"
 

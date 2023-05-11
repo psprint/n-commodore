@@ -24,7 +24,7 @@ int/@nc::process-buffer() {
         NC_PB_SPACES=() \
         NC_PB_WORDS_BEGINNINGS=()
     typeset -gi NC_PB_SELECTED_WORD=-1
-    typeset NC_PB_LEFT NC_PB_RIGHT
+    typeset -g NC_PB_LEFT NC_PB_RIGHT
     # (Z+n+) will return 1 element for buf that is empty or only whitespace
     if [[ $buf = ( |$'\t')# ]]; then
         NC_PB_WORDS=()
@@ -68,7 +68,7 @@ int/@nc::process-buffer() {
 
         # Remove the word
         wordlen="${#word}"
-        [[ "${buf[1,wordlen]}" != $word ]] && return 1 # should not happen unless bug in (z)
+        [[ "${buf[1,wordlen]}" != $word ]] && return 3 # should not happen unless bug in (z)
         buf="${buf[wordlen+1,-1]}"
 
         # Spaces point to previous shell word
@@ -94,7 +94,7 @@ int/@nc::process-buffer() {
     NC_PB_LEFT="${word[1,diff]}"
     NC_PB_RIGHT="${word[diff+1,-1]}"
 
-    [[ $NC_PB_SELECTED_WORD -gt 0 ]]
-
+    #[[ $NC_PB_SELECTED_WORD -gt 0 ]]
+    true
 }
 # vim:ft=zsh

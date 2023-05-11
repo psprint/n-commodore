@@ -1,0 +1,74 @@
+#!/usr/bin/env zsh
+# Copyright (c) 2023 Sebastian Gniazdowski
+#
+# ok/qgethr
+#
+
+cmd-complete() {
+    integer EC QEC
+    0=${${${(M)${0::=${(%):-%x}}:#/*}:-$PWD/$0}:A}
+    [[ -f $0 ]];EC+=$?
+    source "$0:h:h:h"/share/preamble.inc.zsh --fun
+
+iqnc_set_prop_buf(){
+    local QE=$2 KE
+    local -A q=($PR_SEARCH SEARCH_BUFFER $PR_CMD_EXEC QUERY_BUFFER)
+    KE=$q[$ZUI[IN_QUERY]]
+    [[ -z $KE ]]&&{iqerr "Error: no prompt";return 1;}
+    [[ $1 == GET ]]&&REPLY=$ZUI[$KE]||{ZUI[$KE]=$QE;buffer=$QE;}
+    return 0
+}
+
+    # Options and arguments
+    local -A Opts; local -a opts toutop
+    {
+    int/nc::parse-opts "d w" Opts opts "$@"||\
+        {THROW "incorrect options given to " "{func}$0:t{%} fun";}
+    } always {
+        if CATCH \*;then
+            iqerr "$CAUGHT[@]"
+            return EC+17
+        fi
+    }
+    set -- "$reply[@]"
+    int/nc::opt-cascade Opts
+    EC+=$?
+    int/nc::reset
+    local QUE
+    integer TPE
+    if [[ -n $1 ]];then
+        QUE=$1
+    elif ! iqnc_set_prop_buf GET;then
+        return 1
+    fi
+    QUE=${ZUI[COMP_BUFFER]::=$REPLY} ZUI[COMP_CURS]=$ZUI[cursor]
+
+    int/@nc::process-buffer "$QUE" $((ZUI[cursor]-1))||\
+        {iqerr "Error:" " couldn't process buffer";return 1;}
+    local WORD=$NC_PB_WORDS[NC_PB_SELECTED_WORD] BE=$NC_PB_LEFT NXT=$NC_PB_RIGHT
+    local PT=$BE\*$NXT
+    local -a QFIN
+    if (($+Opts[-d]||!($+Opts[-d]||$+Opts[-w])));then
+        QFIN=(**/*~(*\~|*(/|).git(/*|))(N,.,/,@,D))
+        QFIN=(${(o)QFIN})
+        print $QFIN[1,10]>>/tmp/reply
+        QFIN=(${(M)QFIN:#$~PT})
+    fi
+    print PT=$PT W:$WORD, be:$BE. NXT:$NXT qFIN:$QFIN>>/tmp/reply
+    if ! zui::item-box -w 27 -s 1 $QFIN;then
+        iqnc_set_prop_buf WRITE $ZUI[COMP_BUFFER]
+        ZUI[cursor]=$ZUI[COMP_CURS]
+        iqw "Notice: " "completion cancelled"
+        return 1
+    fi
+    if int/@nc::build-from-process "$ZUI[BOX_VALUE]" $((ZUI[cursor]-1));then
+        iqnc_set_prop_buf WRITE $reply[1]||return 1
+        ZUI[cursor]=$((reply[2]+1))
+    fi
+
+    [[ -n $reply[1] ]]
+    EC+=$(($?))
+    return EC
+}
+cmd-complete "$@"
+# vim:ft=zsh

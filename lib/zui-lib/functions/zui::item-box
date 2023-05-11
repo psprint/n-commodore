@@ -1,0 +1,66 @@
+#!/usr/bin/env zsh
+# Copyright (c) 2023 Sebastian Gniazdowski
+#
+# ok/qnstr – …normalize…str
+#
+
+zui::item-box() {
+
+    0=${${${(M)${0::=${(%):-%x}}:#/*}:-$PWD/$0}:A}
+
+    integer EC;[[ -f $0 ]];EC+=$?
+
+    # Options and arguments
+    local QE
+    local -A Opts; local -a opts ws p
+    {
+  int/nc::parse-opts "w: -width: s: -start: c: -code: o: -out:" Opts opts "$@"||\
+        THROW "incorrect options given to:" zui::item-box
+    } always {
+        CATCH \*&&{iqerr "$CAUGHT[@]";return 39;}
+    }
+    set -- "$reply[@]"
+    int/nc::opt-cascade Opts -w --width -s --start -c --code --out -o
+    EC+=$?
+    int/nc::reset
+    local PFX="_ZUI_${RANDOM}_" SNIP
+
+    noglob local VARW=ZUI[${PFX}width] VARI=ZUI[${PFX}idx] VARO=ZUI[${PFX}opts]
+    : ${(P)VARW::=${Opts[-w]:-27}} ${(P)VARI::=${Opts[-s]:-1}}\
+        ${(P)VARO::=${(j[;])@}}
+
+    SNIP=${Opts[-o]:-"ZUI[BOX_VALUE]"}\=
+    SNIP+='${${(@s[;])'$VARO'}['$VARI']}'
+    : ${Opts[-c]:=$SNIP}
+
+    -zui_glib_items_box ${PFX%_} $VARW $VARI $VARO "" "" "" \
+        "$Opts[-c]" ws
+
+     -zui_glib_decode_items_box $ws[1] p
+    local min_x max_x y_pos
+    -zui_sys_get_tfield_cursor_boundaries min_x max_x \
+            "$__list[current_idx]" "$ws[1]"
+    y_pos=$((current_idx - From_what_idx_items_is_shown + 1))
+    reply=()
+    if ! -zui-list-box-loop "$page_height" "$page_width" \
+        "$y_pos" $((min_x+6)) "$p[@]";then
+        return 1
+    fi
+    EC+=$?
+    zcurses touch "$__wname_main"
+    ZUI[REGENERATE_LIST]=2 #regenerate only display list
+    local id=$p[1] || local id="-"
+    iqw i:$id°°°°°°°°
+
+    if [[ -n "${ZUI[$id]}" ]]; then
+        p[1]="${reply[1]#(zuiiaction|zuiaction|zuieanchor|zuianchor|zuitfield|zuilbox)}"
+        if [[ "${ZUI[$id]}" = *(=|\(\(| )* ]]; then
+            eval "(){${ZUI[$id]%;};} ${(q)p[@]}"
+        else
+            "${ZUI[$id]}" "${p[@]}"
+        fi
+    fi
+    return $?+EC
+}
+zui::item-box "$@"
+# vim:ft=zsh

@@ -1,0 +1,53 @@
+#!/usr/bin/env zsh
+
+int/@nc::build-from-process(){
+    local INW=$1 BUF
+    integer QSIZE=$#NC_PB_WORDS QI=$2 QNEWCURSOR j i
+
+    for (( i=1; i<=QSIZE; i++ )); do
+        # Check if we're at (i.e. directly at or after,
+        # when after are just spaces) current word
+        if [[ $i -eq $NC_PB_SELECTED_WORD ]]; then
+            # INSERT MODE? I.e.: addition of a new token at the pointed free space?
+            if (( QI > (NC_PB_WORDS_BEGINNINGS[i] + ${#NC_PB_WORDS[i]} - 1) )); then
+                # We need to introduce new word
+                # First move all words and spaces forward
+                for (( j=QSIZE; j>=i+1; j-- )); do
+                    NC_PB_WORDS[j+1]=${NC_PB_WORDS[j]}
+                    NC_PB_SPACES[j+1]=${NC_PB_SPACES[j]}
+                    NC_PB_WORDS_BEGINNINGS[j+1]=${NC_PB_WORDS_BEGINNINGS[j]}
+                done
+                QSIZE+=1
+                # New word is introduced at position i+1, after current word
+                # It doesn't have word beginnings and spaces assigned
+                # It has to take spaces from word next to it, i+2
+                NC_PB_WORDS[i+1]=$INW
+                NC_PB_WORDS_BEGINNINGS[i+1]="$(( QI + 1 ))"
+
+                # Now split spaces
+                # cursor_   spaces: spaces from current word to the cursor
+                integer cursor_spaces=$(( QI - NC_PB_WORDS_BEGINNINGS[i] - ${#NC_PB_WORDS[i]} + 1 ))
+                # take that from spaces of word "next" in: current NEW next
+                integer after_spaces=$(( NC_PB_SPACES[i+2] - cursor_spaces ))
+                NC_PB_SPACES[i+1]="${(l:cursor_spaces:: :)}"
+                NC_PB_SPACES[i+2]="${(l:after_spaces:: :)}"
+
+                # Cursor will be at end of newly added word
+                QNEWCURSOR=$(( NC_PB_WORDS_BEGINNINGS[i+1] + ${#NC_PB_WORDS[i+1]} - 1 ))
+            # OR REPLACE MODE – substitute the match for the input/needle token
+            else
+                NC_PB_WORDS[i]=$INW
+
+                # Cursor will be at end of newly substituted word
+                QNEWCURSOR=$(( NC_PB_WORDS_BEGINNINGS[i] + ${#NC_PB_WORDS[i]} - 1 ))
+
+                # Update word beginnings of following words – skipped
+            fi
+        fi
+        BUF+=$NC_PB_SPACES[i]$NC_PB_WORDS[i]
+    done
+
+    BUF+=$NC_PB_SPACES[i]
+    reply=("$BUF" $QNEWCURSOR)
+    [[ $BUF != [[:space:]]# ]]
+}

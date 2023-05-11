@@ -9,6 +9,14 @@ alias ag="ag --color --numbers"
 alias bat="bat --color=always"
 
 #
+# Some hopefully useful hashed dirs. Use in command line, e.g.: cd ~start
+#
+
+hash -d start=$PWD
+hash -d local=$HOME/.local
+hash -d config=${XDG_CONFIG_HOME:-$HOME/.config}
+
+#
 # Variables
 #
 
@@ -38,11 +46,7 @@ zui::bindkey $'\C-_' cmd-toggle-prompt
 
 # Strictly preview view
 zui::bindkey $'\C-e' cmd-set-view hist
-zui::bindkey F16 cmd-open-tig
-#zui::bindkey F5 cmd-commit
-#zui::bindkey F17 cmd-commit -av
-#zui::bindkey F6 cmd-push
-#zui::bindkey F7 cmd-pull
+zui::bindkey F15 cmd-open-tig
 zui::bindkey F7 cmd-synh-switch
 zui::bindkey F304 cmd-prev-hist
 zui::bindkey F263 cmd-next-hist
@@ -54,17 +58,20 @@ zui::bindkey F264 cmd-prev-pwd
 zui::bindkey SF cmd-prev-pwd
 zui::bindkey $'\C-v' cmd-page-down
 zui::bindkey $'\C-u' cmd-page-up
+# Cursor movement
+zui::bindkey BTAB cmd-complete
 zui::bindkey SRIGHT cmd-cursor-right
 zui::bindkey SLEFT cmd-cursor-left
 zui::bindkey F283 cmd-cursor-word-left
 zui::bindkey F298 cmd-cursor-word-right
+zui::bindkey $'\C-r' cmd-item-to-prompt
+zui::bindkey $'\C-t' cmd-pwd-to-prompt
+# View saving
 zui::bindkey $'\C-x' cmd-push-screen
 zui::bindkey F284 cmd-prev-screen
 zui::bindkey F299 cmd-next-screen
 zui::bindkey F8 cmd-remove-screen
 zui::bindkey F13 cmd-help
 zui::bindkey F20 cmd-prune-screens
-zui::bindkey $'\C-r' cmd-item-to-prompt
-zui::bindkey $'\C-t' cmd-pwd-to-prompt
-
- 
+zui::bindkey F4 cmd-hide
+zui::bindkey F16 cmd-show
