@@ -40,7 +40,7 @@ ZUI[term_sread_ts]="$EPOCHSECONDS"
 -zui_wrapper_on_exit() {
     # -zui_wrapper_end
     -zui_wrapper_alternate_screen 0
-    -zui_list_cursor_visibility "plain" 1
+    -zui_items_cursor_visibility "plain" 1
 }
 
 -zui_wrapper_init_windows() {
@@ -123,14 +123,14 @@ zcurses init
 -zui_wrapper_recreate_windows 0
 
 -zui_util_get_time
-zui-list "main" $(( term_height-ZUI[status_size] )) $term_width "status" "${ZUI[status_size]}" "$term_width" " Welcome to ${ZUI[app_name]} $REPLY " "$@"
+zui-items "main" $(( term_height-ZUI[status_size] )) $term_width "status" "${ZUI[status_size]}" "$term_width" " Welcome to ${ZUI[app_name]} $REPLY " "$@"
 
 if [[ "$REPLY" != "-1" && "$REPLY" = -(#c0,1)[0-9]## ]]; then
     local answer="${reply[REPLY]}"
     ZUILIST_WRAPPER_LINE="$answer"
     if [[ "${ZUI[text_mode]}" = (all|nohyp) ]] || -zui_glib_has_any_hyperlinks "$answer"; then
         local -a segments
-        zui-list-process-buffer2 $answer
+        zui-items-process-buffer2 $answer
         ((ZUI[CURRENT_SEGMENT]>$#ZUI_PB2_QWORDS))&&\
             ZUI[CURRENT_SEGMENT]="${#ZUI_PB2_QWORDS}"
         ZUILIST_WRAPPER_BIT="${ZUI_PB2_QWORDS[${ZUI[CURRENT_SEGMENT]}]}"

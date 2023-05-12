@@ -50,7 +50,7 @@ iqopen_util_set_current_idx(){
     fi
     if ((IN!=ZUI[PREV_CURRENT_IDX]));then
         ZUI[CURRENT_IDX]=$ZUI[PREV_CURRENT_IDX]
-        -zui_list_verify_vars
+        -zui_items_verify_vars
         ZUI[redraw]=1
     fi
     if ((!ZUI[UNIQ_MODE]&&!$#ZUI[SEARCH_BUFFER]&&\
@@ -185,7 +185,7 @@ iqopen_exec_cmd(){
 
     integer vis
     ((in_query))&&vis=1
-    -zui_list_cursor_visibility status $vis
+    -zui_items_cursor_visibility status $vis
 }
 
 iqopen_exec_command_cb() {

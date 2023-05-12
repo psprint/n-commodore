@@ -8,18 +8,18 @@ setopt typesetsilent extendedglob
 # Compute first to show index - exact page
 -zui_listin_compute_first_to_show_idx() {
     if ((current_idx>page_height/2));then
-        from_what_idx_list_is_shown=current_idx-page_height/2
+        from_what_idx_items_is_shown=current_idx-page_height/2
     else
-        from_what_idx_list_is_shown=1
+        from_what_idx_items_is_shown=1
     fi
-    #from_what_idx_list_is_shown=0+((current_idx-1)/page_height)*page_height+1
+    #from_what_idx_items_is_shown=0+((current_idx-1)/page_height)*page_height+1
 }
 
 # Conditional, fully robust page-to-show computation
 -zui_listin_compute_exact_page_if_needed() {
     # Fallback: in case of any problems compute exact page
-    if [[ "$from_what_idx_list_is_shown" -lt "1" ||
-        "$from_what_idx_list_is_shown" -gt "$last_element" ]]
+    if [[ "$from_what_idx_items_is_shown" -lt "1" ||
+        "$from_what_idx_items_is_shown" -gt "$last_element" ]]
     then
         -zui_listin_compute_first_to_show_idx
     fi
@@ -28,7 +28,7 @@ setopt typesetsilent extendedglob
 # Compute first to show index - page is
 # scrolled to center to show given index
 -zui_listin_compute_first_to_show_idx_center() {
-    from_what_idx_list_is_shown=current_idx-page_height/2
+    from_what_idx_items_is_shown=current_idx-page_height/2
     -zui_listin_compute_exact_page_if_needed
 }
 
@@ -37,20 +37,20 @@ setopt typesetsilent extendedglob
 # This means we can move page start as few as 3
 # elements up.
 -zui_listin_compute_first_to_show_idx_up_many() {
-    if [[ "$current_idx" -lt "$from_what_idx_list_is_shown" ||
-        "$current_idx" -gt "$((from_what_idx_list_is_shown + page_height -1))" ]]
+    if [[ "$current_idx" -lt "$from_what_idx_items_is_shown" ||
+        "$current_idx" -gt "$((from_what_idx_items_is_shown + page_height -1))" ]]
     then
-        from_what_idx_list_is_shown=from_what_idx_list_is_shown-3
+        from_what_idx_items_is_shown=from_what_idx_items_is_shown-3
         -zui_listin_compute_exact_page_if_needed
     fi
 }
 
 # Like above, but in opposite direction
 -zui_listin_compute_first_to_show_idx_down_many() {
-    if [[ "$current_idx" -lt "$from_what_idx_list_is_shown" ||
-        "$current_idx" -gt "$((from_what_idx_list_is_shown + page_height -1))" ]]
+    if [[ "$current_idx" -lt "$from_what_idx_items_is_shown" ||
+        "$current_idx" -gt "$((from_what_idx_items_is_shown + page_height -1))" ]]
     then
-        from_what_idx_list_is_shown=from_what_idx_list_is_shown+3
+        from_what_idx_items_is_shown=from_what_idx_items_is_shown+3
         -zui_listin_compute_exact_page_if_needed
     fi
 }
@@ -70,13 +70,13 @@ setopt typesetsilent extendedglob
     integer left=current_segment right=current_segment
 
     # Left
-    while ! -zui_glib_is_hyperlink "${segments[left]}" && ! -zui_glib_is_text_field "${segments[left]}" && ! -zui_glib_is_list_box "${segments[left]}"; do
+    while ! -zui_glib_is_hyperlink "${segments[left]}" && ! -zui_glib_is_text_field "${segments[left]}" && ! -zui_glib_is_items_box "${segments[left]}"; do
         ((-- left))
         [[ "$left" -le 0 ]] && break
     done
 
     # Right
-    while ! -zui_glib_is_hyperlink "${segments[right]}" && ! -zui_glib_is_text_field "${segments[right]}" && ! -zui_glib_is_list_box "${segments[right]}"; do
+    while ! -zui_glib_is_hyperlink "${segments[right]}" && ! -zui_glib_is_text_field "${segments[right]}" && ! -zui_glib_is_items_box "${segments[right]}"; do
         ((++right))
         [[ "$right" -gt "$nseg" ]] && break
     done
@@ -203,7 +203,7 @@ setopt typesetsilent extendedglob
 
     # Left
     [[ "$1" = "0" ]] && {
-        while ! -zui_glib_is_hyperlink "${segments[left]}" && ! -zui_glib_is_text_field "${segments[left]}" && ! -zui_glib_is_list_box "${segments[left]}" || ((left == current_segment)); do
+        while ! -zui_glib_is_hyperlink "${segments[left]}" && ! -zui_glib_is_text_field "${segments[left]}" && ! -zui_glib_is_items_box "${segments[left]}" || ((left == current_segment)); do
             ((-- left))
             [[ "$left" -le 0 ]] && break
         done
@@ -214,7 +214,7 @@ setopt typesetsilent extendedglob
         fi
     } || {
         # Right
-        while ! -zui_glib_is_hyperlink "${segments[right]}" && ! -zui_glib_is_text_field "${segments[right]}" && ! -zui_glib_is_list_box "${segments[right]}" || ((right == current_segment)); do
+        while ! -zui_glib_is_hyperlink "${segments[right]}" && ! -zui_glib_is_text_field "${segments[right]}" && ! -zui_glib_is_items_box "${segments[right]}" || ((right == current_segment)); do
             ((++right))
             [[ "$right" -gt "$nseg" ]] && break
         done
@@ -232,14 +232,14 @@ zui::toggle-prompt(){
     ((in_query==1))&&in_query=3||in_query=1
     [[ -n $ZUI[QUERY_CHANGE_CALLBACK] ]]&&\
         eval $ZUI[QUERY_CHANGE_CALLBACK] $in_query
-    -zui_list_cursor_visibility status 1
+    -zui_items_cursor_visibility status 1
 }
 
 typeset -ga reply
 reply=(-1 '')
 integer current_idx="$1"
 integer current_segment="$2"
-integer from_what_idx_list_is_shown="$3"
+integer from_what_idx_items_is_shown="$3"
 integer page_height="$4"
 integer page_width="$5"
 integer last_element="$6"
@@ -462,15 +462,15 @@ case "$key" in
                 ZUI[current_tfield_initial_sidx]="${(P)reply[3]}"
                 ZUI[current_tfield_initial_data]="${(P)reply[4]}"
                 -zui_sys_get_tfield_cursor_boundaries 'ZUI[current_tfield_cidx_start]' 'ZUI[current_tfield_cidx_end]' "${(P)list_var_current}" "${reply[1]}"
-                ZUI[cursor_y]=$((current_idx - from_what_idx_list_is_shown + 1))
+                ZUI[cursor_y]=$((current_idx - from_what_idx_items_is_shown + 1))
                 ZUI[cursor_x]=$((ZUI[current_tfield_cidx_end]))
                 -zui_sys_map_cursor_on_string "${(P)reply[3]}" "${(P)reply[4]}" $((ZUI[cursor_x] - ZUI[current_tfield_cidx_start] - 1)) 'ZUI[current_tfield_instr_idx]'
                 reply=($current_idx HYPERLINK)
-            elif -zui_glib_decode_list_box "$REPLY"; then
+            elif -zui_glib_decode_items_box "$REPLY"; then
                 local min_x max_x y_pos
                 -zui_sys_get_tfield_cursor_boundaries min_x max_x "${(P)list_var_current}" "${reply[1]}"
-                y_pos=$((current_idx - from_what_idx_list_is_shown + 1))
-                -zui-list-box-loop "$page_height" "$page_width" "$y_pos" $((min_x + 6)) "${reply[@]}" && { reply=($current_idx LBOX_LEFT); } || { reply=(-1 ''); }
+                y_pos=$((current_idx - from_what_idx_items_is_shown + 1))
+                -zui-items-box-loop "$page_height" "$page_width" "$y_pos" $((min_x + 6)) "${reply[@]}" && { reply=($current_idx LBOX_LEFT); } || { reply=(-1 ''); }
             else
                 # Selecting non-hyperlink is allowed?
                 ((${ZUI[text_select]})) && reply=($current_idx SELECT) || reply=(-1 '')
@@ -630,7 +630,7 @@ case "$key" in
     ($'\E')
         in_query=0
         [[ -n $ZUI[QUERY_CHANGE_CALLBACK] ]]&&eval $ZUI[QUERY_CHANGE_CALLBACK] 0
-        -zui_list_cursor_visibility status 0
+        -zui_items_cursor_visibility status 0
         ;;
     (o|$'\C-O')
         uniq_mode=1-uniq_mode
@@ -657,11 +657,11 @@ case "$key" in
     ($'\n'|ENTER)
         if ((in_query==3))&&[[ $ZUI[QUERY_BUFFER] != $~NC[WRONGSTR] ]];then
             special_cmd=query-accept
-            -zui_list_cursor_visibility status 0
+            -zui_items_cursor_visibility status 0
         elif ((ZUI[instant_select]));then
             # Cascade to this function with in_query ($10) set to false (0)
-            zui-list-input $current_idx $current_segment \
-                            $from_what_idx_list_is_shown \
+            zui-items-input $current_idx $current_segment \
+                            $from_what_idx_items_is_shown \
                             $page_height $page_width $last_element \
                             "$nseg" "$hscroll" ENTER 0 \
                             "$buffer" "$uniq_mode" "$disable_search" \
@@ -670,7 +670,7 @@ case "$key" in
             in_query=0
             [[ -n $ZUI[QUERY_CHANGE_CALLBACK] ]]&&\
                 eval $ZUI[QUERY_CHANGE_CALLBACK] 0e
-            -zui_list_cursor_visibility status 0
+            -zui_items_cursor_visibility status 0
         fi
         ;;
     ($'\C-L')
@@ -865,7 +865,7 @@ case "$key" in
     ($'\E')
         in_query=0
         [[ -n $ZUI[QUERY_CHANGE_CALLBACK] ]]&&eval $ZUI[QUERY_CHANGE_CALLBACK] 0
-        -zui_list_cursor_visibility status 0
+        -zui_items_cursor_visibility status 0
         ;;
     ($'\C-O')
         uniq_mode=1-uniq_mode
@@ -897,7 +897,7 @@ fi
 
 reply[3]="$current_idx"
 reply[4]="$current_segment"
-reply[5]="$from_what_idx_list_is_shown"
+reply[5]="$from_what_idx_items_is_shown"
 reply[6]="$hscroll"
 reply[7]="$in_query"
 reply[8]="${buffer##[[:space:]]##}"

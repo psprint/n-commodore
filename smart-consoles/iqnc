@@ -413,7 +413,7 @@ cmd-push-screen(){
         WScreens[SCREEN_SEARCH_$QIDX]=$ZUI[SEARCH_BUFFER]
         WScreens[SCREEN_CMD_$QIDX]=$ZUI[QUERY_BUFFER]
         WScreens[SCREEN_CUR_IDX_$QIDX]=$current_idx
-        WScreens[SCREEN_FROM_$QIDX]=$from_what_idx_list_is_shown
+        WScreens[SCREEN_FROM_$QIDX]=$from_what_idx_items_is_shown
         WScreens[SCREEN_CUR_SEG_$QIDX]=$current_segment
         WScreens[SCREEN_CURSOR_$QIDX]=$ZUI[cursor]
         WScreens[SCREEN_COLORING_$QIDX]=$ZUI[COLORING_PATTERN]
@@ -795,7 +795,7 @@ iqnc_fill_screen(){
     ZUI[QPATH]=$WScreens[SCREEN_QPATH_$QIDX]
     ZUI[COLORING_PATTERN]=$WScreens[SCREEN_COLORING_$QIDX]
     current_idx=$WScreens[SCREEN_CUR_IDX_$QIDX]
-    from_what_idx_list_is_shown=$WScreens[SCREEN_FROM_$QIDX]
+    from_what_idx_items_is_shown=$WScreens[SCREEN_FROM_$QIDX]
     current_segment=$WScreens[SCREEN_CUR_SEG_$QIDX]
     in_query=$WScreens[SCREEN_QUERY_$QIDX]
     ZUI[SEARCH_BUFFER]=$WScreens[SCREEN_SEARCH_$QIDX]
@@ -889,16 +889,16 @@ iqnc_fill_help(){
     if ((ZUI[CURRENT_IDX]<5));then
         if ((!$#ZUI[SEARCH_BUFFER]&&!ZUI[UNIQ_MODE]));then
             ((__last_element>=5))&&\
-                { ZUI[CURRENT_IDX]=5;-zui_list_verify_vars;ZUI[redraw]=1;}
+                { ZUI[CURRENT_IDX]=5;-zui_items_verify_vars;ZUI[redraw]=1;}
         else
             ((ZUI[CURRENT_IDX]<1))&&\
-                {ZUI[CURRENT_IDX]=1;-zui_list_verify_vars;ZUI[redraw]=1;}
+                {ZUI[CURRENT_IDX]=1;-zui_items_verify_vars;ZUI[redraw]=1;}
         fi
     fi
 
     ((--ZUI[REDRAW_COUNT]==0))&&ZUI[redraw]=1
     ((ZUI[REDRAW_COUNT]<0))&&ZUI[REDRAW_COUNT]=0
-    ((--ZUI[VERIFY_COUNT]==0))&&-zui_list_verify_vars
+    ((--ZUI[VERIFY_COUNT]==0))&&-zui_items_verify_vars
     ((ZUI[VERIFY_COUNT]<0))&&ZUI[VERIFY_COUNT]=0
 
     ZUI[VIEW_CHANGE]=$((ZUI[VIEW_CHANGE]+${#${TM:#$ZUI[text_mode]}}))
@@ -917,7 +917,7 @@ iqnc_fill_help(){
     fi
     builtin unset 'ZUI[COMMAND]'
     iqnc_util_set_current_idx
-    -zui_list_verify_vars 1
+    -zui_items_verify_vars 1
     -zui_glib_fly_array_refresh 1
     ZUI[VIEW_CHANGE]=0
     ZUI[PREV_GEN_B_IDX]=$ZUI[GEN_B_IDX]

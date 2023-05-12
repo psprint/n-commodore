@@ -42,7 +42,7 @@ zui::item-box() {
             "$__list[current_idx]" "$ws[1]"
     y_pos=$((current_idx - From_what_idx_items_is_shown + 1))
     reply=()
-    if ! -zui-list-box-loop "$page_height" "$page_width" \
+    if ! -zui-items-box-loop "$page_height" "$page_width" \
         "$y_pos" $((min_x+6)) "$p[@]";then
         return 1
     fi

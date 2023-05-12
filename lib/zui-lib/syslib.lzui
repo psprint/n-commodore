@@ -19,7 +19,7 @@ ZUI[syslib_sourced]=1
 #
 # $1 - output parameter name - cursor start index
 # $2 - output parameter name - cursor end index
-# $3 - current $list (zui-list working variable) element
+# $3 - current $list (zui-items working variable) element
 # $4, ..., $11 - decoded __text field
 function -zui_sys_get_tfield_cursor_boundaries() {
     local __out1="$1" __out2="$2" __elem="$3" __id="$4"
@@ -60,7 +60,7 @@ function -zui_sys_get_tfield_cursor_boundaries() {
                 fi
                 __idx+="${(P)__output[2]}"
             fi
-        elif -zui_glib_decode_list_box "$__seg" __output; then
+        elif -zui_glib_decode_items_box "$__seg" __output; then
             if [[ "$__id" = "${__output[1]}" ]]; then
                 # Add characters that precede
                 if [[ "$__seg" = (#b)(*)$'\034'[^$'\034']#$'\034'[^$'\034']#$'\034'[^$'\034']#$'\034'[^$'\034']#$'\034'[^$'\034']#$'\034'[^$'\034']#$'\034'[^$'\02']#$'\02'* ]]; then
@@ -172,13 +172,13 @@ function -zui_sys_gather_lanchors() {
     : ${(PA)__var_name2::=${__output[@]}}
 } # }}}
 
-# FUNCTION: -zui_sys_decode_list_update {{{
+# FUNCTION: -zui_sys_decode_items_update {{{
 # Deserializes on-the-fly update package.
 # To be used rather only internally.
 #
 # $1 - the package
 # $2 - optional target parameter name
-function -zui_sys_decode_list_update() {
+function -zui_sys_decode_items_update() {
     local -a __segments
     [[ -n "$1" ]] && __segments=( "${(z@)1}" ) || __segments=( "" "" 0 0 )
     local __var_name="${2-reply}"

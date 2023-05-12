@@ -384,7 +384,7 @@ ZUI[GENERATION_TIME]="${generation_time[1,4]}"
 #
 
 # We alter the settings on-the-fly, so
-# prevent zui-list from loading them
+# prevent zui-items from loading them
 -zui_glib_refresh_configs "${(@s:,:)ZUI[configs_to_refresh]}"
 
 
@@ -392,9 +392,9 @@ local ZUILIST_WRAPPER_BIT="" ZUILIST_WRAPPER_LINE="" zuiel_bit_set=0 zuiel_line_
 
 if (( ZUI[top_anchors] )); then
     ZUILIST_HOP_INDICES+=( 1 ) # jump to anchors
-    zui-usetty-wrapper zui-list-wrapper "${zuiel_top_anchors[*]}" "${ZUIEL_OUTPUT[@]}"
+    zui-usetty-wrapper zui-items-wrapper "${zuiel_top_anchors[*]}" "${ZUIEL_OUTPUT[@]}"
 else
-    zui-usetty-wrapper zui-list-wrapper "${ZUIEL_OUTPUT[@]}"
+    zui-usetty-wrapper zui-items-wrapper "${ZUIEL_OUTPUT[@]}"
 fi
 
 if [[ "${ZUI[text_mode]}" = (all|nohyp) ]] || -zui_glib_has_any_hyperlinks "$ZUILIST_WRAPPER_LINE"; then

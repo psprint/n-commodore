@@ -50,7 +50,7 @@ zui-event-loop 1:demo_generator_A
 
 ![Hello World screenshot](https://raw.githubusercontent.com/wiki/zdharma/zui/img/hello-world-fs8.png)
 
-Other example which uses list-box: [zui-demo-list-box](https://github.com/zdharma/zui/blob/master/demos/zui-demo-list-boxes)
+Other example which uses list-box: [zui-demo-items-box](https://github.com/zdharma/zui/blob/master/demos/zui-demo-items-boxes)
 
 The API is described at the [wiki](https://github.com/zdharma/zui/wiki). Checkout [screenshots](https://github.com/zdharma/zui/wiki/Screenshots)
 and [Asciinema recordings](https://github.com/zdharma/zui/wiki/Asciinema).

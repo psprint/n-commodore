@@ -26,7 +26,7 @@ trap "REPLY=-2; reply=(); return 1" TERM INT QUIT
 
 # Outputs a message in the bottom of the screen
 # "[UNIQ]", "Text", "[Grep string]", "Generation time", "$reply[@]" from callback
--zui_list_status_msg(){
+-zui_items_status_msg(){
     integer indent=2 line=$ZUI[status_border]
 
     local final_msg=$@[-1]
@@ -48,7 +48,7 @@ trap "REPLY=-2; reply=(); return 1" TERM INT QUIT
 
 # $1 is window name, $2 is the expected cursor state (0 invisible, 1 visible)
 # Prefer module terminfo, then tput
--zui_list_cursor_visibility(){
+-zui_items_cursor_visibility(){
     # If $1 = plain, then just output the
     # codes without any state management
     if [[ "$1" != "plain" ]]; then
@@ -67,7 +67,7 @@ trap "REPLY=-2; reply=(); return 1" TERM INT QUIT
 }
 
 # Conditional, fully robust page-to-show computation
--zui_list_compute_exact_page_if_needed(){
+-zui_items_compute_exact_page_if_needed(){
     # Fallback: in case of any problems compute exact page
     if [[ $ZUI[FROM_WHAT_IDX_LIST_IS_SHOWN] -lt 1 ||
         $ZUI[FROM_WHAT_IDX_LIST_IS_SHOWN] -gt "$__last_element" ]]
@@ -78,9 +78,9 @@ trap "REPLY=-2; reply=(); return 1" TERM INT QUIT
 
 # Compute first to show index - page is
 # scrolled to center to show given index
--zui_list_compute_first_to_show_idx_center(){
+-zui_items_compute_first_to_show_idx_center(){
     (( ZUI[FROM_WHAT_IDX_LIST_IS_SHOWN]=ZUI[CURRENT_IDX]-__page_height/2 ))
-    -zui_list_compute_exact_page_if_needed
+    -zui_items_compute_exact_page_if_needed
 }
 
 # __current_difference - how many to subtract from current
@@ -88,7 +88,7 @@ trap "REPLY=-2; reply=(); return 1" TERM INT QUIT
 # subtract from element total count. These values allow
 # to provide navigation information when non-selectables
 # (non-real elements) are present.
--zui_list_compute_user_vars_difference(){
+-zui_items_compute_user_vars_difference(){
     # No non-selectables -> no job to do
     if [[ "${(t)ZUILIST_NONSELECTABLE_ELEMENTS}" != *array* ]]
     then
@@ -105,7 +105,7 @@ trap "REPLY=-2; reply=(); return 1" TERM INT QUIT
 }
 
 # List was processed, check if variables aren't off range
--zui_list_verify_vars(){
+-zui_items_verify_vars(){
     integer Q
     __last_element=$#__list
     [[ $ZUI[CURRENT_IDX] -gt "$__last_element" ]]&&\
@@ -139,24 +139,24 @@ trap "REPLY=-2; reply=(); return 1" TERM INT QUIT
 }
 
 # Compute the variables which are shown to the user
--zui_list_setup_user_vars(){
+-zui_items_setup_user_vars(){
     if [[ "$1" = 1 ]]; then
         # Basic values when there are no non-selectables
         ZUI[USER_CURRENT_IDX]=$ZUI[CURRENT_IDX]
         ZUI[USER_LAST_ELEMENT]="$__last_element"
     else
-        -zui_list_compute_user_vars_difference
+        -zui_items_compute_user_vars_difference
         ZUI[USER_CURRENT_IDX]=$(( ZUI[CURRENT_IDX] - __current_difference ))
         ZUI[USER_LAST_ELEMENT]=$(( __last_element - __last_element_difference ))
     fi
 }
 
-# Functionality inherited from n-list: ability to colorify
+# Functionality inherited from n-items: ability to colorify
 # selected keywords (via ZUI[COLORING_PATTERN]). Here it
 # uses color mark (default: \014) instead of direct usage
 # of ANSI color codes. \014 is cyan by default (ZUI[CYAN])
 #
--zui_list_colorify_disp_list(){
+-zui_items_colorify_disp_list(){
     local col=${ZUI[CYAN]} close=${ZUI[FMT_END]}
     [[ -n $ZUI[COLORING_COLOR] ]] && col=$ZUI[COLORING_COLOR]
 
@@ -177,7 +177,7 @@ trap "REPLY=-2; reply=(); return 1" TERM INT QUIT
 # Changes color marks (default: \3, \4, \5, \6, \7) into ANSI
 # color codes (default: green, yellow, magenta, cyan, red).
 # Operates on __disp_list array.
--zui_list_translate_color_marks_in_disp_list(){
+-zui_items_translate_color_marks_in_disp_list(){
     # [all] [fg] [bg]
     __disp_list=( "${__disp_list[@]//(#b)([$'\03'-$'\07'$'\013'-$'\014'$'\016'-$'\031'])([$'\03'-$'\07'$'\013'-$'\014'$'\016'-$'\017']|)([$'\020'-$'\030']|)([^${ZUI[FMT_END]}]#)${ZUI[FMT_END]}/${__colormap2[${match[1]}]}${__colormap2[${match[2]}]}${__colormap2[${match[3]}]}$match[4]$RESET}" )
 }
@@ -187,7 +187,7 @@ trap "REPLY=-2; reply=(); return 1" TERM INT QUIT
 #
 # $1 - buffer to operate on
 # $REPLY - modified buffer
--zui_list_translate_color_marks(){
+-zui_items_translate_color_marks(){
     local buf="$1"
     # [all] [fg] [bg]
     buf="${buf//(#b)([$'\03'-$'\07'$'\013'-$'\014'$'\016'-$'\031'])([$'\03'-$'\07'$'\013'-$'\014'$'\016'-$'\017']|)([$'\020'-$'\030']|)([^${ZUI[FMT_END]}]#)${ZUI[FMT_END]}/${__colormap2[${match[1]}]}${__colormap2[${match[2]}]}${__colormap2[${match[3]}]}$match[4]$RESET}"
@@ -207,7 +207,7 @@ trap "REPLY=-2; reply=(); return 1" TERM INT QUIT
 # $1 - buffer to operate on
 # $2 - target color mark
 # $REPLY - modified buffer
--zui_list_replace_color_marks_with(){
+-zui_items_replace_color_marks_with(){
     local buf="$1" target_mark="$2"
     # [all] [fg] [bg]
     #buf=${buf//[$'\03'-$'\07'$'\013'-$'\014'$'\016'-$'\031']([$'\03'-$'\07'$'\013'-$'\014'$'\016'-$'\017']|)([$'\020'-$'\030']|)/$target_mark}
@@ -220,7 +220,7 @@ trap "REPLY=-2; reply=(); return 1" TERM INT QUIT
     REPLY=$buf
 }
 
--zui_list_mark_current_segment_in_current_element(){
+-zui_items_mark_current_segment_in_current_element(){
         # Check if current element is in ZUILIST_NONSELECTABLE_ELEMENTS
         # If yes, don't mark current segment. Highlight anyway when
         # searching.
@@ -235,9 +235,9 @@ trap "REPLY=-2; reply=(); return 1" TERM INT QUIT
                 ! -zui_glib_has_any_hyperlinks "$elem"
         then
             if [[ $elem != *[$'\020'-$'\030']* && -z $ZUI[current_tfield] ]];then
-                -zui_list_replace_color_marks_with $elem $ZUI[MARK]
+                -zui_items_replace_color_marks_with $elem $ZUI[MARK]
             else
-                -zui_list_replace_color_marks_with $elem $ZUI[MARK2]
+                -zui_items_replace_color_marks_with $elem $ZUI[MARK2]
             fi
             buf=$REPLY
         fi
@@ -257,9 +257,9 @@ trap "REPLY=-2; reply=(); return 1" TERM INT QUIT
                 if [[ $ZUI[text_mode] = (all|nohyp) ]] || -zui_glib_has_any_hyperlinks "$elem"; then
                     # No background color?
                     if [[ $ZUI_PB2_QWORDS[i] != *[$'\020'-$'\030']* && -z $ZUI[current_tfield] ]]; then
-                        -zui_list_replace_color_marks_with $ZUI_PB2_QWORDS[i] $ZUI[MARK]
+                        -zui_items_replace_color_marks_with $ZUI_PB2_QWORDS[i] $ZUI[MARK]
                     else
-                        -zui_list_replace_color_marks_with $ZUI_PB2_QWORDS[i] $ZUI[MARK2]
+                        -zui_items_replace_color_marks_with $ZUI_PB2_QWORDS[i] $ZUI[MARK2]
                     fi
                     ZUI_PB2_QWORDS[i]="$REPLY"
                 fi
@@ -275,12 +275,12 @@ trap "REPLY=-2; reply=(); return 1" TERM INT QUIT
         #                      id                data1             data2             data3              width               idx                 options text        
         buf="${buf//(#b)$'\034'[^$'\034']#$'\034'[^$'\034']#$'\034'[^$'\034']#$'\034'[^$'\034']#$'\034'([^$'\034']#)$'\034'([^$'\034']#)$'\034'([^$'\02']#)$'\02'/${(mr:${(P)${(Q)match[1]}}:: :)${(As:;:)${(P)${(Q)match[3]}}}[${(P)${(Q)match[2]}}]}}"
 
-        -zui_list_translate_color_marks "$buf"
+        -zui_items_translate_color_marks "$buf"
         current_page_idx=$((current_page_idx>0?current_page_idx:1))
         __disp_list2[current_page_idx]="${REPLY//$'\n'/n}"  # replace newlines with "n" (3/3)
 }
 
--zui_list_compute_mark_codes(){
+-zui_items_compute_mark_codes(){
     local __actmark="$1" __altmark="$2" __out="${3:-MARK_CODES}" __out2="${4:-MARK_END_CODES}" __aout="$5"
     local __active_text
 
@@ -326,16 +326,16 @@ trap "REPLY=-2; reply=(); return 1" TERM INT QUIT
 
 # Argument is 1 or 2, to select first
 # or second marks for the recomputation
--zui_list_recompute_mark(){
+-zui_items_recompute_mark(){
     if [[ "$1" = 1 ]]; then
-        -zui_list_compute_mark_codes $ZUI[mark] $ZUI[altmark] MARK_CODES MARK_END_CODES __actv_text
+        -zui_items_compute_mark_codes $ZUI[mark] $ZUI[altmark] MARK_CODES MARK_END_CODES __actv_text
     else
-        -zui_list_compute_mark_codes $ZUI[mark2] $ZUI[altmark2] MARK2_CODES MARK2_END_CODES
+        -zui_items_compute_mark_codes $ZUI[mark2] $ZUI[altmark2] MARK2_CODES MARK2_END_CODES
     fi
 }
 
 # Mainly for `zcurses bg`, but has some theme-related scraps
--zui_list_recompute_bg(){
+-zui_items_recompute_bg(){
     backuptheme="${ZUI[colorpair]}/${ZUI[bold]}"
     stbackuptheme="${ZUI[status_colorpair]}/${ZUI[status_bold]}"
 
@@ -343,11 +343,11 @@ trap "REPLY=-2; reply=(); return 1" TERM INT QUIT
     zcurses bg "$__wname_status" $ZUI[status_colorpair]
 }
 
--zui_list_handle_resize(){
+-zui_items_handle_resize(){
     if -zui_wrapper_recreate_windows "$1" __main_height __main_width __status_height __status_width; then
         __page_height=__main_height-2
         __page_width=__main_width-2
-        -zui_list_recompute_bg
+        -zui_items_recompute_bg
         [[ -n "$__wname_status" ]] && zcurses clear "$__wname_status"
         ZUI[REGENERATE_LIST]=2
     fi
@@ -358,7 +358,7 @@ trap "REPLY=-2; reply=(); return 1" TERM INT QUIT
 #
 
 if [[ "$#" -lt 1 ]]; then
-    echo "Usage: zui-list element_1 ..."
+    echo "Usage: zui-items element_1 ..."
     return 1
 fi
 
@@ -484,9 +484,9 @@ zui_log_colors=( "${(@s: :)ZUI[log_colors]}" )
 # Process configuration
 local MARK_CODES MARK_END_CODES MARK2_CODES MARK2_END_CODES __actv_text
 
--zui_list_recompute_mark 1
--zui_list_recompute_mark 2
--zui_list_recompute_bg
+-zui_items_recompute_mark 1
+-zui_items_recompute_mark 2
+-zui_items_recompute_bg
 
 # Init list's state
 [[ $ZUI[FROM_WHAT_IDX_LIST_IS_SHOWN] != <-> ]] && ZUI[FROM_WHAT_IDX_LIST_IS_SHOWN]=1
@@ -508,7 +508,7 @@ ZUI[USER_LAST_ELEMENT]=$(( __last_element - ${#ZUILIST_NONSELECTABLE_ELEMENTS} )
 # Recompute ZUI[FROM_WHAT_IDX_LIST_IS_SHOWN] in case it
 # was incorrectly manually altered outside the list, also
 # verify current index
--zui_list_verify_vars
+-zui_items_verify_vars
 
 if ((ZUI[START_IN_QUERY])); then
     ZUI[IN_QUERY]=$ZUI[START_IN_QUERY]
@@ -545,7 +545,7 @@ ZUI[IGNORE_MSG]=0  # don't ignore single status callback call
 
 while (( 1 )); do
     # Handle resize, once every 5 seconds
-    -zui_list_handle_resize 0
+    -zui_items_handle_resize 0
 
     # Do searching?
     if [[ -n $ZUI[SEARCH_BUFFER] ]]; then
@@ -602,10 +602,10 @@ while (( 1 )); do
             fi
 
             # Called after processing list
-            -zui_list_verify_vars
+            -zui_items_verify_vars
         fi
 
-        -zui_list_setup_user_vars 1
+        -zui_items_setup_user_vars 1
         __segments=( "${(z@)__list[${ZUI[CURRENT_IDX]}]}" )
         __nseg="$#__segments"
 
@@ -641,10 +641,10 @@ while (( 1 )); do
                 done
             fi
             # We translate color marks into color codes. list still contains marks,
-            # and -zui_list_mark_current_segment_in_current_element will be able
+            # and -zui_items_mark_current_segment_in_current_element will be able
             # to restore current element into marks, to switch colors of active
             # segment
-            -zui_list_translate_color_marks_in_disp_list
+            -zui_items_translate_color_marks_in_disp_list
 
             # Replace newlines with "\n" (1/3)
             __disp_list=( "${(@)__disp_list//$'\n'/n}" )
@@ -654,10 +654,10 @@ while (( 1 )); do
         # freely without regenerating __disp_list
         __disp_list2=( "${(@)__disp_list}" )
 
-        [[ "$#__disp_list2" -gt 0 ]] && -zui_list_mark_current_segment_in_current_element
+        [[ "$#__disp_list2" -gt 0 ]] && -zui_items_mark_current_segment_in_current_element
 
         # Output colored list
-        zui-list-draw "$(( ZUI[CURRENT_IDX] - ZUI[FROM_WHAT_IDX_LIST_IS_SHOWN] + 1 ))" \
+        zui-items-draw "$(( ZUI[CURRENT_IDX] - ZUI[FROM_WHAT_IDX_LIST_IS_SHOWN] + 1 ))" \
             "$__page_height" "$__page_width" 1 2 $ZUI[TEXT_OFFSET] "$__wname_main" "${ZUI[highlight_once]:-$__actv_text}" \
             "$__disp_list2[@]"
     else
@@ -689,11 +689,11 @@ while (( 1 )); do
 
             __last_element="${#__list}"
             # Called after processing list
-            -zui_list_verify_vars
+            -zui_items_verify_vars
         fi
 
         # If the argument is 1, then: don't bother with non-selectables
-        -zui_list_setup_user_vars $ZUI[UNIQ_MODE]
+        -zui_items_setup_user_vars $ZUI[UNIQ_MODE]
         __segments=( "${(z@)__list[${ZUI[CURRENT_IDX]}]}" )
         __nseg="$#__segments"
 
@@ -712,13 +712,13 @@ while (( 1 )); do
             #                                       id                data1             data2             data3              width               idx                 options text        
             __disp_list=( "${__disp_list[@]//(#b)$'\034'[^$'\034']#$'\034'[^$'\034']#$'\034'[^$'\034']#$'\034'[^$'\034']#$'\034'([^$'\034']#)$'\034'([^$'\034']#)$'\034'([^$'\02']#)$'\02'/${(mr:${(P)${(Q)match[1]}}:: :)${(As:;:)${(P)${(Q)match[3]}}}[${(P)${(Q)match[2]}}]}}" )
 
-            [[ -n $ZUI[COLORING_PATTERN] ]] && -zui_list_colorify_disp_list
+            [[ -n $ZUI[COLORING_PATTERN] ]] && -zui_items_colorify_disp_list
 
             # We translate color marks into color codes. list still contains marks,
-            # and -zui_list_mark_current_segment_in_current_element will be able
+            # and -zui_items_mark_current_segment_in_current_element will be able
             # to restore current element into marks, to switch colors of active
             # segment
-            -zui_list_translate_color_marks_in_disp_list
+            -zui_items_translate_color_marks_in_disp_list
 
             # Replace newlines with "\n" (2/3)
             __disp_list=( "${(@)__disp_list//$'\n'/\$}" )
@@ -728,10 +728,10 @@ while (( 1 )); do
         # freely without regenerating __disp_list
         __disp_list2=( "${(@)__disp_list}" )
 
-        [[ "$#__disp_list2" -gt 0 ]] && -zui_list_mark_current_segment_in_current_element
+        [[ "$#__disp_list2" -gt 0 ]] && -zui_items_mark_current_segment_in_current_element
 
         # Output the list
-        zui-list-draw "$(( ZUI[CURRENT_IDX] - ZUI[FROM_WHAT_IDX_LIST_IS_SHOWN] + 1 ))" \
+        zui-items-draw "$(( ZUI[CURRENT_IDX] - ZUI[FROM_WHAT_IDX_LIST_IS_SHOWN] + 1 ))" \
             "$__page_height" "$__page_width" 1 2 $ZUI[TEXT_OFFSET] "$__wname_main" "${ZUI[highlight_once]:-$__actv_text}" \
             "$__disp_list2[@]"
     fi
@@ -748,7 +748,7 @@ while (( 1 )); do
 
     zcurses attr "$__wname_main" "$wrk_bold" $ZUI[colorpair]
 
-    -zui_list_cursor_visibility "main" 0
+    -zui_items_cursor_visibility "main" 0
     zcurses refresh "$__wname_main"
 
     # Status window is optional (1/3)
@@ -778,7 +778,7 @@ while (( 1 )); do
         (( tpe > 0 )) && -zui_sys_add_message "$tpe" "${EPOCHSECONDS:-0}" "${reply[@]}"
         (( ZUI[FIRST] && ${${ZUI[SEARCH_BUFFER]:+1}:-0} )) && -zui_sys_add_message 1 "${EPOCHSECONDS:-0}" "Search is " "" "active " "(\"${ZUI[SEARCH_BUFFER]}\")"
 
-            -zui_list_setup_user_vars $(((ZUI[UNIQ_MODE])||($#ZUI[SEARCH_BUFFER])))
+            -zui_items_setup_user_vars $(((ZUI[UNIQ_MODE])||($#ZUI[SEARCH_BUFFER])))
 
             -zui-log "$__wname_status" "$__status_height" "$__status_width" $ZUI[status_border] $ZUI[status_colorpair] \
                     "$ZUILIST_GREP_STRING" $ZUI[UNIQ_MODE] $ZUI[IN_QUERY] \
@@ -788,9 +788,9 @@ while (( 1 )); do
         if ((ZUI[IN_QUERY]==3));then
             local color=magenta
             ((ZUI[QUERY_PROMPT_RET]))&&color=yellow
-            -zui_list_status_msg "$color" "·$ZUI[QUERY_PROMPT_RET]· " green "$ZUI[QUERY_PROMPT]" "$ZUI[QUERY_BUFFER]"
+            -zui_items_status_msg "$color" "·$ZUI[QUERY_PROMPT_RET]· " green "$ZUI[QUERY_PROMPT]" "$ZUI[QUERY_BUFFER]"
         elif ((ZUI[IN_QUERY]==1)); then
-            -zui_list_status_msg cyan "$ZUI[QUERY_PROMPT]" "${ZUI[SEARCH_BUFFER]// /+}"
+            -zui_items_status_msg cyan "$ZUI[QUERY_PROMPT]" "${ZUI[SEARCH_BUFFER]// /+}"
         fi
 
         [[ $ZUI[status_border] = 1 ]] && {
@@ -798,12 +798,12 @@ while (( 1 )); do
             zcurses border "$__wname_status"
             zcurses attr "$__wname_status" "$wrk_stbold" $ZUI[status_colorpair]
         }
-        # status_msg_len is being set in -zui_list_status_msg()
+        # status_msg_len is being set in -zui_items_status_msg()
         (((ZUI[cursor]<1)))&&ZUI[cursor]=1
         (((ZUI[cursor]>ZUI[stat_len_3]+1)))&&((ZUI[cursor]=ZUI[stat_len_3]+1))
         zcurses move "$__wname_status" $ZUI[status_border] \
                 $((ZUI[stat_len_1]+ZUI[cursor]+1))
-        ((!ZUI[IN_QUERY]))&&-zui_list_cursor_visibility status 0||-zui_list_cursor_visibility status 1
+        ((!ZUI[IN_QUERY]))&&-zui_items_cursor_visibility status 0||-zui_items_cursor_visibility status 1
         zcurses refresh "$__wname_status"
 
     }
@@ -812,9 +812,9 @@ while (( 1 )); do
 
     if [[ -n $ZUI[current_tfield] ]]; then
         zcurses move "$__wname_main" $ZUI[cursor_y] $(( ZUI[cursor_x] + 2 ))
-        -zui_list_cursor_visibility field 1
+        -zui_items_cursor_visibility field 1
     else
-        -zui_list_cursor_visibility field 0
+        -zui_items_cursor_visibility field 0
     fi
 
     __final_key="<timeout>" __do_exit="no"
@@ -846,7 +846,7 @@ while (( 1 )); do
                 ZUI[PREV_IDX_NO_SEARCH]=$ZUI[CURRENT_IDX]
             local BUF= VAR=$bufs[ZUI[IN_QUERY]]
             [[ -n $VAR ]]&&BUF=${(P)VAR}
-            zui-list-input "$ZUI[CURRENT_IDX]" "$ZUI[CURRENT_SEGMENT]" "$ZUI[FROM_WHAT_IDX_LIST_IS_SHOWN]" \
+            zui-items-input "$ZUI[CURRENT_IDX]" "$ZUI[CURRENT_SEGMENT]" "$ZUI[FROM_WHAT_IDX_LIST_IS_SHOWN]" \
                             "$__page_height" "$__page_width" "$__last_element" "$__nseg" "$ZUI[TEXT_OFFSET]" \
                             "$__final_key" "$ZUI[IN_QUERY]" "$BUF" \
                             "$ZUI[UNIQ_MODE]" "$ZUILIST_DISABLE_SEARCH" "__list"
@@ -904,7 +904,7 @@ while (( 1 )); do
                 -zui_util_get_segment $__list[__selection] $ZUI[CURRENT_SEGMENT] __tmp
                 # Is it a hyperlink selection? If not, then examine select_mode
                 # to know if the text selection (ZUI[text_select] is examined in
-                # zui-list-input) should be passed outside the list
+                # zui-items-input) should be passed outside the list
                 if -zui_glib_is_any_hyperlink $__tmp || [[ $ZUI[select_mode] = (restart|quit) ]]; then
                     REPLY=$__selection
                     printf %s\\n __selection:$__selection/$__list[__selection]! "${(@)__list[1,5]}">>/tmp/reply
@@ -963,7 +963,7 @@ while (( 1 )); do
                 [[ -n "$__wname_status" ]] && zcurses clear "$__wname_status" redraw
 
                 # Handle resize, force terminal-size read
-                -zui_list_handle_resize 1
+                -zui_items_handle_resize 1
             elif [[ "$__action" = "HYPERLINK" ]]; then
                 -zui_util_get_segment $__list[__selection] $ZUI[CURRENT_SEGMENT]
                 -zui_glib_decode "$REPLY"
@@ -1024,7 +1024,7 @@ while (( 1 )); do
 
         # Check if there are any update-on-the-fly packages submitted
         local -a update
-        -zui_sys_decode_list_update $ZUI[fly_update] update
+        -zui_sys_decode_items_update $ZUI[fly_update] update
         ZUI[fly_update]=""
 
         if [[ $update[3] -ge 1 ]]; then
@@ -1052,9 +1052,9 @@ while (( 1 )); do
                 shift 4 update
                 integer update_size=${#update}
 
-                # Update $@ array of this function - it is "zui-list", main UI function, and
+                # Update $@ array of this function - it is "zui-items", main UI function, and
                 # $@ holds original input data. So it can be said that here a restart of
-                # zui-list is simulated
+                # zui-items is simulated
                 set -- "${(@)@[1,update_first-1]}" "${update[@]}" "${(@)@[update_first+update_count,-1]}"
             fi
             __qlist=("$@")
@@ -1196,7 +1196,7 @@ while (( 1 )); do
                 [[ -z $ZUI[SEARCH_BUFFER] ]] && (( ZUI[CURRENT_IDX] > __last_element )) && ZUI[CURRENT_IDX]="$__last_element"
                 ZUI[CURRENT_SEGMENT]=1
                 ZUI[SEARCH_BUFFER]=""
-                -zui_list_compute_first_to_show_idx_center
+                -zui_items_compute_first_to_show_idx_center
             fi
         fi
 
