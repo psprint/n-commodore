@@ -926,27 +926,6 @@ while (( 1 )); do
                     ZUI[pure_text_selected]="$__tmp"
                 fi
             elif [[ "$__action" = "F1" ]]; then
-                if ((!ZUI[IN_QUERY])); then
-                    if [[ -n $ZUI[PREV_SBUFFER] && -n $ZUI[PREV_SIDX] ]]; then
-                        ZUI[SEARCH_BUFFER]=$ZUI[PREV_SBUFFER]
-                        ZUI[CURRENT_IDX]=$ZUI[PREV_SIDX]
-                    fi
-                    ZUI[IN_QUERY]=1
-                else
-                    repeat 1; do
-                        typeset +U -ga __slist=("$__qlist[@]")
-                    done
-                    ZUI[PREV_SBUFFER]=$ZUI[SEARCH_BUFFER]
-                    ZUI[PREV_SIDX]=$ZUI[CURRENT_IDX]
-                    if -zui_sys_get_match_line 'ZUI[CURRENT_IDX]'; then
-                        -zui_glib_msg "Search: \`${ZUI[SEARCH_BUFFER]}' jumped to line " "#${ZUI[CURRENT_IDX]}" " Restore search via F1"
-                        ((ZUI[CURRENT_IDX]+=$#ZUILIST_NONSELECTABLE_ELEMENTS))
-                        ZUI[SEARCH_BUFFER]=""
-                        ZUI[IN_QUERY]=0
-                        ZUI[highlight_once]="italic"
-                    fi
-                    ZUI[IGNORE_MSG]=1
-                fi
             elif [[ "$__action" = "BR_MOVE_LEFT" || "$__action" = "BR_MOVE_RIGHT" ]]; then
                 REPLY="$__action"
                 reply=( "$__list[@]" )

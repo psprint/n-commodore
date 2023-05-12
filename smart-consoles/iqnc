@@ -942,6 +942,7 @@ fi
 iqnc_mime_setup
 -zui_glib_msg "" "@@@ " "Welcome to " "NC System " "console" " v0.8" " @@@";
 -zui_glib_msg "" "@@@ " "Press " Shift-F1 " to show the " "HELP screen" " @@@";
+-zui_glib_msg "" "@@@ " "Ctrl-Space" " jumps" "" " to search results" " @@@";
 integer QFLAG EC
 iqnc_push_pwd
 iqnc_hub 1 1 1
