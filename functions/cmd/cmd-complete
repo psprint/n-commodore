@@ -5,6 +5,7 @@
 #
 
 cmd-complete() {
+    local QE
     integer EC QEC
     0=${${${(M)${0::=${(%):-%x}}:#/*}:-$PWD/$0}:A}
     [[ -f $0 ]];EC+=$?
@@ -50,12 +51,26 @@ iqnc_set_prop_buf(){
     local -a QFIN
     if (($+Opts[-d]||!($+Opts[-d]||$+Opts[-w])));then
         QFIN=(**/*~(*\~|*(/|).git(/*|))(N,.,/,@,D))
-        QFIN=(${(o)QFIN})
-        print $QFIN[1,10]>>/tmp/reply
-        QFIN=(${(M)QFIN:#$~PT})
     fi
-    print PT=$PT W:$WORD, be:$BE. NXT:$NXT qFIN:$QFIN>>/tmp/reply
-    if ! zui::item-box -w 27 -s 1 $QFIN;then
+    if (($+Opts[-w]||!($+Opts[-d]||$+Opts[-w])));then
+        local -a qt
+        integer QCNT
+        foreach QE ($items_noproc)
+            QCNT+=1
+            int/nc::prune-esc -v "qt[$QCNT]" -- $QE 
+            if ((QCNT>=79));then
+                QFIN+=($qt)
+                QCNT=0
+            fi
+        end
+        ((QCNT>0&&QCNT<79))&&QFIN+=($qt[1,QCNT])
+    fi
+
+    QFIN=(${(M)QFIN:#(*/|)$BE*$NXT})
+    QFIN=(${(o)QFIN%/})
+    typeset -U QFIN
+
+    if ! zui::item-box -w 27 -s 1 -- $QFIN;then
         iqnc_set_prop_buf WRITE $ZUI[COMP_BUFFER]
         ZUI[cursor]=$ZUI[COMP_CURS]
         iqw "Notice: " "completion cancelled"

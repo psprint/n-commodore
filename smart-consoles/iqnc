@@ -300,8 +300,10 @@ iqnc_get_cmd_out(){
         if [[ $cmd[QSUB] == $~CMD_PT && $ZUI[RET] -eq 0 ]]
         then
             reply=("${(@f)$(builtin print -C2 -a ${(@f)$(<$ZUI[TMP])})}")
+            items_noproc=("${(@f)$(<$ZUI[TMP])}")
         else
             reply=("${(@f)$(<$ZUI[TMP])}")
+            items_noproc=("$reply[@]")
         fi
         rm -f $ZUI[TMP]
     else
@@ -406,6 +408,7 @@ cmd-push-screen(){
     QIDX+=1
     repeat 1;do
         WScreens[SCREEN_$QIDX]=${(F)qitems}
+        WScreens[SCREEN_NOPRC_$QIDX]=${(F)items_noproc}
         WScreens[SCREEN_PWD_$QIDX]=$PWD
         WScreens[SCREEN_VIEW_$QIDX]=$ZUI[GEN_B_IDX]
         WScreens[SCREEN_QPATH_$QIDX]=$ZUI[QPATH]
@@ -536,7 +539,7 @@ if ((!$+Opts[--refresh])); then
     fi
     iqnc_set_prompt $ZUI[START_IN_QUERY]
 
-    local -a qitems iq0items q0input q0input_proc
+    local -a qitems iq0items q0input q0input_proc items_noproc
     integer Q0_SAVE_PIPE tmout
     if int/nc::test-stdin Q0_SAVE_PIPE REPLY;then
         ZUI[FIRST_0_INPUT]=$REPLY
@@ -598,6 +601,7 @@ iqnc_fill_history(){
     int/nc::read-all-sys -d$NCCHIST||{iqw "Error reading history…";return 1;}
     ZUI[COLORING_PATTERN]='(#s)[^[:space:]]##~(*[·–—]*)'
     qitems=(${(u)reply}) reply=()
+    items_noproc=($qitems)
     -zui_glib_special_text "·Command history·"
     separ
     typeset -ga -U ZUILIST_NONSELECTABLE_ELEMENTS=(4 3 2 1)
@@ -648,6 +652,8 @@ iqnc_fill_preview(){
             [[ ! -f $QFILE ]]&&qitems=("No such file")||\
                 {[[ ! -s $QFILE ]]&&qitems=("File is empty");}
         fi
+
+        items_noproc=(${(Q@)${(z@A)qitems}})
 
         reply=()
         -zui_glib_special_text $QTXT
@@ -710,7 +716,7 @@ iqnc_fill_cmd(){
                 [[ $QEX != *++* ]]&&iq0items=("$reply[@]")
             fi
         else
-            iq0items=() q0input=()
+            iq0items=() q0input=() items_noproc=()
             ZUI[HAVE_0_INPUT]=1 ZUI[IO_COUNT]=15
         fi
 
@@ -765,6 +771,7 @@ iqnc_fill_0(){
     ((QFLAG))&&ok/qcolreduce "$reply[@]"
 
     q0input+=("$reply[@]")
+    items_noproc+=($reply)
     q0input_proc=("$q0input[@]")
     (($+Opts[-s]))&&q0input_proc=("${(@on)q0input_proc}")
     (($+Opts[-R]))&&q0input_proc=("${(a@nO)q0input_proc}")
@@ -790,6 +797,7 @@ iqnc_fill_screen(){
     ZUI[COLORING_PATTERN]="((·[^·]##·~(#s)·*)|(#s)· [^[:space:]]##)"
 
     qitems=("${(@f)WScreens[SCREEN_$QIDX]}")
+    items_noproc=("${(@f)WScreens[SCREEN_NOPRC_$QIDX]}")
     [[ -n ${SPWD::=$WScreens[SCREEN_PWD_$QIDX]} ]]&&cmd-cd -q $SPWD
     ZUI[GEN_B_IDX]=${WScreens[SCREEN_VIEW_$QIDX]:-0}
     ZUI[QPATH]=$WScreens[SCREEN_QPATH_$QIDX]
@@ -867,6 +875,7 @@ iqnc_fill_tags(){
     qa=(${qa_tag_data//(#b)([^$'\177']##)$'\177'([^$'\1']##)*/${(r:39:: :)match[2]} $match[1]})
     iqnc_search_prompt
     separ
+    items_noproc=(${(Q@)${(z@A)qa}})
     qitems=($REPLY[3,-1]
             "·TAG· (func, var, etc.)                 ·CODE SNIPPET·"
             $REPLY[3,-1]

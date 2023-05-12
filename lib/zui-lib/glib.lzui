@@ -841,7 +841,6 @@ function -zui_glib_cleanup() {
     keys=( ${ZUI[(I)zuianchor*]} ${ZUI[(I)zuieanchor*]} ${ZUI[(I)zuitfield*]} ${ZUI[(I)zuilbox*]}
            ${ZUI[(I)zuiaction*]} ${ZUI[(I)zuiiaction*]} ${ZUI[(I)fly_*]}
            ${ZUI[(I)bindkey_*]}
-            ${ZUI[(I)SERIAL*]}
            HAVE_0_INPUT cat_started FIRST_0_INPUT START_IN_QUERY
            app app_name
            # Configuration keys
@@ -875,7 +874,7 @@ function -zui_glib_cleanup() {
     [[ -n ${ZUI[app]} ]] && ZUI[previous_app]=${ZUI[app]}
 
     local k
-    for k in ${keys[@]} ${ZUI[(I)my_*]}; do
+    for k in ${keys[@]} ${ZUI[(I)_*]}; do
         unset "ZUI[$k]"
     done
 
@@ -905,29 +904,28 @@ function -zui_glib_cleanup() {
 function -zui_glib_serialize() {
     local APP=${1:-${ZUI[app]:-NoAppIDSet}}
     local PERFLE=$ZUI[CACHE_DIR]/$ZUI[SERIALZE_FLE_PFX]$APP$ZUI[SERIALZE_FLE_EXT]
-    local VAR=$ZUI[SERIALZE_EXVAR_PFX]$APP \
-            FIELD=_$ZUI[SERIALZE_FIELD_PFX]$APP
+    local -a skeys=($ZUI[(I)[^_]*]) out
 
-    local -a skeys
-    skeys=(${(k)ZUI[(I)_*]})
-
-    local k OUT
-    for k in "${skeys[@]}"; do
-        (( ${+ZUI[$k]} )) && OUT+="${(q)k} ${(q)ZUI[$k]} "
-    done
+    local k q=$'\n'
+    foreach k ($skeys)
+        (( ${+ZUI[$k]} )) && out+=("${(q)k} ${(q)ZUI[$k]} \\"$q)
+    end
 
     # Truncate trailing spaces
-    OUT=${OUT%%[[:space:][:INVALID:][:INCOMPLETE:]]##}
+    #OUT=${OUT%%[[:space:][:INVALID:][:INCOMPLETE:]]##}
 
     # Finally save in 3 locations:
-    ZUI[$FIELD]=$OUT            # 1. The `ZUI` hash field
+    #ZUI[$FIELD]=$OUT            # 1. The `ZUI` hash field
     #typeset -gx $VAR=$OUT       # 2. Exported var
 
     # 3. File in ~/.cache/zui-zsh (by default, customizable):
-    {builtin print -r -- $OUT>!$PERFLE;} 2>>!$ZUIO
-
+{
+    >|$PERFLE <<-END
+	$out
+	END
+}&>>|$ZUIO
     # Testable
-    [[ -n $ZUI[$FIELD] && -n ${(P)VAR} && -s $PERFLE ]]
+    [[ -s $PERFLE ]]
 } # }}}
 
 # FUNCTION: -zui_glib_deserialize {{{
@@ -938,22 +936,14 @@ function -zui_glib_serialize() {
 function -zui_glib_deserialize() {
     local APP="${1:-${ZUI[app]:-NoAppIDSet}}" DATA
     local PERFLE=$ZUI[CACHE_DIR]/$ZUI[SERIALZE_FLE_PFX]$APP$ZUI[SERIALZE_FLE_EXT]
-    local VAR=$ZUI[SERIALZE_EXVAR_PFX]$APP \
-            FIELD=$ZUI[SERIALZE_FIELD_PFX]$APP
-
     local -a data
-    DATA=${(P)VAR}||DATA=
-    [[ $DATA == $~ZUI[WRONGSTR_P] ]]&&DATA=$ZUI[$FIELD]
-    [[ $DATA == $~ZUI[WRONGSTR_P] ]]&&{DATA="$(<$PERFLE)"&>>!$ZUIO;}
-    [[ $DATA == $~ZUI[WRONGSTR_P] ]]&&return 1
+    {DATA="$(<$PERFLE)";}&>>!$ZUIO
 
     # Deserialize into `data` array:
     data=( "${(Q@)${(z@)DATA}}" )
 
     # Is array even? If yes, then make the data live
-    local srch=$ZUI[SEARCH_BUFFER]
-    ((${#data}&1-1&&$#data>0))&&ZUI+=("${data[@]}")
-    ZUI[SEARCH_BUFFER]=$srch
+    (((${#data}&1)-1&&$#data>0))&&ZUI+=("${data[@]}")
     # Testable
     return $?
 } # }}}

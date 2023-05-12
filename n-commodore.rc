@@ -7,7 +7,14 @@
 alias rg="rg --color=always --line-number"
 alias ag="ag --color --numbers"
 alias bat="bat --color=always"
+greptxt="grep -E -H -sn -T -I --color=always\
+    --exclude-dir=.git\\* --exclude TAGS --exclude=.TAGS.z --exclude=\\*.log\
+    --exclude=\\*.patch --exclude=\\*.diff -D skip -d recurse"
+[[ -f .gitignore ]]&&greptxt+=" --exclude-from=.gitignore"
 
+alias grep=$greptxt
+alias qe=$greptxt
+alias gitg="git grep -I -i -E --color=always --threads=7 -n -e"
 #
 # Some hopefully useful hashed dirs. Use in command line, e.g.: cd ~start
 #
