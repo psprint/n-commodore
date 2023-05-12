@@ -711,7 +711,10 @@ iqnc_fill_cmd(){
         iqnc_get_cmd_out $ZUI[cmd-mode] $QEX$cmd[1] "${(@)cmd[2,-1]}"
         if [[ $ZUI[cmd-mode] == whole || -n $QEX ]]; then
             if [[ $QEX == *'!!'* ]];then
-                iqw "!!" "-CMD-OUT:»: " "${(j:·\n·:)reply}"
+                local TMP=${${(j:·\n·:)reply}:-NO OUTPUT}
+                int/nc::prune-esc $TMP -v TMP
+                iqw "!!" "-CMD-OUT:»: " "$TMP"
+                return 0
             else
                 [[ $QEX != *++* ]]&&iq0items=("$reply[@]")
             fi
@@ -749,7 +752,7 @@ iqnc_fill_0(){
     ((!Q0_SAVE_PIPE))&&\
         {int/nc::read-all-sys -p -t0;QEC=$?;}
 
-    QFLAG=$#reply
+    [[ -n $REPLY ]]&&QFLAG=1||QFLAG=0
     ZUI[read-all-failed]=$((!QFLAG))
     ((ZUI[IO_COUNT]-=!QFLAG))
     ((ZUI[IO_COUNT]<0))&&{ZUI[HAVE_0_INPUT]=0;ZUI[read-all-incomplete]=;}&&return
