@@ -823,8 +823,6 @@ while (( 1 )); do
         key="" keypad="" __final_key=""
         zcurses input "$__wname_main" key keypad
 
-        [[ -n $key$keypad ]]&&print $#key:$key/$#keypad$keypad>>/tmp/reply
-
         # Get the special (i.e. "keypad") key or regular key
         if [[ -n "$key" ]]; then
             __final_key="$key"
@@ -838,7 +836,20 @@ while (( 1 )); do
                 (( ${+functions[-zui-standard-timeout-callback]} )) && -zui-standard-timeout-callback
             fi
         fi
-
+        if [[ $__final_key == $'\e' ]];then
+            if ((ZUI[ESC_TIME]==0));then
+                typeset -E SECONDS=0
+                ZUI[ESC_TIME]=1
+                continue
+            elif ((SECONDS<ZUI[key-timeout]));then
+                __final_key=$'\e'$__final_key
+            else
+                ZUI[ESC_TIME]=0
+            fi
+        elif ((ZUI[ESC_TIME]==1&&SECONDS<ZUI[key-timeout]));then
+            __final_key=$'\e'$__final_key
+            ZUI[ESC_TIME]=0
+        fi
         if [[ -n "$__final_key" && "$__final_key" != "<timeout>" ]]; then
             integer track_cur_idx=ZUI[CURRENT_IDX] in_query_prev=ZUI[IN_QUERY]
             ((!track_cur_idx))&&track_cur_idx=1
@@ -907,7 +918,6 @@ while (( 1 )); do
                 # zui-items-input) should be passed outside the list
                 if -zui_glib_is_any_hyperlink $__tmp || [[ $ZUI[select_mode] = (restart|quit) ]]; then
                     REPLY=$__selection
-                    printf %s\\n __selection:$__selection/$__list[__selection]! "${(@)__list[1,5]}">>/tmp/reply
                     reply=( "${__list[@]}" )
                     __do_exit=yes
                     break

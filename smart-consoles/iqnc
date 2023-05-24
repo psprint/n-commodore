@@ -497,7 +497,7 @@ if ((!$+Opts[--refresh])); then
     readonly CIN=0 VIEW=1 CQUE=2 TAGS=3 VIEWS=4
     readonly PR_NONE=0 PR_SEARCH=1 PR_CMD_EXEC=3
     : ${ZUI[cmd-mode]:=pipe}
-    ZUI[SRC_HIGHLIGHT]=1
+    ZUI[SRC_HIGHLIGHT]=1 ZUI[key-timeout]=0.30
     -zui_glib_cleanup deserialize:"iqnc_$APP"
     -zui_glib_init app:"iqnc_$APP" app_name:"NC Console"
     emulate -L zsh -o extendedglob -o typesetsilent -o warncreateglobal -o combiningchars -o rcquotes -o noshortloops -o nopromptsubst

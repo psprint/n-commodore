@@ -51,6 +51,7 @@ zui::bindkey F2 cmd-contents-view
 zui::bindkey F3 cmd-command-history-view
 zui::bindkey $'\C-w' cmd-tags-view
 zui::bindkey $'\C-_' cmd-toggle-prompt
+zui::bindkey $'\e/' cmd-toggle-prompt
 zui::bindkey $'\C-@' cmd-jump
 
 # Strictly preview view
