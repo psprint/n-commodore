@@ -673,7 +673,7 @@ case "$key" in
             -zui_items_cursor_visibility status 0
         fi
         ;;
-    (q|Q|$'\eq'|$'\eQ'|$'\C-c')
+    ($'\eq'|$'\eQ'|$'\C-c')
         reply=(-1 QUIT)
         ;;
     ($'\C-L')
