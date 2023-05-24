@@ -35,8 +35,6 @@ else
     NC_DEFAULT_LS_COMMAND="ls -1 --color=always"
 fi 
 
-#NC_DEFAULT_LS_COMMAND="command exa --color=always|ok/qcolreduce -o"
-#NC_DEFAULT_LS_COMMAND="command ls --color=always|ok/qcolreduce -o"
 # editor will be found anyway
 #NC_OPEN_CMD=${VISIAL:-${EDITOR:-$PAGER}}
 NC_DEFAULT_LS_LIKE_OPTS="--color=always"
@@ -50,38 +48,37 @@ zui::bindkey F1 cmd-main-view
 zui::bindkey F2 cmd-contents-view
 zui::bindkey F3 cmd-command-history-view
 zui::bindkey $'\C-w' cmd-tags-view
-zui::bindkey $'\C-_' cmd-toggle-prompt
-zui::bindkey $'\e/' cmd-toggle-prompt
-zui::bindkey $'\C-@' cmd-jump
+zui::bindkey $'\C-_' cmd-toggle-prompt  # Ctrl-/ - toggle prompt search/cmd-input
+zui::bindkey $'\e/' cmd-toggle-prompt   # Alt-/ - the same
+zui::bindkey $'\C-@' cmd-jump           # Ctrl-Space - jump to a search result
 
-# Strictly preview view
-zui::bindkey $'\C-e' cmd-set-view hist
-zui::bindkey F15 cmd-open-tig
-zui::bindkey F7 cmd-synh-switch
-zui::bindkey F304 cmd-prev-hist
-zui::bindkey F263 cmd-next-hist
-zui::bindkey $'\C-D' cmd-show-stdin
-zui::bindkey $'\C-y' cmd-command-mode-toggle
-zui::bindkey F305 cmd-pwd-up
+zui::bindkey $'\C-e' cmd-set-view hist  # Ctrl-e: command history view
+zui::bindkey F15 cmd-open-tig           # Run Tig via Shift-F3
+zui::bindkey F7 cmd-synh-switch         # Syntax highlighting on/off
+zui::bindkey F304 cmd-prev-hist         # Ctrl-Up for prev in history
+zui::bindkey F263 cmd-next-hist         # Ctrl-Down … next …
+zui::bindkey $'\C-D' cmd-show-stdin     # Switch to standard input view
+zui::bindkey $'\C-y' cmd-command-mode-toggle # Pipe/Whole command capture/exec
+zui::bindkey F305 cmd-pwd-up            # Shift-Up for cd ..
 zui::bindkey SR cmd-pwd-up
-zui::bindkey F264 cmd-prev-pwd
+zui::bindkey F264 cmd-prev-pwd          # Shift-Down for previous CWD (work dir)
 zui::bindkey SF cmd-prev-pwd
-zui::bindkey $'\C-v' cmd-page-down
-zui::bindkey $'\C-u' cmd-page-up
+zui::bindkey $'\C-v' cmd-page-down      # Ctrl-v page down
+zui::bindkey $'\C-u' cmd-page-up        # Ctrl-u page up
 # Cursor movement
-zui::bindkey BTAB cmd-complete
-zui::bindkey SRIGHT cmd-cursor-right
-zui::bindkey SLEFT cmd-cursor-left
-zui::bindkey F283 cmd-cursor-word-left
-zui::bindkey F298 cmd-cursor-word-right
-zui::bindkey $'\C-r' cmd-item-to-prompt
-zui::bindkey $'\C-t' cmd-pwd-to-prompt
+zui::bindkey BTAB cmd-complete          # Complete from disk and current view
+zui::bindkey SRIGHT cmd-cursor-right    # Shift-Right - cursor right
+zui::bindkey SLEFT cmd-cursor-left      # Shift-Left - cursor left
+zui::bindkey F283 cmd-cursor-word-left  # Ctrl-Shift-Left - cursor word left
+zui::bindkey F298 cmd-cursor-word-right # Ctrl-Shift-Right  - cursor word right
+zui::bindkey $'\C-r' cmd-item-to-prompt # Ctrl-r - item to prompt
+zui::bindkey $'\C-t' cmd-pwd-to-prompt  # Ctrl-t - CWD to prompt
 # View saving
-zui::bindkey $'\C-x' cmd-push-screen
-zui::bindkey F284 cmd-prev-screen
-zui::bindkey F299 cmd-next-screen
-zui::bindkey F8 cmd-remove-screen
-zui::bindkey F13 cmd-help
-zui::bindkey F20 cmd-prune-screens
-zui::bindkey F4 cmd-hide
-zui::bindkey F16 cmd-show
+zui::bindkey $'\C-x' cmd-push-screen    # Ctrl-x - save current view
+zui::bindkey F284 cmd-prev-screen       # Ctrl-Shift-Left: visit previous view
+zui::bindkey F299 cmd-next-screen       # Ctrl-Shift-Right: visit next saved view
+zui::bindkey F8 cmd-remove-screen       # Remove current view from disk memory
+zui::bindkey F13 cmd-help               # Show help
+zui::bindkey F20 cmd-prune-screens      # Remove all screens
+zui::bindkey F4 "cmd-hide;sleep 3"      # F4: Hide N-C
+zui::bindkey F16 cmd-show               # Shift-F4: Show N-C
