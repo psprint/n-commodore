@@ -352,7 +352,7 @@ cmd-set-view(){local -A Qe=(main 0 preview 1 hist 2 tags 3 "" 0);iqnc_cmd_next $
 cmd-show-stdin(){ZUI[HAVE_0_INPUT]=1;ZUI[IO_COUNT]=18;iqnc_cmd_next $CIN;}
 # Commands
 cmd-open-cmd(){zcurses end;eval "$@";-zui_glib_refresh;}
-cmd-open-tig(){curses end;command tig "$@";-zui_glib_refresh;}
+cmd-open-tig(){curses end;tput reset;command tig "$@";-zui_glib_refresh;}
 cmd-commit(){zcurses end;command git commit -v "$@";cmd-ret;-zui_glib_refresh;}
 cmd-push(){zcurses end;command git push "$@";cmd-ret;-zui_glib_refresh;}
 cmd-pull(){zcurses end;command git pull "$@";cmd-ret;-zui_glib_refresh;}
