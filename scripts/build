@@ -28,7 +28,6 @@ zsh-build(){
     command sed -i -e 's/load=no/load=yes/g' config.modules* $~QPAT
     command sed -i -e 's/link=no/link=static/' config.modules* $~QPAT
     command sed -i -e 's/link=dynamic/link=static/' config.modules* $~QPAT
-    print °°°$PWD° — `pwd`
     setopt xtrace
     ./configure --prefix="$ZPFX"      \
         --disable-etcdir                   \

@@ -846,7 +846,8 @@ while (( 1 )); do
             else
                 ZUI[ESC_TIME]=0
             fi
-        elif ((ZUI[ESC_TIME]==1&&SECONDS<ZUI[key-timeout]));then
+        elif ((ZUI[ESC_TIME]==1&&SECONDS<ZUI[key-timeout]))&&\
+            [[ $__final_key != "<timeout>" ]];then
             __final_key=$'\e'$__final_key
             ZUI[ESC_TIME]=0
         fi

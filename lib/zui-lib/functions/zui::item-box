@@ -50,7 +50,6 @@ zui::item-box() {
     zcurses touch "$__wname_main"
     ZUI[REGENERATE_LIST]=2 #regenerate only display list
     local id=$p[1] || local id="-"
-    iqw i:$id°°°°°°°°
 
     if [[ -n "${ZUI[$id]}" ]]; then
         p[1]="${reply[1]#(zuiiaction|zuiaction|zuieanchor|zuianchor|zuitfield|zuilbox)}"

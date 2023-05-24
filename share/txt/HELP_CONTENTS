@@ -1,12 +1,12 @@
 · Shift-F1 – this (help) screen
 · F1 – tree/command-output view
 · F2 – syntax highlighted file contents preview
-· F3/Ctrl-E – command history view
-· Ctrl-W – Ctags index (in Emacs format – TAGS file) browser
-· Ctrl-/ – toggle command/execution and search/grep prompts
+· F3/Ctrl-E/Alt-E – command history view
+· Ctrl-W/Alt-W – Ctags index (in Emacs format – TAGS file) browser
+· Ctrl-/,Alt-/ – toggle command/execution and search/grep prompts
 · F7 – toggle syntax highlighting
-· Ctrl-T – copy current item to prompt
-· Ctrl-Y – copy current PWD to prompt
+· Ctrl-R/Alt-Space – copy current item to prompt
+· Ctrl-T – copy current PWD to prompt
 · Ctrl-Up/Down – go back and forward in history (of commands or search keywords)
 · Ctrl-W – show standard input given on N-C's startup
 · Shift-Up – go up one dir (·cd ..·) and run ·$NC_DEFAULT_LS_COMMAND·
