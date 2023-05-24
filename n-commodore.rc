@@ -47,12 +47,14 @@ NC_LS_LIKE_COMMANDS="ls fd exa"
 zui::bindkey F1 cmd-main-view
 zui::bindkey F2 cmd-contents-view
 zui::bindkey F3 cmd-command-history-view
-zui::bindkey $'\C-w' cmd-tags-view
+zui::bindkey $'\C-w' cmd-tags-view      # Ctrl-w - Ctags view
+zui::bindkey $'\ew' cmd-tags-view       # Alt-w - Ctags view
 zui::bindkey $'\C-_' cmd-toggle-prompt  # Ctrl-/ - toggle prompt search/cmd-input
 zui::bindkey $'\e/' cmd-toggle-prompt   # Alt-/ - the same
 zui::bindkey $'\C-@' cmd-jump           # Ctrl-Space - jump to a search result
 
 zui::bindkey $'\C-e' cmd-set-view hist  # Ctrl-e: command history view
+zui::bindkey $'\ee' cmd-set-view hist   # Alt-e: command history view
 zui::bindkey F15 cmd-open-tig           # Run Tig via Shift-F3
 zui::bindkey F7 cmd-synh-switch         # Syntax highlighting on/off
 zui::bindkey F304 cmd-prev-hist         # Ctrl-Up for prev in history
@@ -72,6 +74,7 @@ zui::bindkey SLEFT cmd-cursor-left      # Shift-Left - cursor left
 zui::bindkey F283 cmd-cursor-word-left  # Ctrl-Shift-Left - cursor word left
 zui::bindkey F298 cmd-cursor-word-right # Ctrl-Shift-Right  - cursor word right
 zui::bindkey $'\C-r' cmd-item-to-prompt # Ctrl-r - item to prompt
+zui::bindkey $'\e ' cmd-item-to-prompt  # Alt-Space - the same
 zui::bindkey $'\C-t' cmd-pwd-to-prompt  # Ctrl-t - CWD to prompt
 # View saving
 zui::bindkey $'\C-x' cmd-push-screen    # Ctrl-x - save current view
