@@ -50,7 +50,9 @@ iqnc_set_prop_buf(){
     local PT=$BE\*$NXT
     local -a QFIN
     if (($+Opts[-d]||!($+Opts[-d]||$+Opts[-w])));then
-        QFIN=(**/*~(*\~|*(/|).git(/*|))(N,.,/,@,D))
+        QFIN=(*~(*\~|*(/|).git(/*|))(N,.,/,@,D)
+              */*~(*\~|*(/|).git(/*|))(N,.,/,@,D)
+              */*/*~(*\~|*(/|).git(/*|))(N,.,/,@,D))
     fi
     if (($+Opts[-w]||!($+Opts[-d]||$+Opts[-w])));then
         local -a qt
