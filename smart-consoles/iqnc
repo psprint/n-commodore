@@ -269,12 +269,14 @@ iqnc_exec_prompt(){
 iqnc_db(){
     local VAR_NAME=$1
     [[ -n ${(M)zgdbm_tied:#$VAR_NAME} ]]&&return 0
-    builtin ztie -d db/gdbm -f "$NCSCRDB" "$VAR_NAME" &>>$NCLOG||\
-        {iqw "Error:" "" "" " cannot open DB";return 1;}
+    builtin ztie -d db/gdbm -f "$NCSCRDB" "$VAR_NAME"&>>$NCLOG||\
+        {iqw "ERROR:" "" "" " cannot open DB";return 1;}
     return 0
 }
 
 iqnc_get_cmd_out(){
+    setopt localoptions
+    unsetopt aliases
     local TPE=$1 cmd=("$@[2,-1]") QEX
     integer QSUB=1 QI EC
     if [[ $TPE == whole || -n ${(M)cmd[1,-2]:#builtin} || $cmd[1] == \!* || \
@@ -351,7 +353,7 @@ cmd-tags-view(){iqnc_cmd_next $TAGS;}
 cmd-set-view(){local -A Qe=(main 0 preview 1 hist 2 tags 3 "" 0);iqnc_cmd_next $Qe[$1];}
 cmd-show-stdin(){ZUI[HAVE_0_INPUT]=1;ZUI[IO_COUNT]=18;iqnc_cmd_next $CIN;}
 # Commands
-cmd-open-cmd(){zcurses end;eval "$@";-zui_glib_refresh;}
+cmd-open-cmd(){zcurses end;builtin eval "$@";-zui_glib_refresh;}
 cmd-open-tig(){curses end;tput reset;command tig "$@";-zui_glib_refresh;}
 cmd-commit(){zcurses end;command git commit -v "$@";cmd-ret;-zui_glib_refresh;}
 cmd-push(){zcurses end;command git push "$@";cmd-ret;-zui_glib_refresh;}
@@ -510,9 +512,9 @@ if ((!$+Opts[--refresh])); then
 
     # Needed for immediate output from coprocesses (disables buffering).
     ((${+commands[stdbuf]}))&& \
-        local -a stdbuf1=( stdbuf -o0 -i0 ) stdbuf2=( stdbuf -o0 -i0 )
+        local -a stdbuf1=(stdbuf -o0 -i0 -e0) stdbuf2=(stdbuf -o0 -i0 -e0)
     ((${+commands[gstdbuf]}))&& \
-        local -a stdbuf1=( gstdbuf -o0 -i0 ) stdbuf2=( gstdbuf -o0 -i0 )
+        local -a stdbuf1=(gstdbuf -o0 -i0 -e0) stdbuf2=(gstdbuf -o0 -i0 -e0)
 
     ZUI[COLORING_MATCH_MULTIPLE]=1
     ZUI[COLORING_COLOR]=$ZUI[BOLD]$ZUI[YELLOW]
@@ -530,9 +532,9 @@ if ((!$+Opts[--refresh])); then
     ZUI[UNIQ_MODE]=0
     [[ $1 == open ]]&&shift
     if [[ -n $* ]];then
-        ZUI[SEARCH_BUFFER]=$*
-        ZUI[cursor]=$#ZUI[SEARCH_BUFFER]+1
         ZUI[START_IN_QUERY]=$PR_SEARCH
+        ZUI[cursor]=$#ZUI[SEARCH_BUFFER]+1
+        ZUI[SEARCH_BUFFER]=$*
     else
         ZUI[START_IN_QUERY]=$PR_CMD_EXEC
         ZUI[cursor]=$#ZUI[QUERY_BUFFER]+1
@@ -546,7 +548,7 @@ if ((!$+Opts[--refresh])); then
         ZUI[HAVE_0_INPUT]=1 ZUI[IO_COUNT]=15
     fi
     iqnc_create_histories
-    cmd-exec-prompt
+    #cmd-exec-prompt
 fi
 
 #    zui::bindkey F3 "{print q:$ZUI[mark]}"
@@ -653,7 +655,7 @@ iqnc_fill_preview(){
                 {[[ ! -s $QFILE ]]&&qitems=("File is empty");}
         fi
 
-        items_noproc=(${(Q@)${(z@A)qitems}})
+        items_noproc=(${(Q@A)${(z@)qitems}})
 
         reply=()
         -zui_glib_special_text $QTXT
@@ -675,7 +677,8 @@ iqnc_fill_cmd(){
 
     ZUI[COMMAND]=${1:-$ZUI[COMMAND]}
     [[ $ZUI[COMMAND] != [[:space:]$'\1'-$'\x1b']# ]]&&ZUI[HAVE_0_INPUT]=0
-    : ${ZUI[COMMAND]:=${NC_DEFAULT_LS_COMMAND:-$NC_DEFAULT_COMMAND}}
+    iqnc_get_command
+    : ${ZUI[COMMAND]:=$REPLY}
     if [[ -n $ZUI[COMMAND] ]];then
         [[ -e $ZUI[QPATH] ]]&&ZUI[COMMAND]=${ZUI[COMMAND]//\%s/${(q)ZUI[QPATH]}}
         [[ -e $ZUI[QPATH] ]]||ZUI[COMMAND]=${ZUI[COMMAND]//\%s/}

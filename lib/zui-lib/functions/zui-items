@@ -19,7 +19,7 @@ emulate -L zsh
 setopt typesetsilent extendedglob noshortloops
 [[ $ZUI[PROMPT_SUBST] = 1 ]] && setopt promptsubst
 
-zmodload zsh/curses
+zmodload zsh/curses||{iqerr no zsh/curses Zsh module, exiting…;return 1;}
 zmodload zsh/terminfo 2>/dev/null
 
 trap "REPLY=-2; reply=(); return 1" TERM INT QUIT
@@ -35,7 +35,7 @@ trap "REPLY=-2; reply=(); return 1" TERM INT QUIT
     zcurses move "$__wname_status" $line $indent
     zcurses clear "$__wname_status" eol
     for color msg;do
-        local color=${(M)color:#(magenta|yellow|blue|cyan|white|green)}
+        local color=${(M)color:#(magenta|yellow|blue|cyan|white|green|red)}
         [[ -z $color ]]&&color=magenta
         zcurses attr "$__wname_status" +bold "$color/${ZUI[status_colorpair]#*/}"
         zcurses string "$__wname_status" "$msg"
@@ -476,7 +476,7 @@ local backuptheme stbackuptheme
 local -a __c
 __c=( "${(@s;:;)ZUI[palette]}" "white" "default" )
 
-((ZUI[timeout] != -1)) && ((ZUI[timeout]=ZUI[timeout]<25?25:ZUI[timeout]))
+((ZUI[timeout] != -1)) && ((ZUI[timeout]=ZUI[timeout]<15?15:ZUI[timeout]))
 
 local -a zui_log_colors
 zui_log_colors=( "${(@s: :)ZUI[log_colors]}" )
@@ -547,6 +547,7 @@ while (( 1 )); do
     # Handle resize, once every 5 seconds
     -zui_items_handle_resize 0
 
+    : ${ZUI[CURRENT_IDX]:=1}
     # Do searching?
     if [[ -n $ZUI[SEARCH_BUFFER] ]]; then
         # Compute new list?
@@ -606,7 +607,7 @@ while (( 1 )); do
         fi
 
         -zui_items_setup_user_vars 1
-        __segments=( "${(z@)__list[${ZUI[CURRENT_IDX]}]}" )
+        __segments=( "${(z@)__list[${ZUI[CURRENT_IDX]:-1}]}" )
         __nseg="$#__segments"
 
         integer __end_idx=$(( ZUI[FROM_WHAT_IDX_LIST_IS_SHOWN] + __page_height - 1 ))
@@ -763,7 +764,7 @@ while (( 1 )); do
         (( ${ZUI[UNIQ_MODE]} + ${${ZUI[SEARCH_BUFFER]:+1}:-0} )) && selectable=1
         if (( selectable == 0 )) || ! -zui_glib_decode "${__segments[${ZUI[CURRENT_SEGMENT]:-1}]}"; then
             reply=( "$selectable" $ZUI[UNIQ_MODE] "${${ZUI[SEARCH_BUFFER]:+1}:-0}"
-                    "${__list[${ZUI[CURRENT_IDX]}]}" "${__segments[${ZUI[CURRENT_SEGMENT]:-1}]}" )
+                    "${__list[${ZUI[CURRENT_IDX]:-1}]}" "${__segments[${ZUI[CURRENT_SEGMENT]:-1}]}" )
             REPLY=0
         else
             reply[1,0]=( "$selectable" $ZUI[UNIQ_MODE] "${${ZUI[SEARCH_BUFFER]:+1}:-0}"
@@ -786,8 +787,8 @@ while (( 1 )); do
                     $ZUI[USER_CURRENT_IDX] $ZUI[USER_LAST_ELEMENT]
 
         if ((ZUI[IN_QUERY]==3));then
-            local color=magenta
-            ((ZUI[QUERY_PROMPT_RET]))&&color=yellow
+            local color=blue
+            ((ZUI[QUERY_PROMPT_RET]))&&color=red
             -zui_items_status_msg "$color" "·$ZUI[QUERY_PROMPT_RET]· " green "$ZUI[QUERY_PROMPT]" "$ZUI[QUERY_BUFFER]"
         elif ((ZUI[IN_QUERY]==1)); then
             -zui_items_status_msg cyan "$ZUI[QUERY_PROMPT]" "${ZUI[SEARCH_BUFFER]// /+}"
@@ -896,8 +897,8 @@ while (( 1 )); do
 
                 if [[ $track_cur_idx != $ZUI[CURRENT_IDX] ]]; then
                     # Restore segment or set to 1
-                    if (( ${+ZUILIST_ACTIVE_SEGMENTS[${ZUI[CURRENT_IDX]}]} )); then
-                        ZUI[CURRENT_SEGMENT]=${ZUILIST_ACTIVE_SEGMENTS[${ZUI[CURRENT_IDX]}]}
+                    if (( ${+ZUILIST_ACTIVE_SEGMENTS[${ZUI[CURRENT_IDX]:-1}]} )); then
+                        ZUI[CURRENT_SEGMENT]=${ZUILIST_ACTIVE_SEGMENTS[${ZUI[CURRENT_IDX]:-1}]}
                     else
                         ZUI[CURRENT_SEGMENT]=1
                     fi
