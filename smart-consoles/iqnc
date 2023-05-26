@@ -1074,7 +1074,7 @@ while (( 1 )); do
     # exit?
     [[ -z $REPLY ]]&&break
     local QFILE= REPLY_SAVE=$REPLY; integer QIDX=0
-    [[ $ZUI[SEARCH_BUFFER] != $~NC[WRONGSTR] ]]&&
+    [[ $ZUI[SEARCH_BUFFER] != $~NC[WRONGSTR] && $ZUI[IN_QUERY] == $PR_SEARCH ]]&&
         {iqnc_create_histories; builtin print $ZUI[SEARCH_BUFFER]>>!$NCSHIST;}
 
     if [[ $ZUI[GEN_B_IDX] = $TAGS ]];then
@@ -1101,7 +1101,7 @@ while (( 1 )); do
             QIDX=ZUI[USER_CURRENT_IDX]
             iqw "Opening " $QFILE " scrolled to line: " "#$QIDX"
         # …tree?
-        elif [[ $ZUI[GEN_B_IDX] == ($CIN|$CQUE|$CQZSH) && $REPLY_SAVE != *(·|–|—)* ]];then
+        elif [[ $ZUI[GEN_B_IDX] == ($CIN|$CIN0|$CQUE|$CQZSH) && $REPLY_SAVE != *(·|–|—)* ]];then
             QFILE=$REPLY_SAVE
         fi
     # search selection?
@@ -1118,7 +1118,7 @@ while (( 1 )); do
             elif ((ZUI[GEN_B_IDX]%VIEWS==PR_CMD_EXEC));then
                 iqw "………"
             # or normal?
-            elif [[ $ZUI[GEN_B_IDX] == ($CIN|$CQUE) && $REPLY_SAVE != *(·|–|—)* ]];then
+            elif [[ $ZUI[GEN_B_IDX] == ($CIN|$CIN0|$CQUE) && $REPLY_SAVE != *(·|–|—)* ]];then
                 QFILE=$REPLY_SAVE
                 QIDX=0
             fi
@@ -1156,7 +1156,7 @@ while (( 1 )); do
         QFLAG=1
     fi
 
-    if [[ -f **/$QFILE(#qNY1) ]];then
+    if [[ $QFLAG != 1 && -f **/$QFILE(#qNY1) ]];then
         [[ -f $QFILE ]]||{QFILE=(**/$QFILE(#qNY1));QFILE=$QFILE[1];}
         REPLY=
         if [[ -n $NC_OPEN_CMD ]];then
@@ -1167,7 +1167,8 @@ while (( 1 )); do
                 "\$VISUAL (=$VISUAL) " then "" " \$EDITOR (=$EDITOR)"
         fi
         # Run the editor in $REPLY, first cd-ing into project's directory
-        if [[ -n $REPLY && $(file -- $QFILE) = (#i)*text* ]];then
+        if [[ -n $REPLY &&\
+                ($(file -- $QFILE) == (#i)*text* || $QFILE == (*/|)TAGS) ]];then
             int/nc::run-command -C $PWD \
                 "$REPLY" ${${QIDX:#0##}:++$QIDX} -- $QFILE
             EC+=$? QFLAG=1
@@ -1182,14 +1183,13 @@ while (( 1 )); do
                 EC+=$? QFLAG=3
         fi
     fi
-    if [[ -d **/$QFILE(#qNY1/) ]];then
+    if [[ $QFLAG != 1 && -d **/$QFILE(#qNY1/) ]];then
         [[ -d $QFILE ]]||{QFILE=(**/$QFILE(#qNY1/));QFILE=$QFILE[1];}
         iqw "Changing directory to: " ${QFILE##$PWD/}
         cmd-push-screen
         iqnc_push_pwd
         if builtin cd -q -- $QFILE;then
-            iqnc_get_command
-            iqnc_fill_cmd $REPLY
+            iqnc_fill_cmd
         else
             iqw "" "" "" \
                 "Cannot CD to dir, PWD is: " $PWD
