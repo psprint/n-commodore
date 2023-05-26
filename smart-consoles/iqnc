@@ -295,7 +295,7 @@ iqnc_get_cmd_out(){
 
     local TPE=$1 cmd=("$@[3,-1]") CMD1=${3##(\+|\!)##} QEX
     integer QSUB=$2 QI EC
-    ZUI[RET]=0 ZUI[CMD_PID]=0
+    ZUI[RET]=0
     if [[ $TPE == whole || -n ${(M)cmd[1,QSUB-1]:#builtin} || $cmd[1] == \!* ||\
         $cmd[1] == *+* || $cmd[QSUB] == (${(~j.|.)${(k)builtins:#\[*}})  ]];then
         ZUI[TMP]=$(mktemp) ZUI[whole-capture]=1
@@ -350,7 +350,7 @@ iqnc_get_cmd_out(){
         coproc {(){setopt localoptions glob_subst
                     builtin eval $stdbuf1 "${cmd[@]}" 2>&1 </dev/tty;};}
         # "
-        ZUI[RET]=$? ZUI[CMD_PID]=$!
+        ZUI[RET]=$(($?)) ZUI[CMD_PID]=$(($!)) ZUI[CMD_SEEN]=$EPOCHREALTIME
     fi
     return $ZUI[RET]
  }
@@ -815,10 +815,20 @@ iqnc_fill_cmd(){
 
 iqnc_fill_0(){
     integer QFLAG QEC
+    REPLY=
     ((Q0_SAVE_PIPE))&&\
         {int/nc::read-all -u$Q0_SAVE_PIPE -t0 -x50;QEC=$?;}
-    ((!Q0_SAVE_PIPE))&&\
-        {int/nc::read-all-sys -p -t0 -x5000 -r1;QEC=$?;}
+    if ((!Q0_SAVE_PIPE));then
+        if command ps -p "$ZUI[CMD_PID]"&>/dev/null;then
+            ZUI[CMD_SEEN]=$EPOCHREALTIME
+        fi
+        if ((ZUI[CMD_SEEN]-EPOCHREALTIME<25));then
+            int/nc::read-all-sys -p -t0 -x3000 -r1
+            QEC=$?
+        else
+            QEC=1
+        fi
+    fi
 
     {
         [[ -n $REPLY ]]&&QFLAG=1||QFLAG=0
@@ -857,8 +867,7 @@ iqnc_fill_0(){
             local TXT=$reply[1]
             separ;REPLY=$REPLY[3,-1]
             qitems=($REPLY "$TXT" $REPLY "$q0input_proc[@]")
-            ((QFLAG&&(ZUI[IO_SUM_UP]++%22==0)||ZUI[HAVE_0_INPUT]==0))&&{ZUI[VIEW_CHANGE]=1;(($#qitems>7000))&&ZUI[REDRAW_COUNT]=30;}
-
+            ((QFLAG&&(ZUI[IO_SUM_UP]++%15==0)||ZUI[HAVE_0_INPUT]==0))&&{ZUI[VIEW_CHANGE]=1;(($#qitems>7000))&&ZUI[REDRAW_COUNT]=30;}
         fi
     }
 }
@@ -1035,8 +1044,6 @@ iqnc_fill_help(){
         fi
     fi
     builtin unset 'ZUI[COMMAND]'
-    iqnc_util_set_current_idx
-    -zui_items_verify_vars 1
     ((ZUI[GEN_B_IDX]!=CQZSH))&&{
         ZUI[VIEW_CHANGE]=$UPD_QZSH #costs nothing (empty)
         -zui_glib_fly_array_refresh 1
@@ -1045,6 +1052,8 @@ iqnc_fill_help(){
         ZUI[VIEW_CHANGE]=$UPD_OTHER #costs nothing
         -zui_glib_fly_array_refresh 2
     }
+    iqnc_util_set_current_idx
+    -zui_items_verify_vars 1
     ZUI[PREV_GEN_B_IDX]=$ZUI[GEN_B_IDX]
     return 0
 }
@@ -1078,7 +1087,7 @@ while (( 1 )); do
 
     if [[ $ZUI[GEN_B_IDX] = $TAGS ]];then
         integer QI=0
-        [[ -n $ZUI[SEARCH_BUFFER] || $ZUI[UNIQ_MODE] -eq 1 ]]||QI=-4
+        [[ -n $ZUI[SEARCH_BUFFER] || $ZUI[UNIQ_MODE] -eq 1 ]]||QI=-3
         [[ -n $ZUI[SEARCH_BUFFER] ]]&&\
             repeat 1; do typeset +U -ga __slist=("$__qlist[@]");done
         if [[ $ZUI[SEARCH_BUFFER] ]]&&-zui_sys_get_match_line QIDX; then

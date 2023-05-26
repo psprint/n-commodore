@@ -9,7 +9,7 @@ NC_ZHIST_SIZE=70000
 
 alias rg="rg --color=always --line-number"
 alias ag="ag --color --numbers"
-alias bat="bat --color=always"
+alias bat="bat --color=always --decorations=never"
 greptxt="grep -E -H -sn   -I --color=always\
     --exclude-dir=.git\\\* --exclude TAGS --exclude=.TAGS.z --exclude=\\\*.log\
     --exclude=\\\*.patch --exclude=\\\*.diff -D skip -d recurse"
@@ -24,6 +24,7 @@ alias cd..="cd .." ..="cd .."
 # Some hopefully useful hashed dirs. Use in command line, e.g.: cd ~start
 #
 
+hash -d home=$HOME
 hash -d start=$PWD
 hash -d local=$HOME/.local
 hash -d config=${XDG_CONFIG_HOME:-$HOME/.config}
