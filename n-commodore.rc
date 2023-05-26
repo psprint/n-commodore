@@ -1,5 +1,8 @@
 #!/usr/bin/env zsh
 
+# Size of the Zsh history view
+NC_ZHIST_SIZE=70000
+
 #
 # Aliases
 #
@@ -52,7 +55,6 @@ zui::bindkey F4 cmd-zsh-history-view
 zui::bindkey $'\C-w' cmd-tags-view      # Ctrl-w - Ctags view
 zui::bindkey $'\ew' cmd-tags-view       # Alt-w - Ctags view
 zui::bindkey $'\C-_' cmd-toggle-prompt  # Ctrl-/ - toggle prompt search/cmd-input
-zui::bindkey $'\e/' cmd-toggle-prompt   # Alt-/ - the same
 zui::bindkey $'\C-@' cmd-jump           # Ctrl-Space - jump to a search result
 
 zui::bindkey $'\C-e' cmd-set-view hist  # Ctrl-e: command history view
@@ -72,6 +74,7 @@ zui::bindkey SF cmd-prev-pwd
 zui::bindkey $'\C-v' cmd-page-down      # Ctrl-v page down
 zui::bindkey $'\C-u' cmd-page-up        # Ctrl-u page up
 # Cursor movement
+zui::bindkey $'\e/' cmd-complete        # Alt-/ - the same
 zui::bindkey BTAB cmd-complete          # Complete from disk and current view
 zui::bindkey SRIGHT cmd-cursor-right    # Shift-Right - cursor right
 zui::bindkey SLEFT cmd-cursor-left      # Shift-Left - cursor left

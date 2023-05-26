@@ -600,6 +600,7 @@ zui::bindkey F10 '{builtin source $NC_CON_DIR/iqnc --refresh||\
                     iqw -r "Reload finished with error: " $?;}'
 zui::bindkey F14 '{builtin zcurses end;sleep 3;}'
 unsetopt warncreateglobal
+builtin source -- $NCDIR/n-commodore.rc
 builtin source -- $NCCFG
 setopt warncreateglobal
 
@@ -772,7 +773,6 @@ iqnc_fill_cmd(){
             return
         fi
 
-        iqw iqnc_get_cmd_out "$ZUI[cmd-mode]" $QSUB $QEX$cmd[1] "${(@)cmd[2,-1]}"
         iqnc_get_cmd_out "$ZUI[cmd-mode]" $QSUB $QEX$cmd[1] "${(@)cmd[2,-1]}"
         ((ZUI[BG_CMD]))&&return 0
         if ((ZUI[whole-capture])); then
@@ -958,7 +958,7 @@ iqnc_fill_tags(){
 }
 
 iqnc_fill_zsh_history(){
-    local EFILE=$HISTFILE # history file, eg. ~/.zsh_history
+    [[ $HISTFILE != /tmp/* ]]&&ZUI[EFILE]=$HISTFILE # history file
     #coloring of all commands, builtins and reserved words, and also assignments
     ZUI[COLORING_PATTERN]="((#s)(${(~j:|:)${(@k)commands:#\[}}|\
 ${(~j:|:)${(@k)builtins:#\[}}|${(~j:|:)${(@k)reswords:#(\[\[|\!)}}|\
@@ -966,19 +966,18 @@ ${(~j:|:)${(@k)builtins:#\[}}|${(~j:|:)${(@k)reswords:#(\[\[|\!)}}|\
     iqnc_search_prompt
     separ
     qitems=($REPLY[3,-1]
-            "·Zsh· History Commands from ·$EFILE·"
+            "·Zsh· History Commands from ·$ZUI[EFILE]·"
             $REPLY[3,-1]
     )
-    [[ -n $history || ! -s $EFILE ]]&&return 0
+    [[ -n $history || ! -s $ZUI[EFILE] ]]&&return 0
     (){
-          command cp -f -- "$EFILE" "$1"
+          command cp -f -- "$ZUI[EFILE]" "$1"
           iqw 'Reading Zsh history…'
           builtin fc -p "$1" ${NC_ZHIST_SIZE:-100000} 0
           iqw -r 'Reading Zsh history… ' OK. \
                 " [$#history entries, non uniquified]"
     } =(:)
     items_noproc=(${history[@]})
-    iqw $qitems[2,-1]
 }
 
 
