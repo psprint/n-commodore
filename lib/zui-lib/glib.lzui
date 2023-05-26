@@ -940,10 +940,10 @@ function -zui_glib_deserialize() {
     {DATA="$(<$PERFLE)";}&>>!$ZUIO
 
     # Deserialize into `data` array:
-    data=( "${(Q@)${(z@)DATA}}" )
-
+    data=( "${(Q@)${(z@)DATA}}" "")
+    (($#data%2))&&data[-1]=()
     # Is array even? If yes, then make the data live
-    (((${#data}&1)-1&&$#data>0))&&ZUI+=("${data[@]}")
+    ZUI+=("$data[@]")
     # Testable
     return $?
 } # }}}
@@ -1163,7 +1163,8 @@ function -zui_glib_map_replies() {
 #
 # $1 - module's index
 -zui_glib_fly_array_refresh() {
-    local __mod="$1" __ice="1" __key="${zuiel_module_hash[(i)${1}_*]}"
+    setopt localoptions nowarncreateglobal
+    local __mod="$1" __ice="1" __key="${zuiel_module_hash[(i)${1}_*]:-0_}"
 
     local __arr="${zuiel_module_hash[$__key]}"
     if [[ "$__arr" = u-* ]]; then

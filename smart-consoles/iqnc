@@ -541,30 +541,28 @@ if ((!$+Opts[--refresh])); then
     readonly CIN=0 VIEW=1 CQUE=2 TAGS=3 CQZSH=4 CIN0=5 VIEWS=6
     readonly PR_NONE=0 PR_SEARCH=1 PR_CMD_EXEC=3
     readonly UPD_OTHER=3 UPD_QZSH=4
-    : ${ZUI[cmd-mode]:=pipe}
     ZUI[SRC_HIGHLIGHT]=1 ZUI[key-timeout]=0.30
     -zui_glib_cleanup deserialize:"iqnc_$APP"
     -zui_glib_init app:"iqnc_$APP" app_name:"NC Console"
     emulate -L zsh -o extendedglob -o typesetsilent -o warncreateglobal -o combiningchars -o rcquotes -o noshortloops -o nopromptsubst
     -zui_glib_init2 # after emulate
     ZUI[GEN_B_IDX]=0 ZUI[PREVIEW_FILE_TYPE]=
+    : ${ZUI[cmd-mode]:=pipe}
     typeset -g ZUILIST_TRACK_SEGMENTS=1
     ZUI[SPECIAL_COMMAND_CALLBACK]=iqnc_exec_command_cb
     ZUI[QUERY_CHANGE_CALLBACK]=iqnc_query_change_cb
     ZUI[reset_current_segment]=no
 
     # Needed for immediate output from coprocesses (disables buffering).
-    ((${+commands[stdbuf]}))&& \
-        local -a stdbuf1=(stdbuf -o0 -i0 -e0) stdbuf2=(stdbuf -o0 -i0 -e0)
-    ((${+commands[gstdbuf]}))&& \
-        local -a stdbuf1=(gstdbuf -o0 -i0 -e0) stdbuf2=(gstdbuf -o0 -i0 -e0)
+    (($+commands[stdbuf]))&&local -a stdbuf1=(stdbuf -o0 -i0 -e0)
+    (($+commands[gstdbuf]))&&local -a stdbuf1=(gstdbuf -o0 -i0 -e0)
 
     ZUI[COLORING_MATCH_MULTIPLE]=1
     ZUI[COLORING_COLOR]=$ZUI[BOLD]$ZUI[YELLOW]
 
     -zui_glib_store_default_app_config b:instant_search 1
     -zui_glib_store_default_app_config s:select_mode "quit"   # Quit event loop on text-selection
-    -zui_glib_store_default_app_config b:text_bar "[F1 tree][F2 preview][F3 history][F4 Ctags][F7 Synh][F8 remove scrn][Shift-Up CD ..][Shift-Down Prev. Dir]"
+    -zui_glib_store_default_app_config b:text_bar "[F1 tree][F2 preview][F3 history][F4 Z-history][F5 Ctags][F7 Synh][F8 remove scrn][Shift-Up CD ..][Shift-Down Prev. Dir]"
     -zui_glib_store_default_app_config b:status_size 6
     -zui_glib_store_default_app_config b:status_pointer 1
     -zui_glib_store_default_app_config b:text_select 1        # Allow selection of text
@@ -763,6 +761,7 @@ iqnc_fill_cmd(){
 
         if [[ $cmd[QSUB] == cd ]];then
             ZUI[COMMAND]=
+            cmd[-1]=${~cmd[-1]}
             [[ $cmd[-1] == .. ]]&&cmd[-1]=$PWD:h||cmd[-1]=${cmd[-1]:a}
             iqw "Moving to dir: " "" "" "$cmd[-1]"
             iqnc_push_pwd 
@@ -1168,7 +1167,7 @@ while (( 1 )); do
         fi
         # Run the editor in $REPLY, first cd-ing into project's directory
         if [[ -n $REPLY &&\
-                ($(file -- $QFILE) == (#i)*text* || $QFILE == (*/|)TAGS) ]];then
+                ($(file -- $QFILE:P) == (#i)*text* || $QFILE == (*/|)TAGS) ]];then
             int/nc::run-command -C $PWD \
                 "$REPLY" ${${QIDX:#0##}:++$QIDX} -- $QFILE
             EC+=$? QFLAG=1
