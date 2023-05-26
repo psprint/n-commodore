@@ -165,22 +165,22 @@ iqnc_exec_command_cb(){
     local -a cmd=(${(@zA)ZUI[QUERY_BUFFER]})
     iqnc_get_cmd_idx "$cmd[@]"&&QSUB=REPLY
     local CMD=${cmd[QSUB]##[\!\+]##}
-    ZUI[COMMAND]=$ZUI[QUERY_BUFFER]
     {
-        if [[ $ZUI[COMMAND] == [[:space:]$'\1-\x1b']# ]];then
+        if [[ $CMD == [[:space:]$'\1-\x1b']# ]];then
             THROW "No command entered (${(qq)ZUI[COMMAND]}), " "" "" "cannot execute"
         fi
         # No such command?
-        builtin type $CMD&>/dev/null||\
-            THROW "Error:" "no such command" ": " $CMD
+        builtin type $CMD&>/dev/null||[[ $CMD == ?##=* ]]||\
+            THROW "Error: " "no such command" ": " $CMD
     } always {
         if CATCH \*;then
             iqw "$CAUGHT[@]"
             TRY_BLOCK_ERROR=0
         else
-             cmd-push-screen
-             iqnc_reset_hist
-             iqnc_cmd_next -q $CIN
+            ZUI[COMMAND]=$ZUI[QUERY_BUFFER]
+            cmd-push-screen
+            iqnc_reset_hist
+            iqnc_cmd_next -q $CIN
         fi
         ZUI[QUERY_BUFFER]=
     }
