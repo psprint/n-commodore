@@ -13,4 +13,4 @@ Terminal=true
 StartupNotify=true
 NoDisplay=false
 #SingleMainWindow=true
-X-AppImage-Version=0.89
+X-AppImage-Version=1.37
