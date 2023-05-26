@@ -52,6 +52,7 @@ zui::bindkey F1 cmd-main-view
 zui::bindkey F2 cmd-contents-view
 zui::bindkey F3 cmd-command-history-view
 zui::bindkey F4 cmd-zsh-history-view
+zui::bindkey F5 cmd-tags-view           # F5: TAGS view
 zui::bindkey $'\C-w' cmd-tags-view      # Ctrl-w - Ctags view
 zui::bindkey $'\ew' cmd-tags-view       # Alt-w - Ctags view
 zui::bindkey $'\C-_' cmd-toggle-prompt  # Ctrl-/ - toggle prompt search/cmd-input
@@ -90,5 +91,4 @@ zui::bindkey F299 cmd-next-screen       # Ctrl-Shift-Right: visit next saved vie
 zui::bindkey F8 cmd-remove-screen       # Remove current view from disk memory
 zui::bindkey F13 cmd-help               # Show help
 zui::bindkey F20 cmd-prune-screens      # Remove all screens
-zui::bindkey F5 "cmd-hide;sleep 3"      # F4: Hide N-C
 zui::bindkey F16 cmd-show               # Shift-F4: Show N-C
