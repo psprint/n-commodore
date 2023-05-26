@@ -185,7 +185,7 @@ for (( zel_mod=1; zel_mod <= 1000; ++ zel_mod )); do
         zuiel_n="mod${zel_mod}_ice${zel_ice}"
 
         # Get spacing
-        zuiel_spacing="${ZUI[SPACING_${zel_mod}_${zel_ice}]:-1}"
+        zuiel_spacing="${ZUI[SPACING_${zel_mod}_${zel_ice}]:-0}"
 
         # Add spacing to document
         for (( zuiel_val1 = 1; zuiel_val1 <= zuiel_spacing; ++ zuiel_val1 )); do
@@ -196,7 +196,7 @@ for (( zel_mod=1; zel_mod <= 1000; ++ zel_mod )); do
         done
 
         # Possible + 1 for the anchors at top
-        ZUILIST_HOP_INDICES+=( "$(( ZUIEL_LINE_COUNT + 1 + ZUI[top_anchors] ))" )
+        ZUILIST_HOP_INDICES+=( "$(( ZUIEL_LINE_COUNT + 0 + ZUI[top_anchors] ))" )
 
         zuiel_val1="${zuiel_module_hash[$zuiel_key]}"
         zuiel_val2="${zuiel_val1%%-*}"
@@ -267,7 +267,7 @@ for (( zel_mod=1; zel_mod <= 1000; ++ zel_mod )); do
 
             # Get previous spacing
             zuiel_var_name="prev_${zuiel_n}_spacing"
-            zuiel_prev_spacing="${(P)zuiel_var_name:-1}"
+            zuiel_prev_spacing="${(P)zuiel_var_name:-0}"
 
             # Get previous nonselectables
             zuiel_var_name="prev_${zuiel_n}_nonselectables"
@@ -325,7 +325,7 @@ for (( zel_mod=1; zel_mod <= 1000; ++ zel_mod )); do
             : ${(PA)zuiel_var_name::=}
 
             # Create top anchors
-            (( zuiel_size > 0 )) && -zui_glib_anchor "aglobal_m${zel_mod}_i${zel_ice}" $(( ZUIEL_LINE_COUNT + 1 + ZUI[top_anchors] )) "$zel_mod" "$zel_ice" "" "[${ZUI[CYAN]}Module${zel_mod}/${zel_ice}${ZUI[FMT_END]}]" '(( ${+functions[-zui-standard-global-anchors-callback]} )) && { -zui-standard-global-anchors-callback  "'"aglobal_m${zel_mod}_i${zel_ice}"'" "'"${zuiel_hops[1]}"'" "'"$zel_mod"'" "'"$zel_ice"'"; internal=1; }' zuiel_top_anchors
+            (( zuiel_size > 0 )) && -zui_glib_anchor "aglobal_m${zel_mod}_i${zel_ice}" $(( ZUIEL_LINE_COUNT + 0 + ZUI[top_anchors] )) "$zel_mod" "$zel_ice" "" "[${ZUI[CYAN]}Module${zel_mod}/${zel_ice}${ZUI[FMT_END]}]" '(( ${+functions[-zui-standard-global-anchors-callback]} )) && { -zui-standard-global-anchors-callback  "'"aglobal_m${zel_mod}_i${zel_ice}"'" "'"${zuiel_hops[1]}"'" "'"$zel_mod"'" "'"$zel_ice"'"; internal=1; }' zuiel_top_anchors
 
             # Store where in the list module is located,
             # via typical "modX_iceY..." variable
@@ -355,7 +355,7 @@ for (( zel_mod=1; zel_mod <= 1000; ++ zel_mod )); do
                     #
                     # Possible + 1 for anchors at top, + 1 because we point at
                     # module, at next line after empty separator line
-                    if [[ "${ZUI[$zuiel_a]%%[-+]*}" -gt $(( ZUIEL_LINE_COUNT + 1 + ZUI[top_anchors] + (zuiel_size - 1) )) ]]; then
+                    if [[ "${ZUI[$zuiel_a]%%[-+]*}" -gt $(( ZUIEL_LINE_COUNT + 0 + ZUI[top_anchors] + (zuiel_size - 1) )) ]]; then
                         # Retain "+number" part
                         ZUI[$zuiel_a]=$(( ${ZUI[$zuiel_a]%%[-+]*} + zuiel_size - zuiel_prev_size ))"${ZUI[$zuiel_a]##[0-9]##}"
                     fi

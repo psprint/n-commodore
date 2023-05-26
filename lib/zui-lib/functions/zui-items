@@ -112,9 +112,9 @@ trap "REPLY=-2; reply=(); return 1" TERM INT QUIT
       ZUI[BFIX_CURRENT_IDX]=$ZUI[CURRENT_IDX] ZUI[CURRENT_IDX]="$__last_element"\
          ZUI[1_CURRENT_IDX]="$__last_element"
 
-    if ((ZUI[CURRENT_IDX]<5));then
+    if ((ZUI[CURRENT_IDX]<4));then
         if ((!$#ZUI[SEARCH_BUFFER]&&!ZUI[UNIQ_MODE]));then
-            ((__last_element>=5))&&{ZUI[CURRENT_IDX]=5;}
+            ((__last_element>=4))&&{ZUI[CURRENT_IDX]=4;}
         else
             ((ZUI[CURRENT_IDX]<1))&&{ZUI[CURRENT_IDX]=1;}
         fi
@@ -1102,8 +1102,8 @@ while (( 1 )); do
             done
 
             # Push down (up) *_global_index parameters
-            for (( index = 1; index <= 1000; ++ index )); do
-                for (( index2 = 1; index2 <= 1000; ++ index2 )); do
+            for (( index = 1; index <= 10; ++ index )); do
+                for (( index2 = 1; index2 <= 10; ++ index2 )); do
                     var_name="mod${index}_ice${index2}_global_index"
                     [[ "${(P)+var_name}" = 0 ]] && break
 

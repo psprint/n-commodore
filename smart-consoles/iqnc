@@ -48,41 +48,52 @@ iqnc_mime_setup(){
 iqnc_get_cmd_idx(){
         integer QSUB QI
         local -a cmd=("$@")
+        cmd[1]=${cmd[1]##[\+\!]##}
         for ((QI=1;QI<$#cmd;QI++));do
-            [[ $cmd[QI] != (\!#)(sudo|noglob|command|builtin|[ $'\t\n\v']#) ]]&&{QSUB=QI;break;}
+            [[ $cmd[QI] != (-*|exec|sudo|doas|?##=*|noglob|command|builtin|nocorrect|\
+[ $';\t\n\v']#|(\&?#|?#\|?#|?#\<?#|\>?#|[\(\)\{\}]#)) ]]&&{QSUB=QI;break;}
         done
         REPLY=$QSUB
         ((REPLY))
 }
-iqnc_util_swap4(){
-    local Q=$1 Q0=$2
+iqnc_util_swap_multi(){
+    local Q0=$2 Q=$1
     shift 0+2
     local -a vars=("$@")
 
-    : ${(P)vars[Q0+1]::=${(P)vars[5]}}
-    : ${(P)vars[5]::=${(P)vars[Q+1]}}
+    : ${(P)vars[Q0+1]::=${(P)vars[2+5]}}
+    : ${(P)vars[2+5]::=${(P)vars[Q+1]}}
 }
 
 iqnc_util_set_current_idx(){
     integer IN=ZUI[PREV_CURRENT_IDX] prev_idx=ZUI[PREV_CURRENT_IDX]
     local QPATH=${ZUI[QPATH]:+_$ZUI[QPATH]}
     # Tree
-    if ((ZUI[GEN_B_IDX]==CIN));then
+    if [[ $ZUI[GEN_B_IDX] == (CIN|CIN0) ]];then
        [[ $prev_idx == ($ZUI[CURRENT_IDX_PVIEW_BKP$QPATH]|\
-$ZUI[CURRENT_IDX_HIST_BKP]|$ZUI[CURRENT_IDX_TAGS_BKP]) ]]&&\
-            prev_idx=${ZUI[CURRENT_IDX_MAIN_BKP]:-5}
+$ZUI[CURRENT_IDX_HIST_BKP]|$ZUI[CURRENT_IDX_TAGS_BKP]|\
+|$ZUI[CURRENT_IDX_CQZSH_BKP]) ]]&&\
+            prev_idx=${${ZUI[CURRENT_IDX_MAIN_BKP]:#0}:-4}
     # Preview
     elif ((ZUI[GEN_B_IDX]==VIEW));then
         [[ $prev_idx == ($ZUI[CURRENT_IDX_MAIN_BKP]|$ZUI[CURRENT_IDX_HIST_BKP]|\
-$ZUI[CURRENT_IDX_TAGS_BKP]) ]]&&\
-            prev_idx=${${ZUI[CURRENT_IDX_PVIEW_BKP$QPATH]:#0#}:-5}
+$ZUI[CURRENT_IDX_TAGS_BKP]|$ZUI[CURRENT_IDX_CQZSH_BKP]) ]]&&\
+            prev_idx=${${ZUI[CURRENT_IDX_PVIEW_BKP$QPATH]:#0#}:-4}
     elif ((ZUI[GEN_B_IDX]==CQUE));then
         [[ $prev_idx == ($ZUI[CURRENT_IDX_PVIEW_BKP$QPATH]|\
-$ZUI[CURRENT_IDX_MAIN_BKP]|$ZUI[CURRENT_IDX_TAGS_BKP]) ]]&&\
-        prev_idx=${${ZUI[CURRENT_IDX_HIST_BKP]:#0#}:-5}
+$ZUI[CURRENT_IDX_MAIN_BKP]|$ZUI[CURRENT_IDX_TAGS_BKP]|\
+$ZUI[CURRENT_IDX_CQZSH_BKP]) ]]&&\
+        prev_idx=${${ZUI[CURRENT_IDX_HIST_BKP]:#0#}:-4}
     elif ((ZUI[GEN_B_IDX]==TAGS));then
-        [[ $prev_idx == ($ZUI[CURRENT_IDX_PVIEW_BKP$QPATH]|$ZUI[CURRENT_IDX_MAIN_BKP]|$ZUI[CURRENT_IDX_HIST_BKP]) ]]&&\
-            prev_idx=${${ZUI[CURRENT_IDX_TAGS_BKP]:#0#}:-5}
+        [[ $prev_idx == ($ZUI[CURRENT_IDX_PVIEW_BKP$QPATH]|\
+$ZUI[CURRENT_IDX_MAIN_BKP]|$ZUI[CURRENT_IDX_HIST_BKP]|\
+$ZUI[CURRENT_IDX_CQZSH_BKP]) ]]&&\
+            prev_idx=${${ZUI[CURRENT_IDX_TAGS_BKP]:#0#}:-4}
+    elif ((ZUI[GEN_B_IDX]==CQZSH));then
+        [[ $prev_idx == ($ZUI[CURRENT_IDX_PVIEW_BKP$QPATH]|\
+$ZUI[CURRENT_IDX_MAIN_BKP]|$ZUI[CURRENT_IDX_HIST_BKP]|\
+$ZUI[CURRENT_IDX_TAGS_BKP]) ]]&&\
+            prev_idx=${${ZUI[CURRENT_IDX_CQZSH_BKP]:#0#}:-4}
     fi
     if ((IN!=prev_idx));then
         ZUI[CURRENT_IDX]=$prev_idx
@@ -103,6 +114,7 @@ iqnc_cmd_synh_switch(){
 }
 
 iqnc_cmd_next(){
+    [[ $1 == -q ]]&&{integer nohub=1;shift;}
     integer q=$1 in=ZUI[GEN_B_IDX]
 
     if (($#1));then
@@ -113,7 +125,7 @@ iqnc_cmd_next(){
     fi
     iqnc_view_switch $in $ZUI[GEN_B_IDX]
     iqnc_set_prompt
-    iqnc_hub
+    ((!nohub))&&iqnc_hub
     return 0
 }
 
@@ -121,25 +133,29 @@ iqnc_cmd_next(){
 iqnc_view_switch(){
     integer in=$2 in0=$1
     ZUI[VIEW_CHANGE]=1
-    local QPATH=${ZUI[QPATH]:+_$ZUI[QPATH]} QTXT
+    local _QPATH=${ZUI[QPATH]:+_$ZUI[QPATH]} QTXT
     ZUI[PREV_GEN_B_IDX]=$in0
 
-    noglob iqnc_util_swap4 $in $in0 \
+    noglob iqnc_util_swap_multi $in $in0 \
         ZUI[SEARCH_BUFFER_GLOBAL]\
         ZUI[SEARCH_BUFFER_PREVIEW]\
         ZUI[SEARCH_BUFFER_CQUE]\
         ZUI[SEARCH_BUFFER_TAGS]\
+        ZUI[SEARCH_BUFFER_CQZSH]\
+        ZUI[SEARCH_BUFFER_PIPE]\
         ZUI[SEARCH_BUFFER]
 
     typeset -g buffer=$ZUI[SEARCH_BUFFER]
     if ((in0==VIEW));then
-        ZUI[CURRENT_IDX_PVIEW_BKP$QPATH]=$ZUI[CURRENT_IDX]
+        ZUI[CURRENT_IDX_PVIEW_BKP$_QPATH]=$ZUI[CURRENT_IDX]
     elif ((in0==CQUE));then
         ZUI[CURRENT_IDX_HIST_BKP]=$ZUI[CURRENT_IDX]
     elif ((in0==TAGS));then
         ZUI[CURRENT_IDX_TAGS_BKP]=$ZUI[CURRENT_IDX]
     elif ((in0==CIN));then
         ZUI[CURRENT_IDX_MAIN_BKP]=$ZUI[CURRENT_IDX]
+    elif ((in0==CQZSH));then
+        ZUI[CURRENT_IDX_CQZSH_BKP]=$ZUI[CURRENT_IDX]
     fi
     ZUI[PREV_CURRENT_IDX]=$ZUI[CURRENT_IDX]
 }
@@ -148,13 +164,11 @@ iqnc_exec_command_cb(){
     integer QEXISTS QSUB=1
     local -a cmd=(${(@zA)ZUI[QUERY_BUFFER]})
     iqnc_get_cmd_idx "$cmd[@]"&&QSUB=REPLY
-    local CMD=${cmd[1]##(\!|\+)#}
+    local CMD=${cmd[QSUB]##[\!\+]##}
     ZUI[COMMAND]=$ZUI[QUERY_BUFFER]
     {
-        if [[ $ZUI[COMMAND] != [[:space:]$'\1'-$'\x1b']# ]];then
-            builtin print -r -- $ZUI[COMMAND]>>!$NCCHIST
-        else
-            THROW "No command entered ($ZUI[COMMAND]), " "" "" "cannot execute"
+        if [[ $ZUI[COMMAND] == [[:space:]$'\1-\x1b']# ]];then
+            THROW "No command entered (${(qq)ZUI[COMMAND]}), " "" "" "cannot execute"
         fi
         # No such command?
         builtin type $CMD&>/dev/null||\
@@ -166,12 +180,10 @@ iqnc_exec_command_cb(){
         else
              cmd-push-screen
              iqnc_reset_hist
-             iqnc_cmd_next $CIN
-
-            #iqnc_hub
+             iqnc_cmd_next -q $CIN
         fi
+        ZUI[QUERY_BUFFER]=
     }
-    ZUI[QUERY_BUFFER]= ZUI[COMMAND]=
 }
 
 iqnc_query_change_cb(){
@@ -198,7 +210,8 @@ iqnc_hist(){
     local TPE=$1 QDIR=$2 FILE
     [[ $TPE == CMD ]]&&FILE=$NCCHIST||FILE=$NCSHIST
     int/nc::read-all-sys -d$FILE
-    local -aU h=(${(Oa)reply})
+    local -a -U h=(${(Oa)reply})
+    typeset -g +U h
     h=(${(Oa)h})
     ((!$#h))&&{iqw "Command history empty, no change done";return 0;}
     : ${ZUI[${TPE}_NO]:=$#h}
@@ -250,15 +263,17 @@ iqnc_search_prompt(){
     ((ZUI[GEN_B_IDX]==VIEW))&&T=file\ contents
     ((ZUI[GEN_B_IDX]==CQUE))&&T=command\ history
     ((ZUI[GEN_B_IDX]==TAGS))&&T=Ctags\ db
+    ((ZUI[GEN_B_IDX]==CQZSH))&&T=Zsh\ history
 
-    ZUI[QUERY_PROMPT]="S.keywords of $T: " ZUI[IN_QUERY]=$PR_SEARCH
+    ZUI[QUERY_PROMPT]="Grep of: ·$T·> " ZUI[IN_QUERY]=$PR_SEARCH
     typeset -g in_query=$PR_SEARCH
     ZUI[cursor]=$#ZUI[SEARCH_BUFFER]+1
     ZUI[VIEW_CHANGE]=1
 }
 
 iqnc_exec_prompt(){
-    ZUI[QUERY_PROMPT]="$PWD/:> "
+    local EPWD=${PWD[25,-1]:+…}$PWD[-25,-1]
+    ZUI[QUERY_PROMPT]="$EPWD/:> "
     ZUI[QUERY_PROMPT_RET]=${ZUI[RET]:-0}
     ZUI[IN_QUERY]=$PR_CMD_EXEC
     typeset -g in_query=$PR_CMD_EXEC
@@ -277,61 +292,87 @@ iqnc_db(){
 iqnc_get_cmd_out(){
     setopt localoptions
     unsetopt aliases
-    local TPE=$1 cmd=("$@[2,-1]") QEX
-    integer QSUB=1 QI EC
-    if [[ $TPE == whole || -n ${(M)cmd[1,-2]:#builtin} || $cmd[1] == \!* || \
-        $cmd[1] == *+* ]];then
-        ZUI[TMP]=$(mktemp)
+
+    local TPE=$1 cmd=("$@[3,-1]") CMD1=${3##(\+|\!)##} QEX
+    integer QSUB=$2 QI EC
+    ZUI[RET]=0 ZUI[CMD_PID]=0
+    if [[ $TPE == whole || -n ${(M)cmd[1,QSUB-1]:#builtin} || $cmd[1] == \!* ||\
+        $cmd[1] == *+* || $cmd[QSUB] == (${(~j.|.)${(k)builtins:#\[*}})  ]];then
+        ZUI[TMP]=$(mktemp) ZUI[whole-capture]=1
         [[ $cmd[1] == \!* && $cmd[1] != \!\!* ]]&&\
                 iqw "Notice: " "in the same-shell process-run ("\
                                     "leading ! detected" ")"
-        QEX=${(M)cmd[1]##(\+|\!)#}
-        cmd[1]=${cmd[1]##(\+|\!)#}
-        [[ $QEX == *++* ]]&&{
-            eval "$cmd[@]"</dev/tty 2>/dev/tty 1>/dev/tty;EC=$?;ZUI[redraw]=1;}
-        [[ $QEX == *+* && $QEX != *++* ]]&&\
-                {eval "$cmd[@]"</dev/tty &>!$ZUI[TMP] 2>/dev/tty 1>/dev/tty;EC=$?
-                    ZUI[redraw]=1;}
-        [[ $QEX != *+* ]]&&eval "$cmd[@]"</dev/tty &>!$ZUI[TMP];EC=$?
-        ZUI[RET]=$EC
-        local CMD_PT="(${(~j.|.)${(@s: :)NC_LS_LIKE_COMMANDS}})"
+        QEX=${(M)cmd[1]##(\+|\!)##}
+        cmd[1]=${cmd[1]##(\+|\!)##}
 
-        iqnc_get_cmd_idx "$cmd[@]"&&QSUB=REPLY
-        [[ -n $aliases[$cmd[QSUB]] ]]&&cmd[QSUB]=(${(s: :)aliases[$cmd[QSUB]]})
-
-        if [[ $cmd[QSUB] == $~CMD_PT && $ZUI[RET] -eq 0 ]]
-        then
-            reply=("${(@f)$(builtin print -C2 -a ${(@f)$(<$ZUI[TMP])})}")
-            items_noproc=("${(@f)$(<$ZUI[TMP])}")
+        # Capture output of command
+        ZUI[BG_CMD]=0
+        if [[ $QEX == *++* ]];then
+            cmd-cover
+            builtin eval "$cmd[@]"</dev/tty &>/dev/tty
+            EC=$?
+            cmd-ret
+            ZUI[BG_CMD]=1 #no capture…
+            ZUI[redraw]=1
+            ZUI[RET]=$EC
+            return EC
+        elif [[ $QEX == *+* && $QEX != *++* ]];then
+            cmd-cover
+            builtin eval "$cmd[@]"</dev/tty &>!$ZUI[TMP] &>/dev/tty
+            EC=$?
+            cmd-ret
+            ZUI[redraw]=1
         else
-            reply=("${(@f)$(<$ZUI[TMP])}")
-            items_noproc=("$reply[@]")
+            builtin eval "$cmd[@]"</dev/tty &>!$ZUI[TMP]
+            EC=$?
         fi
-        rm -f $ZUI[TMP]
+        ZUI[RET]=$EC
+        local CMD_PT="(${(~j.|.)${(QA@)${(@z)NC_LS_LIKE_COMMANDS}}})"
+
+        ok/qcolreduce -u0 -s<$ZUI[TMP]
+        items_noproc=("$reply[@]")
+        if [[ $cmd[QSUB] == $~CMD_PT && $cmd[QSUB+1,-1] != *\ -[[:alnum:]]#l* &&\
+            $ZUI[RET] -eq 0 ]]
+        then
+            reply=("${(@f)$(builtin print -C2 -a "$reply[@]")}")
+        fi
+        [[ $reply[-1] == [[:space:]$'\1-\x1b']# ]]&&reply[-1]=()
+        command rm -f $ZUI[TMP]
     else
+        ZUI[whole-capture]=0
         ((Q0_SAVE_PIPE))&&exec {Q0_SAVE_PIPE}<&-
         Q0_SAVE_PIPE=0
         [[ $cmd[1] == noglob ]]&&{local -a stdbuf1=(noglob $stdbuf1);cmd[1]=();}
         [[ $cmd[1] == builtin ]]&&local -a stdbuf1=(${(M)stdbuf1:#noglob})
+        [[ $cmd[1] == noglob ]]&&{local -a stdbuf1=(noglob $stdbuf1);cmd[1]=();}
         [[ $cmd[1] == command ]]&&cmd[1]=()
 
-        iqnc_get_cmd_idx "$cmd[@]"&&QSUB=REPLY
-        [[ -n $aliases[$cmd[QSUB]] ]]&&cmd[QSUB]=(${(s: :)aliases[$cmd[QSUB]]})
-        coproc {$stdbuf1 "$cmd[@]" 2>&1 </dev/tty;}
-        ZUI[RET]=$?
+        coproc {(){setopt localoptions glob_subst
+                    builtin eval $stdbuf1 "${cmd[@]}" 2>&1 </dev/tty;};}
+        # "
+        ZUI[RET]=$? ZUI[CMD_PID]=$!
     fi
-
     return $ZUI[RET]
-}
+ }
 
 separ(){
-    REPLY="$ZUI[YELLOW]${(l:COLUMNS*3::—:):-}$ZUI[FMT_END]";
+    REPLY="${1:+$ZUI[YELLOW]}${(l:COLUMNS*3::—:):-}${1:+$ZUI[FMT_END]}";
 }
 
 # Utils
-cmd-ret(){print Press enter to continue…; read -k1;}
-cmd-hide(){zcurses end;}
-cmd-show(){zcurses refresh;}
+cmd-ret(){
+        [[ $1 == -c ]]&&cmd-cover
+        print &>/dev/tty </dev/tty -P -n -- \
+            %F{208}Press %B"<ENTER>"%b to continue…
+        [[ $1 != -s && $2 != -s ]]&&\
+            print &>/dev/tty </dev/tty -P -- \
+                %B%F{39}\ ↑↑↑ The complete command output is above ↑↑↑%f%b
+        local REPLY
+        builtin read -t10 -k1 -s </dev/tty &>/dev/tty
+        cmd-show
+}
+cmd-cover(){zcurses end;tput reset;}
+cmd-show(){-zui_glib_refresh;}
 cmd-synh-switch(){iqnc_cmd_synh_switch;}
 
 # navigation
@@ -346,19 +387,19 @@ cmd-page-up(){
     -zui_listin_compute_first_to_show_idx
 }
 # Views
+cmd-zsh-history-view(){iqnc_cmd_next $CQZSH;}
 cmd-command-history-view(){iqnc_cmd_next $CQUE;}
 cmd-contents-view(){iqnc_cmd_next $VIEW;}
 cmd-main-view(){iqnc_cmd_next $CIN;}
 cmd-tags-view(){iqnc_cmd_next $TAGS;}
-cmd-set-view(){local -A Qe=(main 0 preview 1 hist 2 tags 3 "" 0);iqnc_cmd_next $Qe[$1];}
-cmd-show-stdin(){ZUI[HAVE_0_INPUT]=1;ZUI[IO_COUNT]=18;iqnc_cmd_next $CIN;}
+cmd-set-view(){local -A Qe=(main 0 preview 1 hist 2 tags 3 zsh-hist 4 "" 0);iqnc_cmd_next $((Qe[$1]+1));}
+cmd-show-pipe(){ZUI[HAVE_0_INPUT]=1;ZUI[IO_COUNT]=5;ZUI[IO_SUM_UP]=0;iqnc_cmd_next $CIN0;}
 # Commands
-cmd-open-cmd(){zcurses end;builtin eval "$@";-zui_glib_refresh;}
-cmd-open-tig(){curses end;tput reset;command tig "$@";-zui_glib_refresh;}
-cmd-commit(){zcurses end;command git commit -v "$@";cmd-ret;-zui_glib_refresh;}
-cmd-push(){zcurses end;command git push "$@";cmd-ret;-zui_glib_refresh;}
-cmd-pull(){zcurses end;command git pull "$@";cmd-ret;-zui_glib_refresh;}
-cmd-stage-line(){iqnc_stage_line;}
+cmd-open-cmd(){cmd-cover;builtin eval "$@";cmd-ret -s;-zui_glib_refresh;}
+cmd-open-tig(){cmd-cover;command tig "$@";cmd-ret -s;-zui_glib_refresh;}
+cmd-commit(){cmd-cover;command git commit -v "$@";cmd-ret;-zui_glib_refresh;}
+cmd-push(){cmd-cover;command git push "$@";cmd-ret;-zui_glib_refresh;}
+cmd-pull(){cmd-cover;command git pull "$@";cmd-ret;-zui_glib_refresh;}
 
 # Prompt states
 cmd-exec-prompt(){iqnc_exec_prompt;}
@@ -376,7 +417,7 @@ cmd-next-command(){iqnc_command_top 1;}
 cmd-prev-command(){iqnc_command_top 0;}
 
 # directories
-cmd-pwd-up(){((ZUI[GEN_B_IDX]!=$CIN))&&{iqnc_cmd_next $CIN;return 0;}; local PPWD=$PWD;if builtin cd -q -- $PWD:h;then iqnc_push_pwd $PPWD; iqw "Current CWD is: " "" "" $PWD(D);iqnc_cmd_next $CIN; else iqw "Cannot change CWD to: " "" "" ..;fi;}
+cmd-pwd-up(){[[ $ZUI[GEN_B_IDX] != ($CIN|$CIN0) ]]&&{iqnc_cmd_next $CIN;return 0;}; local PPWD=$PWD;if builtin cd -q -- $PWD:h;then iqnc_push_pwd $PPWD; iqw "Current CWD is: " "" "" $PWD;iqnc_cmd_next $CIN; else iqw "Cannot change CWD to: " "" "" ..;fi;}
 cmd-cd(){local Q=${(M)1:#-*};[[ $1 == -* ]]&&shift;if builtin cd -q -- "$1";then [[ $Q != -q ]]&&{iqw "CWD changed to: " "" "" $PWD; iqnc_cmd_next $CIN;};else iqw "Cannot change CWD to: " "" "" $1;fi;}
 cmd-prev-pwd(){iqnc_pop_pwd&&cmd-cd "$REPLY";}
 
@@ -441,6 +482,7 @@ cmd-fetch-screen(){
     iqnc_cnt_idx_to_db_idx $QCIDX
     iqnc_fill_screen $REPLY $QCIDX
     -zui_glib_fly_array_refresh 1
+    iqq $UPD_QZSH
 }
 
 cmd-prune-screens(){
@@ -496,8 +538,9 @@ cmd-help(){iqnc_fill_help;}
 
 if ((!$+Opts[--refresh])); then
     ok/qnstr $PWD:A&&local APP=$REPLY||local APP=unknown
-    readonly CIN=0 VIEW=1 CQUE=2 TAGS=3 VIEWS=4
+    readonly CIN=0 VIEW=1 CQUE=2 TAGS=3 CQZSH=4 CIN0=5 VIEWS=6
     readonly PR_NONE=0 PR_SEARCH=1 PR_CMD_EXEC=3
+    readonly UPD_OTHER=3 UPD_QZSH=4
     : ${ZUI[cmd-mode]:=pipe}
     ZUI[SRC_HIGHLIGHT]=1 ZUI[key-timeout]=0.30
     -zui_glib_cleanup deserialize:"iqnc_$APP"
@@ -545,7 +588,7 @@ if ((!$+Opts[--refresh])); then
     integer Q0_SAVE_PIPE tmout
     if int/nc::test-stdin Q0_SAVE_PIPE REPLY;then
         ZUI[FIRST_0_INPUT]=$REPLY
-        ZUI[HAVE_0_INPUT]=1 ZUI[IO_COUNT]=15
+        ZUI[HAVE_0_INPUT]=1 ZUI[IO_COUNT]=15 ZUI[IO_SUM_UP]=0
     fi
     iqnc_create_histories
     #cmd-exec-prompt
@@ -582,18 +625,23 @@ iqnc_pop_pwd(){
     return 0
 }
 
+iqq(){ZUI[VIEW_CHANGE]=$1;}
+
 iqnc_hub(){
     integer EC
-    local -a gener=(iqnc_fill_cmd       # 1
-                    iqnc_fill_preview   # 2
-                    iqnc_fill_history   # 3
-                    iqnc_fill_tags)     # 4
+    local -a gener=(iqnc_fill_cmd          # 0
+                    iqnc_fill_preview      # 1
+                    iqnc_fill_history      # 2
+                    iqnc_fill_tags         # 3
+                    iqnc_fill_zsh_history  # 3+1
+                    iqnc_fill_cmd)         # 5
  
+    [[ $ZUI[GEN_B_IDX] -ne $CQZSH && -n $history ]]&&builtin fc -P
     $gener[1+(ZUI[GEN_B_IDX]%VIEWS)]
     EC=$?
     iqnc_set_prompt
     ZUI[VIEW_CHANGE]=1
-    ((${3:-0}))||{-zui_glib_fly_array_refresh 1;}
+    ((!QNO_UPDATE&&ZUI[started]))&&{-zui_glib_fly_array_refresh 1;}
 
     return EC
 }
@@ -602,12 +650,15 @@ iqnc_fill_history(){
     ZUI[text_mode]=off
     int/nc::read-all-sys -d$NCCHIST||{iqw "Error reading history…";return 1;}
     ZUI[COLORING_PATTERN]='(#s)[^[:space:]]##~(*[·–—]*)'
-    qitems=(${(u)reply}) reply=()
+    qitems=(${(Oa)reply}) reply=()
+    typeset -g -U qitems
+    typeset -g +U qitems
+    #qitems=(${(Oa)qitems})
     items_noproc=($qitems)
     -zui_glib_special_text "·Command history·"
     separ
-    typeset -ga -U ZUILIST_NONSELECTABLE_ELEMENTS=(4 3 2 1)
-    qitems=("$REPLY[3,-1]" "$reply[-1]" "$REPLY[3,-1]" "$qitems[@]")
+    typeset -ga -U ZUILIST_NONSELECTABLE_ELEMENTS=(3 2 1)
+    qitems=("$REPLY[3,-1]" "$reply[-1]" "$REPLY[3,-1]" $qitems)
     ZUI[IN_QUERY]=$PR_SEARCH
     in_query=$PR_SEARCH
 }
@@ -618,7 +669,8 @@ iqnc_fill_preview(){
     ZUI[COLORING_PATTERN]="·[^·]##·"
     ZUI[COLORING_MATCH_MULTIPLE]=1
     ZUI[COLORING_COLOR]=$ZUI[BOLD]$ZUI[YELLOW]
-    if ((ZUI[CURRENT_IDX]>0&&ZUI[PREV_GEN_B_IDX]==CIN&&ZUI[VIEW_CHANGE]==1));then
+    if ((ZUI[CURRENT_IDX]>0&&ZUI[VIEW_CHANGE]==1))&&\
+        [[ $ZUI[PREV_GEN_B_IDX] == ($CIN|$CIN0) ]];then
         zui-process-buffer2 "$__list[ZUI[CURRENT_IDX]]"
         QPATH=${ZUI_PB2_QWORDS[ZUI[CURRENT_SEGMENT]]}
         ZUI[QPATH]=$QPATH
@@ -641,7 +693,9 @@ iqnc_fill_preview(){
             iq0items=("${(@f)$($qcmd[@])}")
             iqw "Showing file: " "\`$QPATH:t\`" ", of type: " $TPE
         else
-            QTXT="$ZUI[BOLD]$ZUI[RED]!NO SUCH FILE, F1 FOR TREE$ZUI[FMT_END]"
+            QTXT="$ZUI[BOLD]$ZUI[RED]!NO SUCH FILE!"\
+" ($ZUI[FMT_END]$ZUI[YELLOW]$QPATH$ZUI[FMT_END]$ZUI[BOLD]$ZUI[RED])"\
+" F1 – GO TO TREE$ZUI[FMT_END]"
         fi
     } always {
         if CATCH -c \* || [[ $iq0items == $~NC[WRONGSTR] ]];then
@@ -660,7 +714,7 @@ iqnc_fill_preview(){
         reply=()
         -zui_glib_special_text $QTXT
         separ
-        typeset -ga -U ZUILIST_NONSELECTABLE_ELEMENTS=(4 3 2 1)
+        typeset -ga -U ZUILIST_NONSELECTABLE_ELEMENTS=(3 2 1)
         qitems=("$REPLY" "$reply[1]" "$REPLY" "$qitems[@]")
     }
 }
@@ -680,55 +734,69 @@ iqnc_fill_cmd(){
     iqnc_get_command
     : ${ZUI[COMMAND]:=$REPLY}
     if [[ -n $ZUI[COMMAND] ]];then
-        [[ -e $ZUI[QPATH] ]]&&ZUI[COMMAND]=${ZUI[COMMAND]//\%s/${(q)ZUI[QPATH]}}
-        [[ -e $ZUI[QPATH] ]]||ZUI[COMMAND]=${ZUI[COMMAND]//\%s/}
-        ZUI[COMMAND_PREV]=$ZUI[COMMAND]
+        #[[ -e $ZUI[QPATH] ]]&&ZUI[COMMAND]=${ZUI[COMMAND]//\%s/${(q)ZUI[QPATH]}}
+        #[[ -e $ZUI[QPATH] ]]||ZUI[COMMAND]=${ZUI[COMMAND]//\%s/}
         cmd=("${(z@)ZUI[COMMAND]}")
-        QEX=${(M)cmd[1]##(\!|\+)#}
-        cmd[1]=${cmd[1]##(\!|\+)#}
+        QEX=${(M)cmd[1]##(\!|\+)##}
+        cmd[1]=${cmd[1]##(\!|\+)##}
+
+        # Manually unwind aliases
         iqnc_get_cmd_idx "$cmd[@]"&&QSUB=REPLY
-        ZUI[COMMAND]=
-        CMD_PT="(${(~j.|.)${(@)=NC_LS_LIKE_COMMANDS}})"
-        # Include ls-options
-        if [[ ($cmd[QSUB] == $~CMD_PT ||\
-            $cmd[1] == (sudo|noglob|command|builtin) && $cmd[2] == $~CMD_PT) ]]
+        [[ -n $aliases[$cmd[QSUB]] ]]&&\
+            cmd[QSUB]=("$QEX${(@QA)${(z@)aliases[$cmd[QSUB]]}}")
+        iqnc_get_cmd_idx "$cmd[@]"&&QSUB=REPLY
+
+        # Include ls-options and 2-column format ls output
+        CMD_PT="(${(~j.|.)${(Q@A)${(z@)NC_LS_LIKE_COMMANDS}}})"
+        ZUI[ls-command]=0
+        if [[ $cmd[QSUB] == $~CMD_PT ]]
         then
             if [[ -n $NC_DEFAULT_LS_LIKE_OPTS ]];then
                 QI=2;[[ $cmd[2] == $~CMD_PT ]]&&QI=3
                 [[ $cmd[QSUB] == $~CMD_PT ]]&&QI=QSUB+1
-                cmd[QI,0]=(${(s: :)NC_DEFAULT_LS_LIKE_OPTS})
-             fi
-            ZUI[ls-command]=1
-        else
-            ZUI[ls-command]=0
+                cmd[QI,0]=("${(Q@A)${(z@)NC_DEFAULT_LS_LIKE_OPTS}}")
+            fi
+            [[ $cmd[QSUB+1,-1] != *\ -[[:alnum:]]#l* ]]&&\
+                ZUI[ls-command]=1
         fi
 
-        if [[ $cmd[1] == cd || $cmd[1] == builtin && $cmd[2] == cd ]];then
-            iqw "Moving CWD to: " "" "" "$cmd[-1]"
+        if [[ $cmd[QSUB] == cd ]];then
+            ZUI[COMMAND]=
+            [[ $cmd[-1] == .. ]]&&cmd[-1]=$PWD:h||cmd[-1]=${cmd[-1]:a}
+            iqw "Moving to dir: " "" "" "$cmd[-1]"
             iqnc_push_pwd 
-            eval "$cmd[@]"
-            iqnc_fill_cmd
+            (){builtin eval "$cmd[@]"&>!$1;ZUI[RET]=$?;ZUI[CDOUT]=$(<$1);} =(:)
+            [[ $ZUI[CDOUT] != [^$'\1-\x1b'[:space:]]# ]]&&\
+               iqw "CD" "" "" " error: " "" "" "" ${ZUI[CDOUT]##\(eval\):cd:1:\ }
+            ((ZUI[RET]==0))&&iqnc_fill_cmd
             return
         fi
 
-        iqnc_get_cmd_out $ZUI[cmd-mode] $QEX$cmd[1] "${(@)cmd[2,-1]}"
-        if [[ $ZUI[cmd-mode] == whole || -n $QEX ]]; then
+        iqw iqnc_get_cmd_out "$ZUI[cmd-mode]" $QSUB $QEX$cmd[1] "${(@)cmd[2,-1]}"
+        iqnc_get_cmd_out "$ZUI[cmd-mode]" $QSUB $QEX$cmd[1] "${(@)cmd[2,-1]}"
+        ((ZUI[BG_CMD]))&&return 0
+        if ((ZUI[whole-capture])); then
+            ZUI[COMMAND_PREV]=$ZUI[COMMAND] ZUI[COMMAND]=
             if [[ $QEX == *'!!'* ]];then
-                local TMP=${${(j:·\n·:)reply}:-NO OUTPUT}
+                local TMP=${${${(j:·\n·:)reply}##[[:space:]$'\1-\x1b']##}:-\
+"NO OUTPUT"}
                 int/nc::prune-esc $TMP -v TMP
                 iqw "!!" "-CMD-OUT:»: " "$TMP"
                 return 0
             else
                 [[ $QEX != *++* ]]&&iq0items=("$reply[@]")
             fi
+            local EPWD=${PWD[25,-1]:+…}$PWD[-25,-1]
+            -zui_glib_special_text "Output of cmd: ·$ZUI[COMMAND_PREV]· run in: ·$EPWD·:" TXT
         else
+            ZUI[COMMAND_PREV_0]=$ZUI[COMMAND] ZUI[COMMAND]=
             iq0items=() q0input=() items_noproc=()
-            ZUI[HAVE_0_INPUT]=1 ZUI[IO_COUNT]=15
+            ZUI[HAVE_0_INPUT]=1 ZUI[IO_COUNT]=15 ZUI[IO_SUM_UP]=0
+            iqnc_cmd_next -q $CIN0
+            return 0
         fi
-
-        -zui_glib_special_text "Output of cmd: ·$ZUI[COMMAND_PREV]· run in: ·$PWD·:" TXT
-        if [[ $QEX != '!!' && $iq0items = [[:space:]$'\1'-$'\x1b']# &&\
-             ($ZUI[cmd-mode] = whole || $QEX = \!) ]]
+        if [[ $QEX != '!!' && $iq0items == [[:space:]$'\1'-$'\x1b']# &&\
+             $ZUI[whole-capture] -eq 1 ]]
         then
             iqw "Executed: " "\`$cmd[QSUB]\`" "" " – NO OUTPUT"
             return
@@ -739,10 +807,8 @@ iqnc_fill_cmd(){
     fi
     (($+Opts[-s]))&&iq0items=("${(@on)iq0items}")
     (($+Opts[-R]))&&iq0items=("${(a@nO)iq0items}")
-    [[ -n $iq0items[1,3] ]]&&\
-        {ok/qcolreduce -- "$iq0items[@]";iq0items=("$reply[@]");}
 
-    typeset -ga -U ZUILIST_NONSELECTABLE_ELEMENTS=(4 3 2 1)
+    typeset -ga -U ZUILIST_NONSELECTABLE_ELEMENTS=(3 2 1)
     separ
     qitems=("$REPLY" "$TXT" "$REPLY" "$iq0items[@]")
     ZUI[VIEW_CHANGE]=1
@@ -753,46 +819,49 @@ iqnc_fill_0(){
     ((Q0_SAVE_PIPE))&&\
         {int/nc::read-all -u$Q0_SAVE_PIPE -t0 -x50;QEC=$?;}
     ((!Q0_SAVE_PIPE))&&\
-        {int/nc::read-all-sys -p -t0;QEC=$?;}
+        {int/nc::read-all-sys -p -t0 -x5000 -r1;QEC=$?;}
 
-    [[ -n $REPLY ]]&&QFLAG=1||QFLAG=0
-    ZUI[read-all-failed]=$((!QFLAG))
-    ((ZUI[IO_COUNT]-=!QFLAG))
-    ((ZUI[IO_COUNT]<0))&&{ZUI[HAVE_0_INPUT]=0;ZUI[read-all-incomplete]=;}&&return
-    ((QFLAG))||return 1
+    {
+        [[ -n $REPLY ]]&&QFLAG=1||QFLAG=0
+        ZUI[read-all-failed]=$((!QFLAG))
+        ((ZUI[IO_COUNT]-=!QFLAG))
+        ((ZUI[IO_COUNT]<0))&&{ZUI[HAVE_0_INPUT]=0;ZUI[read-all-incomplete]=;return;}
+        ((QFLAG))||return 1
 
-    local ql had_read=0
-    if ((!$#q0input&&QFLAG));then
-        q0input[1]=$ZUI[FIRST_0_INPUT]$reply[1]
-        shift reply
-    fi
+        local ql had_read=0
+        if ((!$#q0input&&QFLAG));then
+            q0input[1]=$ZUI[FIRST_0_INPUT]$reply[1]
+            shift reply
+        fi
 
-    if ((ZUI[read-all-incomplete]));then
-        q0input[-1]+=$reply[1]
-        shift reply
-    fi
-    ZUI[read-all-incomplete]=0
-    [[ -n $REPLY && $REPLY != *$'\n' ]]&&ZUI[read-all-incomplete]=1
+        if ((ZUI[read-all-incomplete]));then
+            q0input[-1]+=$reply[1]
+            shift reply
+        fi
+        ZUI[read-all-incomplete]=0
+        [[ -n $REPLY && $REPLY != *$'\n' ]]&&ZUI[read-all-incomplete]=1
 
-    ((QFLAG))&&ok/qcolreduce "$reply[@]"
+        ((QFLAG))&&ok/qcolreduce -- "$reply[@]"
 
-    q0input+=("$reply[@]")
-    items_noproc+=($reply)
-    q0input_proc=("$q0input[@]")
-    (($+Opts[-s]))&&q0input_proc=("${(@on)q0input_proc}")
-    (($+Opts[-R]))&&q0input_proc=("${(a@nO)q0input_proc}")
-    ((ZUI[ls-command]))&&q0input_proc=(
-            "${(@f)$(print -C2 -a -r -- $q0input_proc[@])}" )
-    if ((ZUI[GEN_B_IDX]%VIEWS==0));then
-        reply=()
-        -zui_glib_special_text "Output of cmd: ·$ZUI[COMMAND_PREV]· run in: ·$PWD·:"
-        local TXT=$reply[1] 
-        separ
-        #local -a q0items=("$qitems[@]")
-        qitems=($REPLY "$TXT" $REPLY "$q0input_proc[@]")
-        #[[ -n ${qitems:|q0items} ]]
-       -zui_glib_fly_array_refresh 1
-    fi
+        q0input+=("$reply[@]")
+        items_noproc+=($reply)
+        q0input_proc=("$q0input[@]")
+        (($+Opts[-s]))&&q0input_proc=("${(@on)q0input_proc}")
+        (($+Opts[-R]))&&q0input_proc=("${(a@nO)q0input_proc}")
+        ((ZUI[ls-command]))&&q0input_proc=(
+                "${(@f)$(print -C2 -a -r -- $q0input_proc[@])}" )
+    } always {
+        if [[ $ZUI[GEN_B_IDX] == ($CIN|$CIN0) ]];then
+            reply=()
+            local EPWD=${PWD[25,-1]:+…}$PWD[-25,-1]
+            -zui_glib_special_text "Output of (·PIPE·) cmd: ·$ZUI[COMMAND_PREV_0]· run in: ·$EPWD·:"
+            local TXT=$reply[1]
+            separ;REPLY=$REPLY[3,-1]
+            qitems=($REPLY "$TXT" $REPLY "$q0input_proc[@]")
+            ((QFLAG&&(ZUI[IO_SUM_UP]++%22==0)||ZUI[HAVE_0_INPUT]==0))&&{ZUI[VIEW_CHANGE]=1;(($#qitems>7000))&&ZUI[REDRAW_COUNT]=30;}
+
+        fi
+    }
 }
 
 iqnc_fill_screen(){
@@ -888,37 +957,66 @@ iqnc_fill_tags(){
             $qa)
 }
 
+iqnc_fill_zsh_history(){
+    local EFILE=$HISTFILE # history file, eg. ~/.zsh_history
+    #coloring of all commands, builtins and reserved words, and also assignments
+    ZUI[COLORING_PATTERN]="((#s)(${(~j:|:)${(@k)commands:#\[}}|\
+${(~j:|:)${(@k)builtins:#\[}}|${(~j:|:)${(@k)reswords:#(\[\[|\!)}}|\
+[^[:space:]]##\=[^[:space:]]##)((#e)|[[:space:]])|\[\[[^\]]##\]\]|·[^·]#·)"
+    iqnc_search_prompt
+    separ
+    qitems=($REPLY[3,-1]
+            "·Zsh· History Commands from ·$EFILE·"
+            $REPLY[3,-1]
+    )
+    [[ -n $history || ! -s $EFILE ]]&&return 0
+    (){
+          command cp -f -- "$EFILE" "$1"
+          iqw 'Reading Zsh history…'
+          builtin fc -p "$1" ${NC_ZHIST_SIZE:-100000} 0
+          iqw -r 'Reading Zsh history… ' OK. \
+                " [$#history entries, non uniquified]"
+    } =(:)
+    items_noproc=(${history[@]})
+    iqw $qitems[2,-1]
+}
+
+
 iqnc_fill_help(){
     ZUI[COLORING_PATTERN]="((·[^·]##·~(#s)·*)|(#s)· [^[:space:]]##)"
     separ
     qitems=($REPLY[3,-1] "·N–Commodore help:·" $REPLY[3,-1]
             "${(@f)$(<$NCTXT/HELP_CONTENTS)}" )
-    -zui_glib_fly_array_refresh 1
+#    -zui_glib_fly_array_refresh 1
 }
 
 # Read & publish Configure/make output
 -zui-standard-timeout-callback(){
     local TM=$ZUI[text_mode]
-    ((ZUI[GEN_B_IDX]==0))&&ZUI[text_mode]=all||ZUI[text_mode]=off
+    integer QCIX
+    [[ $ZUI[GEN_B_IDX] == ($CIN|$CIN0) ]]&&ZUI[text_mode]=all||ZUI[text_mode]=off
     # Ensure cursor is visible
-    if ((ZUI[CURRENT_IDX]<5));then
+    if ((ZUI[CURRENT_IDX]<4));then
         if ((!$#ZUI[SEARCH_BUFFER]&&!ZUI[UNIQ_MODE]));then
-            ((__last_element>=5))&&\
-                { ZUI[CURRENT_IDX]=5;-zui_items_verify_vars;ZUI[redraw]=1;}
+            ((__last_element>=4))&&\
+                { ZUI[CURRENT_IDX]=4;-zui_items_verify_vars;ZUI[redraw]=1;}
         else
             ((ZUI[CURRENT_IDX]<1))&&\
                 {ZUI[CURRENT_IDX]=1;-zui_items_verify_vars;ZUI[redraw]=1;}
         fi
     fi
 
-    ((--ZUI[REDRAW_COUNT]==0))&&ZUI[redraw]=1
-    ((ZUI[REDRAW_COUNT]<0))&&ZUI[REDRAW_COUNT]=0
-    ((--ZUI[VERIFY_COUNT]==0))&&-zui_items_verify_vars
-    ((ZUI[VERIFY_COUNT]<0))&&ZUI[VERIFY_COUNT]=0
+    (((ZUI[REDRAW_COUNT]>0)?(!--ZUI[REDRAW_COUNT]):0))&&ZUI[redraw]=1
+    (((ZUI[VERIFY_COUNT]>0)?(!--ZUI[VERIFY_COUNT]):0))&&-zui_items_verify_vars
 
+    ((ZUI[VIEW_CHANGE]==UPD_OTHER))&&\
+        {iqq 0;-zui_glib_fly_array_refresh 1;return 0;}
+    ((ZUI[VIEW_CHANGE]==UPD_QZSH))&&\
+        {iqq 0;-zui_glib_fly_array_refresh 2;return 0;}
+ 
     ZUI[VIEW_CHANGE]=$((ZUI[VIEW_CHANGE]+${#${TM:#$ZUI[text_mode]}}))
     ZUI[VIEW_CHANGE]=$((ZUI[VIEW_CHANGE]+${${ZUI[COMMAND]:+1}:-0}))
-    typeset -ga -U ZUILIST_NONSELECTABLE_ELEMENTS=(4 3 2 1)
+    typeset -ga -U ZUILIST_NONSELECTABLE_ELEMENTS=(3 2 1)
     ((!ZUI[HAVE_0_INPUT]&&!ZUI[VIEW_CHANGE]))&&return
 
     if ((ZUI[HAVE_0_INPUT]));then
@@ -928,13 +1026,27 @@ iqnc_fill_help(){
     ((ZUI[VIEW_CHANGE]))||return 0
     if [[ -n $ZUI[COMMAND] ]];then
         local CMD=$ZUI[COMMAND]
-        iqnc_cmd_next $CIN
+        if [[ $CMD != [[:space:]$'\1-\x1b']# ]];then
+            builtin print -r -- $CMD>>!$NCCHIST
+            [[ $ZUI[cmd-mode] == pipe ]]&&\
+                {QCIX=CIN0;ZUI[COMMAND_PREV_0]=$CMD;}||\
+                {QCIX=CIN;ZUI[COMMAND_PREV]=$CMD;}
+            iqnc_cmd_next $QCIX
+        else
+            iqw "Error:" " empty command entered!" " Doing nothing…"
+        fi
     fi
     builtin unset 'ZUI[COMMAND]'
     iqnc_util_set_current_idx
     -zui_items_verify_vars 1
-    -zui_glib_fly_array_refresh 1
-    ZUI[VIEW_CHANGE]=0
+    ((ZUI[GEN_B_IDX]!=CQZSH))&&{
+        ZUI[VIEW_CHANGE]=$UPD_QZSH #costs nothing (empty)
+        -zui_glib_fly_array_refresh 1
+        true
+    }||{
+        ZUI[VIEW_CHANGE]=$UPD_OTHER #costs nothing
+        -zui_glib_fly_array_refresh 2
+    }
     ZUI[PREV_GEN_B_IDX]=$ZUI[GEN_B_IDX]
     return 0
 }
@@ -957,7 +1069,7 @@ while (( 1 )); do
     ZUI[VIEW_CHANGE]=1
     builtin print -rn -- $terminfo[smcup]$termcap[ti]
     ZUI[started]=1
-    zui-event-loop a:qitems
+    zui-event-loop a:qitems a:u-history
     builtin print -rn -- $terminfo[rmcup]$termcap[te]
     QFLAG=0
     # exit?
@@ -990,7 +1102,7 @@ while (( 1 )); do
             QIDX=ZUI[USER_CURRENT_IDX]
             iqw "Opening " $QFILE " scrolled to line: " "#$QIDX"
         # …tree?
-        elif [[ $ZUI[GEN_B_IDX] == ($CIN|$CQUE) && $REPLY_SAVE != *(·|–|—)* ]];then
+        elif [[ $ZUI[GEN_B_IDX] == ($CIN|$CQUE|$CQZSH) && $REPLY_SAVE != *(·|–|—)* ]];then
             QFILE=$REPLY_SAVE
         fi
     # search selection?
@@ -1039,7 +1151,7 @@ while (( 1 )); do
 
     integer QFLAG=0
     # history
-    if ((ZUI[GEN_B_IDX]==CQUE));then
+    if [[ $ZUI[GEN_B_IDX] == ($CQUE|$CQZSH) ]];then
         ZUI[COMMAND]=$QFILE
         ZUI[VIEW_CHANGE]=1
         QFLAG=1
@@ -1067,7 +1179,7 @@ while (( 1 )); do
                     iqw "No MIME program for extension: " "" ".$QFILE:e"\
                             " you can set it via " "~/.mailcap" " and in" \
                             " ~/.mime-types"
-                eval ./$QFILE
+                builtin eval ./$QFILE
                 EC+=$? QFLAG=3
         fi
     fi

@@ -8,13 +8,14 @@ alias rg="rg --color=always --line-number"
 alias ag="ag --color --numbers"
 alias bat="bat --color=always"
 greptxt="grep -E -H -sn   -I --color=always\
-    --exclude-dir=.git\\* --exclude TAGS --exclude=.TAGS.z --exclude=\\*.log\
-    --exclude=\\*.patch --exclude=\\*.diff -D skip -d recurse"
+    --exclude-dir=.git\\\* --exclude TAGS --exclude=.TAGS.z --exclude=\\\*.log\
+    --exclude=\\\*.patch --exclude=\\\*.diff -D skip -d recurse"
 [[ -f .gitignore ]]&&greptxt+=" --exclude-from=.gitignore"
 
 alias grep=$greptxt
 alias qe=$greptxt
 alias gitg="git grep -I -i -E --color=always --threads=7 -n -e"
+alias cd..="cd .." ..="cd .."
 
 #
 # Some hopefully useful hashed dirs. Use in command line, e.g.: cd ~start
@@ -47,6 +48,7 @@ NC_LS_LIKE_COMMANDS="ls fd exa"
 zui::bindkey F1 cmd-main-view
 zui::bindkey F2 cmd-contents-view
 zui::bindkey F3 cmd-command-history-view
+zui::bindkey F4 cmd-zsh-history-view
 zui::bindkey $'\C-w' cmd-tags-view      # Ctrl-w - Ctags view
 zui::bindkey $'\ew' cmd-tags-view       # Alt-w - Ctags view
 zui::bindkey $'\C-_' cmd-toggle-prompt  # Ctrl-/ - toggle prompt search/cmd-input
@@ -59,7 +61,9 @@ zui::bindkey F15 cmd-open-tig           # Run Tig via Shift-F3
 zui::bindkey F7 cmd-synh-switch         # Syntax highlighting on/off
 zui::bindkey F304 cmd-prev-hist         # Ctrl-Up for prev in history
 zui::bindkey F263 cmd-next-hist         # Ctrl-Down … next …
-zui::bindkey $'\C-D' cmd-show-stdin     # Switch to standard input view
+zui::bindkey $'\C-D' cmd-show-pipe      # Switch to standard input view
+zui::bindkey $'\e0' cmd-show-pipe       # As a.
+zui::bindkey $'\e`' cmd-command-mode-toggle # Pipe/Whole command capture/exec
 zui::bindkey $'\C-y' cmd-command-mode-toggle # Pipe/Whole command capture/exec
 zui::bindkey F305 cmd-pwd-up            # Shift-Up for cd ..
 zui::bindkey SR cmd-pwd-up
@@ -83,5 +87,5 @@ zui::bindkey F299 cmd-next-screen       # Ctrl-Shift-Right: visit next saved vie
 zui::bindkey F8 cmd-remove-screen       # Remove current view from disk memory
 zui::bindkey F13 cmd-help               # Show help
 zui::bindkey F20 cmd-prune-screens      # Remove all screens
-zui::bindkey F4 "cmd-hide;sleep 3"      # F4: Hide N-C
+zui::bindkey F5 "cmd-hide;sleep 3"      # F4: Hide N-C
 zui::bindkey F16 cmd-show               # Shift-F4: Show N-C

@@ -36,7 +36,7 @@ ok/qcolreduce() {
             int/nc::read-all -u$QU $toutop
         fi
         QEC=$?;EC+=QEC
-        ((QEC))&&iqerr "Problem reading from descriptor: " $QU
+        ((QEC&&QEC!=13))&&iqerr "Problem reading from descriptor: " "$QU"
         # nevertheless, save the output like if it was a succcessful read
         OUT+=$REPLY
         reply[1]=$OUT$reply[1]

@@ -1084,7 +1084,8 @@ function -zui_glib_map_replies() {
     var_name="mod${1}_ice${2}_lanchors"
     : ${(PA)var_name::="${reply4[@]}"}
     var_name="mod${1}_ice${2}_spacing"
-    : ${(PA)var_name::=$reply5}
+    : ${(P)var_name::=$reply5}
+    ZUI[SPACING_${1}_${2}]=$reply5
 } # }}}
 
 # FUNCTION: -zui_glib_fly_mod_regen_ext {{{
@@ -1167,12 +1168,12 @@ function -zui_glib_map_replies() {
     local __arr="${zuiel_module_hash[$__key]}"
     if [[ "$__arr" = u-* ]]; then
         __arr="${__arr#u-}"
-        reply=( "${(PA@u)__arr}" )
+        reply=( "${(PA@u)__arr}")
     else
-        reply=( "${(PA@)__arr}" )
+        reply=( "${(PA@)__arr}")
     fi
 
-    reply2=( ) reply3=( 1 ) reply4=( )
+    reply2=( ) reply3=( 1 ) reply4=( ) reply5=0
     -zui_glib_map_replies "$__mod" "$__ice"
     -zui_glib_submit_fly_from_gen_replies "$__mod" "$__ice"
 
@@ -1210,7 +1211,7 @@ function -zui_glib_submit_fly_from_gen_replies() {
 
     # Not submitting module output, it is assumed
     # that -zui_glib_map_replies was called
-    -zui_glib_submit_items_update "$mod" "$ice" "$global_index" "$(( global_index + previous_size - 1 ))" # "${reply[@]}"
+    -zui_glib_submit_items_update "$mod" "$ice" "$global_index" "$(( global_index + previous_size - 1 ))" #"${reply[@]}" # optimized out for large updates
     -zui_glib_submit_nonselectables "${reply2[@]}"
     -zui_glib_submit_hops "${reply3[@]}"
     -zui_glib_submit_lanchors "${reply4[@]}"
@@ -1228,7 +1229,7 @@ function -zui_glib_submit_fly_from_gen_replies() {
 function -zui_glib_submit_items_update() {
     integer size=$(( $4 - $3 + 1 ))
     4=$size
-    ZUI[fly_update]="${(j: :)${(q)@}}"
+    ZUI[fly_update]="${(j: :)${(q)@}}" #${(j: :)${(q)reply[@]}}" #optimized out
 } # }}}
 
 # FUNCTION: -zui_glib_submit_hops {{{
