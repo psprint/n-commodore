@@ -587,6 +587,7 @@ if ((!$+Opts[--refresh])); then
     if int/nc::test-stdin Q0_SAVE_PIPE REPLY;then
         ZUI[FIRST_0_INPUT]=$REPLY
         ZUI[HAVE_0_INPUT]=1 ZUI[IO_COUNT]=15 ZUI[IO_SUM_UP]=0
+        iqnc_cmd_next -q $CIN0
     fi
     iqnc_create_histories
     #cmd-exec-prompt
@@ -729,10 +730,12 @@ iqnc_fill_cmd(){
     reply=()
 
     ZUI[COMMAND]=${1:-$ZUI[COMMAND]}
-    [[ $ZUI[COMMAND] != [[:space:]$'\1'-$'\x1b']# ]]&&ZUI[HAVE_0_INPUT]=0
-    iqnc_get_command
-    : ${ZUI[COMMAND]:=$REPLY}
+    if [[ $Q0_SAVE_PIPE -eq 0 ]];then
+        iqnc_get_command
+        : ${ZUI[COMMAND]:=$REPLY}
+    fi
     if [[ -n $ZUI[COMMAND] ]];then
+        [[ $ZUI[COMMAND] != [[:space:]$'\1-\x1b']# ]]&&ZUI[HAVE_0_INPUT]=0
         #[[ -e $ZUI[QPATH] ]]&&ZUI[COMMAND]=${ZUI[COMMAND]//\%s/${(q)ZUI[QPATH]}}
         #[[ -e $ZUI[QPATH] ]]||ZUI[COMMAND]=${ZUI[COMMAND]//\%s/}
         cmd=("${(z@)ZUI[COMMAND]}")
@@ -817,7 +820,7 @@ iqnc_fill_0(){
     integer QFLAG QEC
     REPLY=
     ((Q0_SAVE_PIPE))&&\
-        {int/nc::read-all -u$Q0_SAVE_PIPE -t0 -x50;QEC=$?;}
+        {int/nc::read-all-sys -u$Q0_SAVE_PIPE -t0 -x3000 -r1;QEC=$?;}
     if ((!Q0_SAVE_PIPE));then
         if command ps -p "$ZUI[CMD_PID]"&>/dev/null;then
             ZUI[CMD_SEEN]=$EPOCHREALTIME
